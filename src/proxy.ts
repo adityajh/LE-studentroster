@@ -6,10 +6,14 @@ export default auth((req) => {
   const isLoggedIn = !!session
 
   const isAuthRoute = nextUrl.pathname.startsWith("/login")
-  const isApiRoute = nextUrl.pathname.startsWith("/api")
+  const isNextAuthRoute = nextUrl.pathname.startsWith("/api/auth")
   const isPublicApiRoute = nextUrl.pathname.startsWith("/api/v1")
+  const isApiRoute = nextUrl.pathname.startsWith("/api")
 
-  // Public API routes use API key auth — skip session check
+  // NextAuth routes (signin, callback, etc.) — always allow through
+  if (isNextAuthRoute) return NextResponse.next()
+
+  // Public external API routes use API key auth — skip session check
   if (isPublicApiRoute) return NextResponse.next()
 
   // Internal API routes need session
