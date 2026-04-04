@@ -1,0 +1,316 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ─── Auth ────────────────────────────────────────────────────────────────────
+
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String    @unique
+  emailVerified DateTime?
+  image         String?
+  role          Role      @default(STAFF)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  accounts        Account[]
+  sessions        Session[]
+  lockedSchedules FeeSchedule[] @relation("LockedBy")
+  apiKeys         ApiKey[]
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+// ─── Enums ───────────────────────────────────────────────────────────────────
+
+enum Role {
+  ADMIN
+  STAFF
+}
+
+enum StudentStatus {
+  ACTIVE
+  ALUMNI
+  WITHDRAWN
+}
+
+enum InstallmentType {
+  ONE_TIME
+  ANNUAL
+  CUSTOM
+}
+
+enum InstallmentStatus {
+  UPCOMING
+  DUE
+  OVERDUE
+  PAID
+}
+
+enum OfferType {
+  FIRST_N_REGISTRATIONS
+  EARLY_BIRD
+  ACCEPTANCE_7DAY
+  FULL_PAYMENT
+  REFERRAL
+}
+
+enum ScholarshipCategory {
+  A
+  B
+}
+
+enum ReminderType {
+  ONE_MONTH
+  ONE_WEEK
+  DUE_DATE
+}
+
+enum EmailStatus {
+  SENT
+  FAILED
+  BOUNCED
+}
+
+// ─── Batch & Programs ────────────────────────────────────────────────────────
+
+model Batch {
+  id        String   @id @default(cuid())
+  year      Int      @unique
+  name      String
+  createdAt DateTime @default(now())
+
+  programs    Program[]
+  feeSchedule FeeSchedule?
+  students    Student[]
+}
+
+model Program {
+  id              String   @id @default(cuid())
+  batchId         String
+  name            String
+  totalFee        Decimal  @db.Decimal(12, 2)
+  registrationFee Decimal  @db.Decimal(12, 2)
+  year1Fee        Decimal  @db.Decimal(12, 2)
+  year2Fee        Decimal  @db.Decimal(12, 2)
+  year3Fee        Decimal  @db.Decimal(12, 2)
+  targetStudents  Int?
+  description     String?  @db.Text
+  yearWiseDetails Json?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  batch    Batch     @relation(fields: [batchId], references: [id])
+  students Student[]
+}
+
+// ─── Fee Schedule ────────────────────────────────────────────────────────────
+
+model FeeSchedule {
+  id         String    @id @default(cuid())
+  batchId    String    @unique
+  isLocked   Boolean   @default(false)
+  lockedAt   DateTime?
+  lockedById String?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  batch        Batch         @relation(fields: [batchId], references: [id])
+  lockedBy     User?         @relation("LockedBy", fields: [lockedById], references: [id])
+  offers       Offer[]
+  scholarships Scholarship[]
+}
+
+model Offer {
+  id            String    @id @default(cuid())
+  feeScheduleId String
+  name          String
+  type          OfferType
+  waiverAmount  Decimal   @db.Decimal(12, 2)
+  deadline      DateTime?
+  conditions    Json?
+  createdAt     DateTime  @default(now())
+
+  feeSchedule   FeeSchedule    @relation(fields: [feeScheduleId], references: [id])
+  studentOffers StudentOffer[]
+}
+
+model Scholarship {
+  id            String              @id @default(cuid())
+  feeScheduleId String
+  category      ScholarshipCategory
+  name          String
+  minAmount     Decimal             @db.Decimal(12, 2)
+  maxAmount     Decimal             @db.Decimal(12, 2)
+  createdAt     DateTime            @default(now())
+
+  feeSchedule         FeeSchedule          @relation(fields: [feeScheduleId], references: [id])
+  studentScholarships StudentScholarship[]
+}
+
+// ─── Master Student Roster ───────────────────────────────────────────────────
+
+model Student {
+  id             String        @id @default(cuid())
+  rollNo         String        @unique
+  name           String
+  contact        String
+  email          String
+  batchId        String
+  programId      String
+  enrollmentDate DateTime      @default(now())
+  status         StudentStatus @default(ACTIVE)
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  batch   Batch   @relation(fields: [batchId], references: [id])
+  program Program @relation(fields: [programId], references: [id])
+
+  financial    StudentFinancial?
+  offers       StudentOffer[]
+  scholarships StudentScholarship[]
+  deductions   StudentDeduction[]
+  installments Installment[]
+}
+
+// ─── Student Financials ──────────────────────────────────────────────────────
+
+model StudentFinancial {
+  id                   String          @id @default(cuid())
+  studentId            String          @unique
+  baseFee              Decimal         @db.Decimal(12, 2)
+  totalWaiver          Decimal         @db.Decimal(12, 2) @default(0)
+  totalDeduction       Decimal         @db.Decimal(12, 2) @default(0)
+  netFee               Decimal         @db.Decimal(12, 2)
+  registrationPaid     Boolean         @default(false)
+  registrationPaidDate DateTime?
+  depositPaid          Boolean         @default(false)
+  depositAmount        Decimal?        @db.Decimal(12, 2)
+  depositPaidDate      DateTime?
+  installmentType      InstallmentType
+  createdAt            DateTime        @default(now())
+  updatedAt            DateTime        @updatedAt
+
+  student Student @relation(fields: [studentId], references: [id])
+}
+
+model StudentOffer {
+  id           String   @id @default(cuid())
+  studentId    String
+  offerId      String
+  waiverAmount Decimal  @db.Decimal(12, 2)
+  createdAt    DateTime @default(now())
+
+  student Student @relation(fields: [studentId], references: [id])
+  offer   Offer   @relation(fields: [offerId], references: [id])
+
+  @@unique([studentId, offerId])
+}
+
+model StudentScholarship {
+  id            String   @id @default(cuid())
+  studentId     String
+  scholarshipId String
+  amount        Decimal  @db.Decimal(12, 2)
+  createdAt     DateTime @default(now())
+
+  student     Student     @relation(fields: [studentId], references: [id])
+  scholarship Scholarship @relation(fields: [scholarshipId], references: [id])
+
+  @@unique([studentId, scholarshipId])
+}
+
+model StudentDeduction {
+  id          String   @id @default(cuid())
+  studentId   String
+  description String
+  amount      Decimal  @db.Decimal(12, 2)
+  createdAt   DateTime @default(now())
+
+  student Student @relation(fields: [studentId], references: [id])
+}
+
+// ─── Installments ────────────────────────────────────────────────────────────
+
+model Installment {
+  id            String            @id @default(cuid())
+  studentId     String
+  year          Int
+  label         String
+  dueDate       DateTime
+  amount        Decimal           @db.Decimal(12, 2)
+  status        InstallmentStatus @default(UPCOMING)
+  paidDate      DateTime?
+  paidAmount    Decimal?          @db.Decimal(12, 2)
+  paymentMethod String?
+  notes         String?           @db.Text
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+
+  student      Student       @relation(fields: [studentId], references: [id])
+  reminderLogs ReminderLog[]
+}
+
+model ReminderLog {
+  id            String       @id @default(cuid())
+  installmentId String
+  type          ReminderType
+  sentAt        DateTime     @default(now())
+  emailStatus   EmailStatus
+  errorMessage  String?      @db.Text
+  createdAt     DateTime     @default(now())
+
+  installment Installment @relation(fields: [installmentId], references: [id])
+}
+
+// ─── API Keys ────────────────────────────────────────────────────────────────
+
+model ApiKey {
+  id          String    @id @default(cuid())
+  name        String
+  keyHash     String    @unique
+  createdById String
+  lastUsedAt  DateTime?
+  isActive    Boolean   @default(true)
+  createdAt   DateTime  @default(now())
+
+  createdBy User @relation(fields: [createdById], references: [id])
+}
