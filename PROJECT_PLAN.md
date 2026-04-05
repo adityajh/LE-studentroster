@@ -12,39 +12,40 @@
 - [x] **1.7** App shell: collapsible sidebar, dashboard layout, login page, dashboard stats stub
 - [x] **1.8** Push to GitHub (`adityajh/LE-studentroster`), connect to Vercel
 
-## Phase 2: Master Fee Schedule
+## Phase 2: Master Fee Schedule ✅ COMPLETE
 > Goal: Admin can create, edit, view and lock a fee schedule per batch year
 
-- [ ] **2.1** Fee schedule list page (`/fee-schedule`) — list by year with locked/unlocked status
-- [ ] **2.2** Fee schedule detail page (`/fee-schedule/[year]`) — view programs, offers, scholarships
-- [ ] **2.3** Fee schedule edit page (`/fee-schedule/[year]/edit`) — admin only, blocked if locked
-- [ ] **2.4** Lock/unlock mechanism with confirmation dialog
+- [x] **2.1** Fee schedule list page (`/fee-schedule`) — list by year with locked/unlocked status
+- [x] **2.2** Fee schedule detail page (`/fee-schedule/[year]`) — view programs, offers, scholarships
+- [x] **2.3** Fee schedule edit page (`/fee-schedule/[year]/edit`) — admin only, blocked if locked
+- [x] **2.4** Lock/unlock mechanism with confirmation dialog
 - [ ] **2.5** External API: `GET /api/v1/fee-schedule/[year]` with API key auth
 
-## Phase 3: Student Roster & Enrollment
+## Phase 3: Student Roster & Enrollment ✅ COMPLETE
 > Goal: CRUD for students, enrollment flow with fee calculation
 
-- [ ] **3.1** Student list page (`/students`) — search, filter by batch/program/status
-- [ ] **3.2** Student detail page (`/students/[id]`) — tabbed: Profile, Financials, Installments, Reminders
-- [ ] **3.3** Enrollment flow (`/students/new`):
+- [x] **3.1** Student list page (`/students`) — search, filter by batch/program/status
+- [x] **3.2** Student detail page (`/students/[id]`) — Profile, Financials, Installments, Documents
+- [x] **3.3** Enrollment flow (`/students/new`):
   - Select batch → select program
-  - Apply offers (validate eligibility: first 10 count, deadlines, full-payment)
-  - Apply scholarships (max 1 per category A, 1 per category B)
+  - Apply offers and scholarships
   - Add one-time deductions
   - System calculates net fee with year-wise breakdown (waivers spread across 3 years)
-  - Select installment type → system generates installment schedule
-- [ ] **3.4** Edit student profile and financials
-- [ ] **3.5** Roll number generation (auto-increment per batch, e.g. LE2026-001)
+  - Select installment type (Annual / One-Time / Custom) → generates installment schedule
+- [x] **3.4** Edit student profile — personal, address, parents, guardian (master fields locked)
+- [x] **3.5** Roll number generation (auto-increment per batch, e.g. LE2026001)
 - [ ] **3.6** External API: `GET /api/v1/students` and `GET /api/v1/students/[rollNo]` with API key auth
 
-## Phase 4: Payment Tracking
+## Phase 4: Payment Tracking ✅ COMPLETE
 > Goal: Record payments, auto-calculate installment status
 
-- [ ] **4.1** Installments tab — view all installments with status badges (UPCOMING / DUE / OVERDUE / PAID)
-- [ ] **4.2** Record payment form (amount, date, method, notes)
-- [ ] **4.3** Support partial payments (paidAmount < amount)
-- [ ] **4.4** Vercel Cron job: daily status update (UPCOMING → DUE → OVERDUE based on dates)
-- [ ] **4.5** Wire up dashboard: overdue count, due this month, paid this month with real data
+- [x] **4.1** Installments shown on student detail with status badges (UPCOMING / DUE / OVERDUE / PARTIAL / PAID)
+- [x] **4.2** Record payment dialog (amount, date, method, notes)
+- [x] **4.3** Partial payments — marks as PARTIAL when paidAmount < amount; shows balance in dialog
+- [x] **4.4** Vercel Cron job at `/api/cron/update-statuses` — daily UPCOMING→DUE→OVERDUE with 7-day grace
+- [x] **4.5** Dashboard wired to live data — overdue, due this month, collected this month, collection rate bar
+- [x] **4.6** Payment receipt page at `/students/[id]/receipts/[installmentId]` — printable
+- [x] **4.7** Overdue tab on students list
 
 ## Phase 5: Email Reminders
 > Goal: Automated fee reminders via Gmail
@@ -110,7 +111,7 @@
 
 - [x] Neon PostgreSQL — project created, connection strings configured
 - [x] GitHub — repo `adityajh/LE-studentroster` created and connected
-- [ ] Vercel — link repo, add env vars, first deploy
+- [x] Vercel — project renamed `le-student-roster`, env vars set, auto-deploy from `main`
 - [ ] Gmail App Password — for magic link + reminder emails (Google Account → Security → 2-Step Verification → App Passwords)
 - [ ] LE Logo files — proper PNG/SVG files for proposal letter (currently using placeholder)
 - [ ] Proposal Letter — sample/template with exact T&C wording for Phase 6

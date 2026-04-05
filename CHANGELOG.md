@@ -4,6 +4,49 @@ All notable changes to the LE Student Roster system are documented here.
 
 ---
 
+## [0.5.0] — 2026-04-05
+
+### Phase 4: Payment Tracking ✅
+
+#### Added
+- **PARTIAL payment status** — new `InstallmentStatus` enum value; pay route sets PARTIAL when `paidAmount < amount`
+- **Record Payment dialog** — real-time balance display and "will mark as Partial" hint when entering a partial amount
+- **Payment receipt page** at `/students/[id]/receipts/[installmentId]` — printable, shows student photo, installment details, partial notice, and notes; accessible via "Receipt →" link on each paid/partial installment row
+- **PrintButton** client component — triggers `window.print()`, hidden in print output
+- **Print CSS** — `@media print` rule hides nav/sidebar; `.print:hidden` utility works server-side
+- **Cron job** at `/api/cron/update-statuses` — daily at 03:00 UTC (Vercel Cron); transitions UPCOMING→DUE→OVERDUE with 7-day grace period; also handles PARTIAL→OVERDUE; protected by `Authorization: Bearer ${CRON_SECRET}`
+- **Dashboard rewrite** — live stat cards (Active Students, Overdue, Due This Month, Collected This Month); overall collection rate progress bar; Overdue Payments list (top 10, with days overdue); Recent Payments panel (last 8, with PARTIAL badge)
+- **Overdue tab** on Students list (`/students?tab=overdue`) — filters to students with at least one OVERDUE installment
+- **PARTIAL badge** (orange) in the payments column of the student list
+
+#### Changed
+- `getStudents()` accepts `overdueOnly?: boolean` — adds `installments: { some: { status: "OVERDUE" } }` filter
+- `formatInstallmentStatus()` includes PARTIAL → orange badge styles
+- Student detail installment rows: `isPaid` now covers both PAID and PARTIAL statuses
+
+---
+
+## [0.4.0] — 2026-04-04
+
+### Phases 2 & 3: Fee Schedule, Enrollment, Student Profile
+
+#### Added
+- **Student edit page** at `/students/[id]/edit` — editable personal, address, parent/guardian fields; master fields (roll no, batch, program) shown read-only
+- **City** as a separate field on Student model; address section moved under Parents & Guardian card
+- **Expanded student profile** — split first/last name, blood group, city, address, local address, parent 1 & 2 (name/email/phone), local guardian, document uploads
+- **Document uploads** via Vercel Blob — STUDENT_PHOTO, 10th/12th Marksheet, Acceptance Letter, Aadhar Card, Drivers License
+- **STUDENT_PHOTO** shown as circular avatar in student detail header; initials fallback
+- **Custom installment schedule** — third payment plan tab with per-installment year dropdown; auto-fills remaining amount on add/delete
+- **Waiver breakdown** shown inline on Annual installment rows (₹yearFee − ₹waiver = ₹net)
+- **All amounts rounded** to the nearest rupee throughout the enrollment form and detail page
+
+#### Fixed
+- `Module not found: @prisma/client/runtime/library` — removed `Decimal` import; plain numbers passed to Prisma Decimal fields
+- `AUTH_URL Invalid URL` — env var must include `https://` prefix
+- `Cannot find name 'isPhoto'` TypeScript build error in `document-upload.tsx`
+
+---
+
 ## [0.1.0] — 2026-04-04
 
 ### Phase 1: Foundation
