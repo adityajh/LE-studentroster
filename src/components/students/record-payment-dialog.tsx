@@ -29,6 +29,8 @@ export function RecordPaymentDialog({ studentId, installment }: Props) {
 
   const maxAmount = parseFloat(installment.amount.toString())
   const [paidAmount, setPaidAmount] = useState(maxAmount)
+  const balance = Math.max(0, maxAmount - paidAmount)
+  const isPartial = paidAmount > 0 && paidAmount < maxAmount
   const [paidDate, setPaidDate] = useState(new Date().toISOString().split("T")[0])
   const [paymentMethod, setPaymentMethod] = useState("Bank Transfer")
   const [notes, setNotes] = useState("")
@@ -87,16 +89,23 @@ export function RecordPaymentDialog({ studentId, installment }: Props) {
               <input
                 type="number"
                 value={paidAmount}
-                onChange={(e) => setPaidAmount(parseFloat(e.target.value) || 0)}
+                onChange={(e) => setPaidAmount(Math.round(parseFloat(e.target.value) || 0))}
                 max={maxAmount}
                 min={1}
                 required
                 className="w-full h-11 rounded-xl border-2 border-slate-200 bg-white pl-8 pr-4 text-sm font-bold text-slate-800 focus:border-indigo-500 focus:outline-none transition-all"
               />
             </div>
-            <p className="text-xs font-medium text-slate-400">
-              Due: {formatINR(maxAmount)}
-            </p>
+            <div className="flex items-center gap-3">
+              <p className="text-xs font-medium text-slate-400">
+                Due: {formatINR(maxAmount)}
+              </p>
+              {isPartial && (
+                <p className="text-xs font-semibold text-orange-600">
+                  Balance: {formatINR(balance)} — will mark as Partial
+                </p>
+              )}
+            </div>
           </div>
 
           <div className="grid grid-cols-2 gap-3">

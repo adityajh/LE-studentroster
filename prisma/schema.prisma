@@ -83,6 +83,7 @@ enum InstallmentStatus {
   UPCOMING
   DUE
   OVERDUE
+  PARTIAL
   PAID
 }
 

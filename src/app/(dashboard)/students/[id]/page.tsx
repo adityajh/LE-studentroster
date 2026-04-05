@@ -275,7 +275,7 @@ export default async function StudentDetailPage({
             <div className="divide-y divide-slate-50">
               {student.installments.map((inst) => {
                 const style = formatInstallmentStatus(inst.status)
-                const isPaid = inst.status === "PAID"
+                const isPaid = inst.status === "PAID" || inst.status === "PARTIAL"
                 return (
                   <div key={inst.id} className="px-5 py-4 flex items-center justify-between gap-4">
                     <div className="flex-1 min-w-0">
@@ -317,9 +317,19 @@ export default async function StudentDetailPage({
                         <p className="text-[10px] text-slate-400">of {formatINR(inst.amount)}</p>
                       )}
                     </div>
-                    {!isPaid && canRecord && (
-                      <RecordPaymentDialog studentId={student.id} installment={inst} />
-                    )}
+                    <div className="flex flex-col items-end gap-1.5 shrink-0">
+                      {isPaid && (
+                        <Link
+                          href={`/students/${student.id}/receipts/${inst.id}`}
+                          className="text-xs font-semibold text-indigo-600 hover:text-indigo-800 transition-colors"
+                        >
+                          Receipt →
+                        </Link>
+                      )}
+                      {!isPaid && canRecord && (
+                        <RecordPaymentDialog studentId={student.id} installment={inst} />
+                      )}
+                    </div>
                   </div>
                 )
               })}

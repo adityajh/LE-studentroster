@@ -12,6 +12,7 @@ export async function getStudents(opts?: {
   batchYear?: number
   search?: string
   status?: string
+  overdueOnly?: boolean
 }) {
   return prisma.student.findMany({
     where: {
@@ -28,6 +29,9 @@ export async function getStudents(opts?: {
               { contact: { contains: opts.search, mode: "insensitive" } },
             ],
           }
+        : {}),
+      ...(opts?.overdueOnly
+        ? { installments: { some: { status: "OVERDUE" } } }
         : {}),
     },
     include: {
@@ -74,9 +78,10 @@ export async function getEnrollmentFormData() {
 export function formatInstallmentStatus(status: string) {
   const map: Record<string, { label: string; classes: string }> = {
     UPCOMING: { label: "Upcoming", classes: "bg-slate-500/10 text-slate-600 border-slate-500/20" },
-    DUE: { label: "Due", classes: "bg-amber-500/10 text-amber-700 border-amber-500/20" },
-    OVERDUE: { label: "Overdue", classes: "bg-rose-500/10 text-rose-700 border-rose-500/20" },
-    PAID: { label: "Paid", classes: "bg-emerald-500/10 text-emerald-700 border-emerald-500/20" },
+    DUE:      { label: "Due",      classes: "bg-amber-500/10 text-amber-700 border-amber-500/20" },
+    OVERDUE:  { label: "Overdue",  classes: "bg-rose-500/10 text-rose-700 border-rose-500/20" },
+    PARTIAL:  { label: "Partial",  classes: "bg-orange-500/10 text-orange-700 border-orange-500/20" },
+    PAID:     { label: "Paid",     classes: "bg-emerald-500/10 text-emerald-700 border-emerald-500/20" },
   }
   return map[status] ?? { label: status, classes: "bg-slate-500/10 text-slate-600 border-slate-500/20" }
 }

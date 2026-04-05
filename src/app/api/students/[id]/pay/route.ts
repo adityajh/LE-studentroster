@@ -31,10 +31,14 @@ export async function POST(
     return NextResponse.json({ error: "Already paid" }, { status: 400 })
   }
 
+  const amount = installment.amount.toNumber()
+  const isPartial = paidAmount < amount
+  const status = isPartial ? "PARTIAL" : "PAID"
+
   const updated = await prisma.installment.update({
     where: { id: installmentId },
     data: {
-      status: "PAID",
+      status,
       paidAmount,
       paidDate: new Date(paidDate),
       paymentMethod: paymentMethod ?? null,
