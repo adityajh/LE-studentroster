@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from "next/server"
 import { auth } from "@/auth"
 import { prisma } from "@/lib/prisma"
 import { generateRollNo } from "@/lib/students"
-import { Decimal } from "@prisma/client/runtime/library"
 
 export async function POST(req: NextRequest) {
   const session = await auth()
@@ -149,10 +148,10 @@ export async function POST(req: NextRequest) {
     await tx.studentFinancial.create({
       data: {
         studentId: s.id,
-        baseFee: new Decimal(baseFee),
-        totalWaiver: new Decimal(totalWaiver),
-        totalDeduction: new Decimal(totalDeduction),
-        netFee: new Decimal(netFee),
+        baseFee,
+        totalWaiver,
+        totalDeduction,
+        netFee,
         installmentType,
       },
     })
@@ -172,7 +171,7 @@ export async function POST(req: NextRequest) {
         data: selectedScholarships.map((sc) => ({
           studentId: s.id,
           scholarshipId: sc.scholarshipId,
-          amount: new Decimal(sc.amount),
+          amount: sc.amount,
         })),
       })
     }
@@ -182,7 +181,7 @@ export async function POST(req: NextRequest) {
         data: (deductions as { description: string; amount: number }[]).map((d) => ({
           studentId: s.id,
           description: d.description,
-          amount: new Decimal(d.amount),
+          amount: d.amount,
         })),
       })
     }
@@ -193,7 +192,7 @@ export async function POST(req: NextRequest) {
         year: inst.year,
         label: inst.label,
         dueDate: inst.dueDate,
-        amount: new Decimal(inst.amount),
+        amount: inst.amount,
         status: inst.status,
       })),
     })

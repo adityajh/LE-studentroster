@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { auth } from "@/auth"
 import { prisma } from "@/lib/prisma"
-import { Decimal } from "@prisma/client/runtime/library"
 
 export async function POST(
   req: NextRequest,
@@ -36,7 +35,7 @@ export async function POST(
     where: { id: installmentId },
     data: {
       status: "PAID",
-      paidAmount: new Decimal(paidAmount),
+      paidAmount,
       paidDate: new Date(paidDate),
       paymentMethod: paymentMethod ?? null,
       notes: notes ?? null,
