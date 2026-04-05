@@ -100,7 +100,7 @@ export function DocumentUpload({
       )}
 
       <div className="divide-y divide-slate-50">
-        {DOC_TYPES.map(({ value, label }) => {
+        {DOC_TYPES.map(({ value, label, isPhoto }) => {
           const doc = docMap[value]
           const isUploading = uploading === value
           const isDeleting = deleting === value
