@@ -29,10 +29,18 @@ export default async function StudentDetailPage({
   const statusStyle = formatStudentStatus(student.status)
 
   const paidInstallments = student.installments.filter((i) => i.status === "PAID")
-  const totalPaid = paidInstallments.reduce((s, i) => s + (i.paidAmount?.toNumber() ?? i.amount.toNumber()), 0)
+  const totalPaid = paidInstallments.reduce((s, i) => s + Math.round(i.paidAmount?.toNumber() ?? i.amount.toNumber()), 0)
   const totalDue = student.installments
     .filter((i) => i.status !== "PAID")
-    .reduce((s, i) => s + i.amount.toNumber(), 0)
+    .reduce((s, i) => s + Math.round(i.amount.toNumber()), 0)
+
+  // Waiver breakdown per installment (ANNUAL only)
+  const waiverPerYear = fin ? Math.round(fin.totalWaiver.toNumber() / 3) : 0
+  const yearFees: Record<number, number> = {
+    1: student.program.year1Fee.toNumber(),
+    2: student.program.year2Fee.toNumber(),
+    3: student.program.year3Fee.toNumber(),
+  }
 
   return (
     <div className="space-y-8 max-w-[1000px]">
@@ -191,6 +199,15 @@ export default async function StudentDetailPage({
                           </p>
                         )}
                       </div>
+                      {fin?.installmentType === "ANNUAL" && inst.year > 0 && waiverPerYear > 0 && yearFees[inst.year] && (
+                        <p className="text-[10px] font-medium text-slate-400 mt-1">
+                          {formatINR(yearFees[inst.year])}
+                          {" − "}
+                          <span className="text-emerald-600 font-semibold">{formatINR(waiverPerYear)} waiver</span>
+                          {" = "}
+                          <span className="font-bold text-slate-600">{formatINR(Math.round(inst.amount.toNumber()))}</span>
+                        </p>
+                      )}
                     </div>
                     <div className="text-right shrink-0">
                       <p className={cn("text-sm font-extrabold", isPaid ? "text-emerald-600" : "text-slate-800")}>

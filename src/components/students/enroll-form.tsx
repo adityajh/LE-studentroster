@@ -48,7 +48,16 @@ type CustomInstallment = {
   dueDate: string   // YYYY-MM-DD
   amount: number
   year: number
+  yearOption: string  // "0"|"1"|"2"|"3"|"full"
 }
+
+const YEAR_OPTIONS = [
+  { value: "0",    year: 0, label: "Registration Fee" },
+  { value: "1",    year: 1, label: "Year 1 — Growth" },
+  { value: "2",    year: 2, label: "Year 2 — Projects" },
+  { value: "3",    year: 3, label: "Year 3 — Work" },
+  { value: "full", year: 1, label: "Full Programme Fee" },
+]
 
 export function EnrollForm({ batches }: { batches: Batch[] }) {
   const router = useRouter()
@@ -93,8 +102,8 @@ export function EnrollForm({ batches }: { batches: Batch[] }) {
 
     const schWaiver = (scholarshipA?.amount ?? 0) + (scholarshipB?.amount ?? 0)
     const totalWaiver = offerWaiver + schWaiver
-    const netFee = baseFee - totalWaiver
-    const waiverPerYear = totalWaiver / 3
+    const netFee = Math.round(baseFee - totalWaiver)
+    const waiverPerYear = Math.round(totalWaiver / 3)
 
     const bYear = selectedBatch!.year
     const today = new Date().toISOString().split("T")[0]
@@ -102,60 +111,65 @@ export function EnrollForm({ batches }: { batches: Batch[] }) {
     const y2Due = `${bYear + 1}-07-01`
     const y3Due = `${bYear + 2}-07-01`
 
+    const y1Net = Math.max(0, Math.round(y1 - waiverPerYear))
+    const y2Net = Math.max(0, Math.round(y2 - waiverPerYear))
+    const y3Net = Math.max(0, Math.round(y3 - waiverPerYear))
+
     const annualSchedule = [
       {
         label: "Registration Fee",
-        amount: reg,
+        amount: Math.round(reg),
         due: "Today",
         year: 0,
         breakdown: null,
       },
       {
         label: "Year 1 — Growth",
-        amount: Math.max(0, y1 - waiverPerYear),
+        amount: y1Net,
         due: `Jul 1, ${bYear}`,
         year: 1,
-        breakdown: totalWaiver > 0 ? { yearFee: y1, waiverPerYear } : null,
+        breakdown: totalWaiver > 0 ? { yearFee: Math.round(y1), waiverPerYear } : null,
       },
       {
         label: "Year 2 — Projects",
-        amount: Math.max(0, y2 - waiverPerYear),
+        amount: y2Net,
         due: `Jul 1, ${bYear + 1}`,
         year: 2,
-        breakdown: totalWaiver > 0 ? { yearFee: y2, waiverPerYear } : null,
+        breakdown: totalWaiver > 0 ? { yearFee: Math.round(y2), waiverPerYear } : null,
       },
       {
         label: "Year 3 — Work",
-        amount: Math.max(0, y3 - waiverPerYear),
+        amount: y3Net,
         due: `Jul 1, ${bYear + 2}`,
         year: 3,
-        breakdown: totalWaiver > 0 ? { yearFee: y3, waiverPerYear } : null,
+        breakdown: totalWaiver > 0 ? { yearFee: Math.round(y3), waiverPerYear } : null,
       },
     ]
 
+    const oneTimeNet = Math.max(0, Math.round(y1 + y2 + y3 - totalWaiver))
     const oneTimeSchedule = [
       {
         label: "Registration Fee",
-        amount: reg,
+        amount: Math.round(reg),
         due: "Today",
         year: 0,
         breakdown: null,
       },
       {
         label: "Full Programme Fee (3 Years)",
-        amount: Math.max(0, y1 + y2 + y3 - totalWaiver),
+        amount: oneTimeNet,
         due: "Within 30 days",
         year: 1,
-        breakdown: totalWaiver > 0 ? { yearFee: y1 + y2 + y3, waiverPerYear: totalWaiver } : null,
+        breakdown: totalWaiver > 0 ? { yearFee: Math.round(y1 + y2 + y3), waiverPerYear: Math.round(totalWaiver) } : null,
       },
     ]
 
     // Default custom schedule seeds from ANNUAL
     const defaultCustom: CustomInstallment[] = [
-      { label: "Registration Fee", dueDate: today, amount: reg, year: 0 },
-      { label: "Year 1 — Growth", dueDate: y1Due, amount: Math.max(0, y1 - waiverPerYear), year: 1 },
-      { label: "Year 2 — Projects", dueDate: y2Due, amount: Math.max(0, y2 - waiverPerYear), year: 2 },
-      { label: "Year 3 — Work", dueDate: y3Due, amount: Math.max(0, y3 - waiverPerYear), year: 3 },
+      { label: "Registration Fee", dueDate: today, amount: Math.round(reg), year: 0, yearOption: "0" },
+      { label: "Year 1 — Growth", dueDate: y1Due, amount: y1Net, year: 1, yearOption: "1" },
+      { label: "Year 2 — Projects", dueDate: y2Due, amount: y2Net, year: 2, yearOption: "2" },
+      { label: "Year 3 — Work", dueDate: y3Due, amount: y3Net, year: 3, yearOption: "3" },
     ]
 
     return {
@@ -189,28 +203,54 @@ export function EnrollForm({ batches }: { batches: Batch[] }) {
     )
   }
 
-  const updateCustomInstallment = (index: number, field: "amount" | "dueDate" | "label", value: string | number) => {
+  const updateCustomInstallment = (
+    index: number,
+    field: "amount" | "dueDate" | "label" | "yearOption",
+    value: string | number
+  ) => {
     setCustomInstallments((prev) =>
-      prev.map((inst, i) => i === index ? { ...inst, [field]: value } : inst)
+      prev.map((inst, i) => {
+        if (i !== index) return inst
+        if (field === "yearOption") {
+          const opt = YEAR_OPTIONS.find((o) => o.value === value)
+          if (!opt) return inst
+          return { ...inst, yearOption: opt.value, year: opt.year, label: opt.label }
+        }
+        return { ...inst, [field]: value }
+      })
     )
   }
 
+  const calcRemaining = (list: CustomInstallment[]) => {
+    const used = list.reduce((s, i) => s + i.amount, 0)
+    return Math.max(0, Math.round((fees?.netFee ?? 0) - used))
+  }
+
   const addCustomInstallment = () => {
+    const remaining = calcRemaining(customInstallments)
     setCustomInstallments((prev) => [
       ...prev,
       {
-        label: `Installment ${prev.length}`,
+        label: "Year 1 — Growth",
         dueDate: new Date().toISOString().split("T")[0],
-        amount: 0,
-        year: prev.length,
+        amount: remaining,
+        year: 1,
+        yearOption: "1",
       },
     ])
   }
 
   const removeCustomInstallment = (index: number) => {
-    // Don't allow removing registration fee (index 0)
     if (index === 0) return
-    setCustomInstallments((prev) => prev.filter((_, i) => i !== index))
+    setCustomInstallments((prev) => {
+      const next = prev.filter((_, i) => i !== index)
+      if (next.length <= 1) return next
+      // Update the last row with remaining amount
+      const lastIdx = next.length - 1
+      const otherSum = next.slice(0, lastIdx).reduce((s, i) => s + i.amount, 0)
+      const remaining = Math.max(0, Math.round((fees?.netFee ?? 0) - otherSum))
+      return next.map((inst, i) => i === lastIdx ? { ...inst, amount: remaining } : inst)
+    })
   }
 
   const customTotal = customInstallments.reduce((s, i) => s + i.amount, 0)
@@ -593,17 +633,28 @@ export function EnrollForm({ batches }: { batches: Batch[] }) {
               <div className="space-y-2">
                 {customInstallments.map((inst, i) => (
                   <div key={i} className="rounded-xl border-2 border-slate-200 p-3 space-y-2">
-                    <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-2">
+                      <select
+                        value={inst.yearOption}
+                        onChange={(e) => updateCustomInstallment(i, "yearOption", e.target.value)}
+                        disabled={i === 0}
+                        className="h-8 rounded-lg border-2 border-slate-200 bg-white px-2 text-xs font-bold text-slate-600 focus:border-indigo-500 focus:outline-none transition-all disabled:opacity-50"
+                      >
+                        {YEAR_OPTIONS.map((opt) => (
+                          <option key={opt.value} value={opt.value}>{opt.label}</option>
+                        ))}
+                      </select>
                       <input
                         value={inst.label}
                         onChange={(e) => updateCustomInstallment(i, "label", e.target.value)}
-                        className="flex-1 text-sm font-semibold text-slate-800 bg-transparent border-0 focus:outline-none"
+                        placeholder="Label"
+                        className="flex-1 h-8 text-xs font-semibold text-slate-700 bg-slate-50 rounded-lg border-2 border-slate-200 px-2 focus:border-indigo-500 focus:outline-none transition-all"
                       />
                       {i > 0 && (
                         <button
                           type="button"
                           onClick={() => removeCustomInstallment(i)}
-                          className="text-[10px] font-bold text-slate-300 hover:text-rose-500 transition-colors"
+                          className="text-[10px] font-bold text-slate-300 hover:text-rose-500 transition-colors shrink-0"
                         >
                           Remove
                         </button>
