@@ -58,6 +58,19 @@ export default async function StudentDetailPage({
         </div>
 
         <div className="flex items-start justify-between">
+          <div className="flex items-center gap-4">
+            {(() => {
+              const photo = student.documents.find((d) => d.type === "STUDENT_PHOTO")
+              return photo ? (
+                <img src={photo.fileUrl} alt={student.name} className="w-14 h-14 rounded-full object-cover border-2 border-slate-200 shrink-0" />
+              ) : (
+                <div className="w-14 h-14 rounded-full bg-indigo-100 border-2 border-indigo-200 flex items-center justify-center shrink-0">
+                  <span className="text-lg font-black text-indigo-500">
+                    {student.name.split(" ").map((n: string) => n[0]).slice(0, 2).join("")}
+                  </span>
+                </div>
+              )
+            })()}
           <div>
             <h1 className="text-2xl font-extrabold text-slate-900">{student.name}</h1>
             <div className="flex items-center gap-3 mt-1.5 flex-wrap">
@@ -74,6 +87,7 @@ export default async function StudentDetailPage({
                 {student.rollNo}
               </span>
             </div>
+          </div>
           </div>
         </div>
       </div>

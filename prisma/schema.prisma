@@ -106,6 +106,7 @@ enum ReminderType {
 }
 
 enum DocumentType {
+  STUDENT_PHOTO
   TENTH_MARKSHEET
   TWELFTH_MARKSHEET
   ACCEPTANCE_LETTER

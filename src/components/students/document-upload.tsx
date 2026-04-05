@@ -13,7 +13,8 @@ type Doc = {
   uploadedAt: Date | string
 }
 
-const DOC_TYPES: { value: string; label: string }[] = [
+const DOC_TYPES: { value: string; label: string; isPhoto?: boolean }[] = [
+  { value: "STUDENT_PHOTO",      label: "Student Photo",    isPhoto: true },
   { value: "TENTH_MARKSHEET",    label: "10th Marksheet" },
   { value: "TWELFTH_MARKSHEET",  label: "12th Marksheet" },
   { value: "ACCEPTANCE_LETTER",  label: "Acceptance Letter" },
@@ -107,9 +108,21 @@ export function DocumentUpload({
           return (
             <div key={value} className="px-5 py-4 flex items-center justify-between gap-4">
               <div className="flex items-center gap-3 flex-1 min-w-0">
-                <div className={`p-2 rounded-lg shrink-0 ${doc ? "bg-emerald-50" : "bg-slate-50"}`}>
-                  <FileText className={`h-4 w-4 ${doc ? "text-emerald-600" : "text-slate-400"}`} />
-                </div>
+                {isPhoto ? (
+                  <div className="w-10 h-10 rounded-full overflow-hidden bg-slate-100 shrink-0 border-2 border-slate-200">
+                    {doc ? (
+                      <img src={doc.fileUrl} alt="Student" className="w-full h-full object-cover" />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center">
+                        <FileText className="h-4 w-4 text-slate-300" />
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className={`p-2 rounded-lg shrink-0 ${doc ? "bg-emerald-50" : "bg-slate-50"}`}>
+                    <FileText className={`h-4 w-4 ${doc ? "text-emerald-600" : "text-slate-400"}`} />
+                  </div>
+                )}
                 <div className="min-w-0">
                   <p className="text-sm font-semibold text-slate-800">{label}</p>
                   {doc ? (
