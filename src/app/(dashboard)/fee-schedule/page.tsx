@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Lock, Unlock, ChevronRight, Plus } from "lucide-react"
 import { auth } from "@/auth"
 import { prisma } from "@/lib/prisma"
-import { buttonVariants } from "@/components/ui/button"
+import { buttonVariants } from "@/lib/button-variants"
 import { cn } from "@/lib/utils"
 
 export default async function FeeSchedulePage() {
