@@ -3,10 +3,6 @@
 import { useState } from "react"
 import { signIn } from "next-auth/react"
 import Image from "next/image"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Loader2, Mail } from "lucide-react"
 
 export default function LoginPage() {
@@ -18,16 +14,10 @@ export default function LoginPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!email) return
-
     setLoading(true)
     setError("")
-
     try {
-      const result = await signIn("nodemailer", {
-        email,
-        redirect: false,
-      })
-
+      const result = await signIn("nodemailer", { email, redirect: false })
       if (result?.error) {
         setError("Something went wrong. Please try again.")
       } else {
@@ -41,48 +31,59 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50">
-      <div className="w-full max-w-md px-4">
+    <div className="min-h-screen bg-slate-950 flex items-center justify-center px-4">
+      <div className="w-full max-w-sm">
         {/* Logo */}
-        <div className="flex justify-center mb-8">
+        <div className="flex justify-center mb-10">
           <Image
-            src="/le-logo-color.jpg"
+            src="/le-logo-light.png"
             alt="Let's Enterprise"
-            width={240}
-            height={80}
+            width={180}
+            height={60}
             className="object-contain"
             priority
           />
         </div>
 
-        <Card className="shadow-sm">
-          <CardHeader className="text-center">
-            <CardTitle className="text-xl">Student Roster</CardTitle>
-            <CardDescription>
-              Enter your email address to receive a sign-in link.
-            </CardDescription>
-          </CardHeader>
-
-          <CardContent>
-            {sent ? (
-              <div className="text-center space-y-3 py-4">
-                <div className="flex justify-center">
-                  <div className="rounded-full bg-blue-50 p-3">
-                    <Mail className="h-6 w-6 text-blue-600" />
-                  </div>
+        {/* Card */}
+        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-8 shadow-2xl">
+          {sent ? (
+            <div className="text-center space-y-4">
+              <div className="flex justify-center">
+                <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-2xl p-4">
+                  <Mail className="h-7 w-7 text-emerald-400" />
                 </div>
-                <p className="font-medium text-gray-900">Check your inbox</p>
-                <p className="text-sm text-gray-500">
-                  We sent a magic link to <strong>{email}</strong>. Click the
-                  link to sign in. It expires in 24 hours.
+              </div>
+              <div>
+                <p className="text-[10px] uppercase tracking-widest font-bold text-slate-400 mb-1">
+                  Magic Link Sent
+                </p>
+                <p className="text-lg font-extrabold text-white">Check your inbox</p>
+              </div>
+              <p className="text-sm font-medium text-slate-400">
+                We sent a sign-in link to{" "}
+                <span className="text-slate-200 font-semibold">{email}</span>.
+                It expires in 24 hours.
+              </p>
+            </div>
+          ) : (
+            <>
+              <div className="mb-6">
+                <p className="text-[10px] uppercase tracking-widest font-bold text-slate-400 mb-1">
+                  Student Roster
+                </p>
+                <p className="text-lg font-extrabold text-white">Sign in</p>
+                <p className="text-sm font-medium text-slate-400 mt-1">
+                  Enter your email to receive a magic link
                 </p>
               </div>
-            ) : (
+
               <form onSubmit={handleSubmit} className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="email">Email address</Label>
-                  <Input
-                    id="email"
+                <div className="space-y-1.5">
+                  <label className="text-[10px] uppercase tracking-widest font-bold text-slate-400">
+                    Email address
+                  </label>
+                  <input
                     type="email"
                     placeholder="you@letsent.com"
                     value={email}
@@ -90,35 +91,36 @@ export default function LoginPage() {
                     required
                     autoFocus
                     disabled={loading}
+                    className="w-full bg-slate-800 border-2 border-slate-700 text-white font-semibold h-12 rounded-xl px-4 placeholder:text-slate-600 focus:border-indigo-500 focus:outline-none transition-all"
                   />
                 </div>
 
                 {error && (
-                  <p className="text-sm text-red-600 bg-red-50 px-3 py-2 rounded-md">
+                  <p className="text-xs font-semibold bg-rose-500/10 border border-rose-500/20 text-rose-400 px-3 py-2 rounded-lg">
                     {error}
                   </p>
                 )}
 
-                <Button
+                <button
                   type="submit"
-                  className="w-full bg-blue-600 hover:bg-blue-700"
                   disabled={loading || !email}
+                  className="w-full h-12 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold rounded-xl transition-all flex items-center justify-center gap-2"
                 >
                   {loading ? (
                     <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Sending...
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      Sending…
                     </>
                   ) : (
                     "Send magic link"
                   )}
-                </Button>
+                </button>
               </form>
-            )}
-          </CardContent>
-        </Card>
+            </>
+          )}
+        </div>
 
-        <p className="text-center text-xs text-gray-400 mt-6">
+        <p className="text-center text-[10px] uppercase tracking-widest font-bold text-slate-600 mt-8">
           Let&apos;s Enterprise · Student Roster System
         </p>
       </div>

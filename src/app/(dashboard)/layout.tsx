@@ -37,14 +37,14 @@ export default async function DashboardLayout({
       <AppSidebar user={user} />
       <SidebarInset>
         {/* Top bar */}
-        <header className="flex h-14 items-center gap-2 border-b px-4 bg-white sticky top-0 z-10">
-          <SidebarTrigger className="-ml-1" />
-          <Separator orientation="vertical" className="h-4" />
+        <header className="flex h-14 items-center gap-2 border-b border-slate-200 px-4 bg-white sticky top-0 z-10">
+          <SidebarTrigger className="-ml-1 text-slate-500 hover:text-slate-800" />
+          <Separator orientation="vertical" className="h-4 bg-slate-200" />
           <div className="flex-1" />
         </header>
 
         {/* Page content */}
-        <main className="flex-1 p-6">{children}</main>
+        <main className="flex-1 p-6 bg-slate-50 min-h-screen">{children}</main>
       </SidebarInset>
     </SidebarProvider>
   )
