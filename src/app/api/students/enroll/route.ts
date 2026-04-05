@@ -19,7 +19,8 @@ export async function POST(req: NextRequest) {
     offerIds,           // string[]
     scholarships,       // [{ scholarshipId, amount }]
     deductions,         // [{ description, amount }]
-    installmentType,    // "ANNUAL" | "ONE_TIME"
+    installmentType,    // "ANNUAL" | "ONE_TIME" | "CUSTOM"
+    customInstallments, // [{ label, dueDate, amount, year }] — only when CUSTOM
   } = body
 
   if (!name || !email || !contact || !batchId || !programId || !installmentType) {
@@ -82,53 +83,67 @@ export async function POST(req: NextRequest) {
     status: "DUE" | "UPCOMING"
   }[] = []
 
-  // Registration is always first
-  installments.push({
-    year: 0,
-    label: "Registration Fee",
-    dueDate: today,
-    amount: regFee,
-    status: "DUE",
-  })
-
-  if (installmentType === "ANNUAL") {
-    const year1Due = new Date(`${batchYear}-07-01`)
-    const year2Due = new Date(`${batchYear + 1}-07-01`)
-    const year3Due = new Date(`${batchYear + 2}-07-01`)
-    installments.push(
-      {
-        year: 1,
-        label: "Year 1 — Growth",
-        dueDate: year1Due,
-        amount: Math.max(0, year1 - waiverPerYear),
-        status: year1Due <= today ? "DUE" : "UPCOMING",
-      },
-      {
-        year: 2,
-        label: "Year 2 — Projects",
-        dueDate: year2Due,
-        amount: Math.max(0, year2 - waiverPerYear),
-        status: "UPCOMING",
-      },
-      {
-        year: 3,
-        label: "Year 3 — Work",
-        dueDate: year3Due,
-        amount: Math.max(0, year3 - waiverPerYear),
-        status: "UPCOMING",
-      }
-    )
+  if (installmentType === "CUSTOM") {
+    // Use client-supplied schedule directly
+    for (const inst of (customInstallments as { label: string; dueDate: string; amount: number; year: number }[])) {
+      const due = new Date(inst.dueDate)
+      installments.push({
+        year: inst.year,
+        label: inst.label,
+        dueDate: due,
+        amount: inst.amount,
+        status: due <= today ? "DUE" : "UPCOMING",
+      })
+    }
   } else {
-    // ONE_TIME: single lump sum for all 3 years
-    const fullPaymentDue = new Date(today)
-    fullPaymentDue.setDate(fullPaymentDue.getDate() + 30)
+    // Registration is always first
     installments.push({
-      year: 1,
-      label: "Full Programme Fee (3 Years)",
-      dueDate: fullPaymentDue,
-      amount: Math.max(0, year1 + year2 + year3 - totalWaiver),
-      status: "UPCOMING",
+      year: 0,
+      label: "Registration Fee",
+      dueDate: today,
+      amount: regFee,
+      status: "DUE",
     })
+
+    if (installmentType === "ANNUAL") {
+      const year1Due = new Date(`${batchYear}-07-01`)
+      const year2Due = new Date(`${batchYear + 1}-07-01`)
+      const year3Due = new Date(`${batchYear + 2}-07-01`)
+      installments.push(
+        {
+          year: 1,
+          label: "Year 1 — Growth",
+          dueDate: year1Due,
+          amount: Math.max(0, year1 - waiverPerYear),
+          status: year1Due <= today ? "DUE" : "UPCOMING",
+        },
+        {
+          year: 2,
+          label: "Year 2 — Projects",
+          dueDate: year2Due,
+          amount: Math.max(0, year2 - waiverPerYear),
+          status: "UPCOMING",
+        },
+        {
+          year: 3,
+          label: "Year 3 — Work",
+          dueDate: year3Due,
+          amount: Math.max(0, year3 - waiverPerYear),
+          status: "UPCOMING",
+        }
+      )
+    } else {
+      // ONE_TIME: single lump sum for all 3 years
+      const fullPaymentDue = new Date(today)
+      fullPaymentDue.setDate(fullPaymentDue.getDate() + 30)
+      installments.push({
+        year: 1,
+        label: "Full Programme Fee (3 Years)",
+        dueDate: fullPaymentDue,
+        amount: Math.max(0, year1 + year2 + year3 - totalWaiver),
+        status: "UPCOMING",
+      })
+    }
   }
 
   // Create everything in a transaction
