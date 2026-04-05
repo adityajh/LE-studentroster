@@ -70,6 +70,7 @@ export function EnrollForm({ batches }: { batches: Batch[] }) {
   const [email, setEmail] = useState("")
   const [contact, setContact] = useState("")
   const [bloodGroup, setBloodGroup] = useState("")
+  const [city, setCity] = useState("")
   const [address, setAddress] = useState("")
   const [localAddress, setLocalAddress] = useState("")
   const [localAddressDifferent, setLocalAddressDifferent] = useState(false)
@@ -294,6 +295,7 @@ export function EnrollForm({ batches }: { batches: Batch[] }) {
           email,
           contact,
           bloodGroup: bloodGroup || null,
+          city: city || null,
           address: address || null,
           localAddress: localAddressDifferent ? (localAddress || null) : null,
           parent1Name: parent1Name || null,
@@ -385,6 +387,15 @@ export function EnrollForm({ batches }: { batches: Batch[] }) {
               onChange={(e) => setEmail(e.target.value)}
               required
               placeholder="rahul@example.com"
+              className="w-full h-11 rounded-xl border-2 border-slate-200 bg-white px-4 text-sm font-semibold text-slate-800 placeholder:text-slate-400 focus:border-indigo-500 focus:outline-none transition-all"
+            />
+          </div>
+          <div className="space-y-1.5">
+            <label className="text-[10px] uppercase tracking-widest font-bold text-slate-400">City</label>
+            <input
+              value={city}
+              onChange={(e) => setCity(e.target.value)}
+              placeholder="Mumbai"
               className="w-full h-11 rounded-xl border-2 border-slate-200 bg-white px-4 text-sm font-semibold text-slate-800 placeholder:text-slate-400 focus:border-indigo-500 focus:outline-none transition-all"
             />
           </div>

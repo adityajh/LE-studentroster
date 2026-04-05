@@ -1,0 +1,60 @@
+import { notFound, redirect } from "next/navigation"
+import Link from "next/link"
+import { auth } from "@/auth"
+import { getStudentById } from "@/lib/students"
+import { EditStudentForm } from "@/components/students/edit-student-form"
+
+export default async function EditStudentPage({
+  params,
+}: {
+  params: Promise<{ id: string }>
+}) {
+  const session = await auth()
+  if (!session?.user) redirect("/login")
+
+  const { id } = await params
+  const student = await getStudentById(id)
+  if (!student) notFound()
+
+  return (
+    <div className="max-w-[800px] space-y-8">
+      <div>
+        <div className="flex items-center gap-2 mb-1">
+          <Link href="/students" className="text-[10px] uppercase tracking-widest font-bold text-slate-400 hover:text-slate-600">
+            Students
+          </Link>
+          <span className="text-slate-300">/</span>
+          <Link href={`/students/${id}`} className="text-[10px] uppercase tracking-widest font-bold text-slate-400 hover:text-slate-600 font-mono">
+            {student.rollNo}
+          </Link>
+          <span className="text-slate-300">/</span>
+          <span className="text-[10px] uppercase tracking-widest font-bold text-slate-500">Edit</span>
+        </div>
+        <h1 className="text-2xl font-extrabold text-slate-900">Edit Student</h1>
+        <p className="text-sm font-medium text-slate-500 mt-1">
+          Update personal details, contact info, and guardian information.
+        </p>
+      </div>
+
+      {/* Master details — read only */}
+      <div className="bg-slate-50 border border-slate-200 rounded-2xl p-5">
+        <p className="text-[10px] uppercase tracking-widest font-bold text-slate-400 mb-3">Master Details — Read Only</p>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          {[
+            { label: "Roll No",    value: student.rollNo },
+            { label: "Batch",      value: `Batch ${student.batch.year}` },
+            { label: "Programme",  value: student.program.name },
+            { label: "Enrolled",   value: new Date(student.enrollmentDate).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" }) },
+          ].map(({ label, value }) => (
+            <div key={label}>
+              <p className="text-[10px] uppercase tracking-widest font-bold text-slate-400">{label}</p>
+              <p className="text-sm font-bold text-slate-600 mt-0.5">{value}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <EditStudentForm student={student} />
+    </div>
+  )
+}

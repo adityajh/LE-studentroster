@@ -207,6 +207,7 @@ model Student {
   contact        String
   email          String
   bloodGroup     String?
+  city           String?
   address        String?       @db.Text
   localAddress   String?       @db.Text
   parent1Name    String?
