@@ -1,0 +1,49 @@
+@import "tailwindcss";
+
+:root {
+  --font-sans: Arial, Helvetica, sans-serif;
+  --font-mono: monospace;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  /* Next apps generally run on a light or dark body, defined in layout.tsx. 
+     For Admin: bg-slate-900 / For Apps: bg-slate-50 */
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+ul,
+ol {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* 
+  LE Specific Print Utilities 
+  Include these if your app exports PDFs or prints files. 
+*/
+@media print {
+  @page {
+    margin: 10mm;
+    size: A4 portrait;
+  }
+  body {
+    background: white !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+}

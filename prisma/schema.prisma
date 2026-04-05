@@ -18,10 +18,11 @@ model User {
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
-  accounts        Account[]
-  sessions        Session[]
-  lockedSchedules FeeSchedule[] @relation("LockedBy")
-  apiKeys         ApiKey[]
+  accounts          Account[]
+  sessions          Session[]
+  lockedSchedules   FeeSchedule[]     @relation("LockedBy")
+  apiKeys           ApiKey[]
+  uploadedDocuments StudentDocument[] @relation("UploadedDocuments")
 }
 
 model Account {
@@ -102,6 +103,14 @@ enum ReminderType {
   ONE_MONTH
   ONE_WEEK
   DUE_DATE
+}
+
+enum DocumentType {
+  TENTH_MARKSHEET
+  TWELFTH_MARKSHEET
+  ACCEPTANCE_LETTER
+  AADHAR_CARD
+  DRIVERS_LICENSE
 }
 
 enum EmailStatus {
@@ -192,8 +201,22 @@ model Student {
   id             String        @id @default(cuid())
   rollNo         String        @unique
   name           String
+  firstName      String?
+  lastName       String?
   contact        String
   email          String
+  bloodGroup     String?
+  address        String?       @db.Text
+  localAddress   String?       @db.Text
+  parent1Name    String?
+  parent1Email   String?
+  parent1Phone   String?
+  parent2Name    String?
+  parent2Email   String?
+  parent2Phone   String?
+  localGuardianName  String?
+  localGuardianPhone String?
+  localGuardianEmail String?
   batchId        String
   programId      String
   enrollmentDate DateTime      @default(now())
@@ -209,6 +232,21 @@ model Student {
   scholarships StudentScholarship[]
   deductions   StudentDeduction[]
   installments Installment[]
+  documents    StudentDocument[]
+}
+
+model StudentDocument {
+  id           String       @id @default(cuid())
+  studentId    String
+  type         DocumentType
+  fileName     String
+  fileUrl      String       @db.Text
+  fileSize     Int?
+  uploadedAt   DateTime     @default(now())
+  uploadedById String?
+
+  student    Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  uploadedBy User?   @relation("UploadedDocuments", fields: [uploadedById], references: [id])
 }
 
 // ─── Student Financials ──────────────────────────────────────────────────────

@@ -64,12 +64,30 @@ export function EnrollForm({ batches }: { batches: Batch[] }) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
 
-  // Form state
-  const [batchId, setBatchId] = useState(batches[0]?.id ?? "")
-  const [programId, setProgramId] = useState("")
-  const [name, setName] = useState("")
+  // Form state — personal
+  const [firstName, setFirstName] = useState("")
+  const [lastName, setLastName] = useState("")
   const [email, setEmail] = useState("")
   const [contact, setContact] = useState("")
+  const [bloodGroup, setBloodGroup] = useState("")
+  const [address, setAddress] = useState("")
+  const [localAddress, setLocalAddress] = useState("")
+  const [localAddressDifferent, setLocalAddressDifferent] = useState(false)
+
+  // Parent / guardian
+  const [parent1Name, setParent1Name] = useState("")
+  const [parent1Email, setParent1Email] = useState("")
+  const [parent1Phone, setParent1Phone] = useState("")
+  const [parent2Name, setParent2Name] = useState("")
+  const [parent2Email, setParent2Email] = useState("")
+  const [parent2Phone, setParent2Phone] = useState("")
+  const [localGuardianName, setLocalGuardianName] = useState("")
+  const [localGuardianPhone, setLocalGuardianPhone] = useState("")
+  const [localGuardianEmail, setLocalGuardianEmail] = useState("")
+
+  // Programme
+  const [batchId, setBatchId] = useState(batches[0]?.id ?? "")
+  const [programId, setProgramId] = useState("")
   const [selectedOfferIds, setSelectedOfferIds] = useState<string[]>([])
   const [scholarshipA, setScholarshipA] = useState<{ id: string; amount: number } | null>(null)
   const [scholarshipB, setScholarshipB] = useState<{ id: string; amount: number } | null>(null)
@@ -270,9 +288,23 @@ export function EnrollForm({ batches }: { batches: Batch[] }) {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          name,
+          firstName,
+          lastName,
+          name: `${firstName} ${lastName}`.trim(),
           email,
           contact,
+          bloodGroup: bloodGroup || null,
+          address: address || null,
+          localAddress: localAddressDifferent ? (localAddress || null) : null,
+          parent1Name: parent1Name || null,
+          parent1Email: parent1Email || null,
+          parent1Phone: parent1Phone || null,
+          parent2Name: parent2Name || null,
+          parent2Email: parent2Email || null,
+          parent2Phone: parent2Phone || null,
+          localGuardianName: localGuardianName || null,
+          localGuardianPhone: localGuardianPhone || null,
+          localGuardianEmail: localGuardianEmail || null,
           batchId,
           programId,
           offerIds: selectedOfferIds,
@@ -294,22 +326,28 @@ export function EnrollForm({ batches }: { batches: Batch[] }) {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
-      {/* Section 1 — Basic Info */}
+      {/* Section 1 — Personal Details */}
       <div className="bg-white border border-slate-200/50 rounded-2xl shadow-sm p-6 space-y-4">
-        <div>
-          <p className="text-[10px] uppercase tracking-widest font-bold text-slate-400 mb-3">
-            Student Details
-          </p>
-        </div>
+        <p className="text-[10px] uppercase tracking-widest font-bold text-slate-400">Student Details</p>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="space-y-1.5">
-            <label className="text-[10px] uppercase tracking-widest font-bold text-slate-400">Full Name</label>
+            <label className="text-[10px] uppercase tracking-widest font-bold text-slate-400">First Name</label>
             <input
-              value={name}
-              onChange={(e) => setName(e.target.value)}
+              value={firstName}
+              onChange={(e) => setFirstName(e.target.value)}
               required
-              placeholder="Rahul Mehta"
+              placeholder="Rahul"
+              className="w-full h-11 rounded-xl border-2 border-slate-200 bg-white px-4 text-sm font-semibold text-slate-800 placeholder:text-slate-400 focus:border-indigo-500 focus:outline-none transition-all"
+            />
+          </div>
+          <div className="space-y-1.5">
+            <label className="text-[10px] uppercase tracking-widest font-bold text-slate-400">Last Name</label>
+            <input
+              value={lastName}
+              onChange={(e) => setLastName(e.target.value)}
+              required
+              placeholder="Mehta"
               className="w-full h-11 rounded-xl border-2 border-slate-200 bg-white px-4 text-sm font-semibold text-slate-800 placeholder:text-slate-400 focus:border-indigo-500 focus:outline-none transition-all"
             />
           </div>
@@ -323,6 +361,22 @@ export function EnrollForm({ batches }: { batches: Batch[] }) {
               className="w-full h-11 rounded-xl border-2 border-slate-200 bg-white px-4 text-sm font-semibold text-slate-800 placeholder:text-slate-400 focus:border-indigo-500 focus:outline-none transition-all"
             />
           </div>
+          <div className="space-y-1.5">
+            <label className="text-[10px] uppercase tracking-widest font-bold text-slate-400">Blood Group</label>
+            <div className="relative">
+              <select
+                value={bloodGroup}
+                onChange={(e) => setBloodGroup(e.target.value)}
+                className="w-full h-11 rounded-xl border-2 border-slate-200 bg-white px-4 pr-10 text-sm font-semibold text-slate-800 appearance-none focus:border-indigo-500 focus:outline-none transition-all"
+              >
+                <option value="">Select…</option>
+                {["A+", "A−", "B+", "B−", "AB+", "AB−", "O+", "O−"].map((g) => (
+                  <option key={g} value={g}>{g}</option>
+                ))}
+              </select>
+              <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
+            </div>
+          </div>
           <div className="space-y-1.5 md:col-span-2">
             <label className="text-[10px] uppercase tracking-widest font-bold text-slate-400">Email Address</label>
             <input
@@ -334,7 +388,152 @@ export function EnrollForm({ batches }: { batches: Batch[] }) {
               className="w-full h-11 rounded-xl border-2 border-slate-200 bg-white px-4 text-sm font-semibold text-slate-800 placeholder:text-slate-400 focus:border-indigo-500 focus:outline-none transition-all"
             />
           </div>
+          <div className="space-y-1.5 md:col-span-2">
+            <label className="text-[10px] uppercase tracking-widest font-bold text-slate-400">Home Address</label>
+            <textarea
+              value={address}
+              onChange={(e) => setAddress(e.target.value)}
+              rows={2}
+              placeholder="Full home address"
+              className="w-full rounded-xl border-2 border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-800 placeholder:text-slate-400 focus:border-indigo-500 focus:outline-none transition-all resize-none"
+            />
+          </div>
+          <div className="md:col-span-2">
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={localAddressDifferent}
+                onChange={(e) => setLocalAddressDifferent(e.target.checked)}
+                className="w-4 h-4 accent-indigo-600"
+              />
+              <span className="text-xs font-semibold text-slate-600">Local address is different from home address</span>
+            </label>
+          </div>
+          {localAddressDifferent && (
+            <div className="space-y-1.5 md:col-span-2">
+              <label className="text-[10px] uppercase tracking-widest font-bold text-slate-400">Local Address</label>
+              <textarea
+                value={localAddress}
+                onChange={(e) => setLocalAddress(e.target.value)}
+                rows={2}
+                placeholder="Local address during programme"
+                className="w-full rounded-xl border-2 border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-800 placeholder:text-slate-400 focus:border-indigo-500 focus:outline-none transition-all resize-none"
+              />
+            </div>
+          )}
         </div>
+      </div>
+
+      {/* Section 2 — Parents & Guardian */}
+      <div className="bg-white border border-slate-200/50 rounded-2xl shadow-sm p-6 space-y-5">
+        <p className="text-[10px] uppercase tracking-widest font-bold text-slate-400">Parents & Guardian</p>
+
+        {/* Parent 1 */}
+        <div className="space-y-3">
+          <p className="text-xs font-bold text-slate-600">Parent 1</p>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            <div className="space-y-1.5">
+              <label className="text-[10px] uppercase tracking-widest font-bold text-slate-400">Full Name</label>
+              <input
+                value={parent1Name}
+                onChange={(e) => setParent1Name(e.target.value)}
+                placeholder="Name"
+                className="w-full h-10 rounded-xl border-2 border-slate-200 bg-white px-3 text-sm font-semibold text-slate-800 placeholder:text-slate-400 focus:border-indigo-500 focus:outline-none transition-all"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-[10px] uppercase tracking-widest font-bold text-slate-400">Phone</label>
+              <input
+                value={parent1Phone}
+                onChange={(e) => setParent1Phone(e.target.value)}
+                placeholder="+91 …"
+                className="w-full h-10 rounded-xl border-2 border-slate-200 bg-white px-3 text-sm font-semibold text-slate-800 placeholder:text-slate-400 focus:border-indigo-500 focus:outline-none transition-all"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-[10px] uppercase tracking-widest font-bold text-slate-400">Email</label>
+              <input
+                type="email"
+                value={parent1Email}
+                onChange={(e) => setParent1Email(e.target.value)}
+                placeholder="email@example.com"
+                className="w-full h-10 rounded-xl border-2 border-slate-200 bg-white px-3 text-sm font-semibold text-slate-800 placeholder:text-slate-400 focus:border-indigo-500 focus:outline-none transition-all"
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* Parent 2 */}
+        <div className="space-y-3 pt-3 border-t border-slate-100">
+          <p className="text-xs font-bold text-slate-600">Parent 2 <span className="font-medium text-slate-400">(optional)</span></p>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            <div className="space-y-1.5">
+              <label className="text-[10px] uppercase tracking-widest font-bold text-slate-400">Full Name</label>
+              <input
+                value={parent2Name}
+                onChange={(e) => setParent2Name(e.target.value)}
+                placeholder="Name"
+                className="w-full h-10 rounded-xl border-2 border-slate-200 bg-white px-3 text-sm font-semibold text-slate-800 placeholder:text-slate-400 focus:border-indigo-500 focus:outline-none transition-all"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-[10px] uppercase tracking-widest font-bold text-slate-400">Phone</label>
+              <input
+                value={parent2Phone}
+                onChange={(e) => setParent2Phone(e.target.value)}
+                placeholder="+91 …"
+                className="w-full h-10 rounded-xl border-2 border-slate-200 bg-white px-3 text-sm font-semibold text-slate-800 placeholder:text-slate-400 focus:border-indigo-500 focus:outline-none transition-all"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-[10px] uppercase tracking-widest font-bold text-slate-400">Email</label>
+              <input
+                type="email"
+                value={parent2Email}
+                onChange={(e) => setParent2Email(e.target.value)}
+                placeholder="email@example.com"
+                className="w-full h-10 rounded-xl border-2 border-slate-200 bg-white px-3 text-sm font-semibold text-slate-800 placeholder:text-slate-400 focus:border-indigo-500 focus:outline-none transition-all"
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* Local Guardian */}
+        {localAddressDifferent && (
+          <div className="space-y-3 pt-3 border-t border-slate-100">
+            <p className="text-xs font-bold text-slate-600">Local Guardian <span className="font-medium text-slate-400">(optional)</span></p>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+              <div className="space-y-1.5">
+                <label className="text-[10px] uppercase tracking-widest font-bold text-slate-400">Full Name</label>
+                <input
+                  value={localGuardianName}
+                  onChange={(e) => setLocalGuardianName(e.target.value)}
+                  placeholder="Name"
+                  className="w-full h-10 rounded-xl border-2 border-slate-200 bg-white px-3 text-sm font-semibold text-slate-800 placeholder:text-slate-400 focus:border-indigo-500 focus:outline-none transition-all"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-[10px] uppercase tracking-widest font-bold text-slate-400">Phone</label>
+                <input
+                  value={localGuardianPhone}
+                  onChange={(e) => setLocalGuardianPhone(e.target.value)}
+                  placeholder="+91 …"
+                  className="w-full h-10 rounded-xl border-2 border-slate-200 bg-white px-3 text-sm font-semibold text-slate-800 placeholder:text-slate-400 focus:border-indigo-500 focus:outline-none transition-all"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-[10px] uppercase tracking-widest font-bold text-slate-400">Email</label>
+                <input
+                  type="email"
+                  value={localGuardianEmail}
+                  onChange={(e) => setLocalGuardianEmail(e.target.value)}
+                  placeholder="email@example.com"
+                  className="w-full h-10 rounded-xl border-2 border-slate-200 bg-white px-3 text-sm font-semibold text-slate-800 placeholder:text-slate-400 focus:border-indigo-500 focus:outline-none transition-all"
+                />
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Section 2 — Batch & Program */}
@@ -703,7 +902,7 @@ export function EnrollForm({ batches }: { batches: Batch[] }) {
       <div className="flex items-center gap-3">
         <button
           type="submit"
-          disabled={loading || !programId || !name || !email || !contact}
+          disabled={loading || !programId || !firstName || !lastName || !email || !contact}
           className="h-12 px-8 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold rounded-xl transition-all flex items-center gap-2"
         >
           {loading && <Loader2 className="h-4 w-4 animate-spin" />}

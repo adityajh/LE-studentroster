@@ -51,6 +51,7 @@ export async function getStudentById(id: string) {
       scholarships: { include: { scholarship: { select: { id: true, name: true, category: true } } } },
       deductions: true,
       installments: { orderBy: { dueDate: "asc" } },
+      documents: { orderBy: { uploadedAt: "desc" } },
     },
   })
 }

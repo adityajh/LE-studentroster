@@ -4,10 +4,11 @@ import { getStudentById } from "@/lib/students"
 import { formatInstallmentStatus, formatStudentStatus } from "@/lib/students"
 import { formatINR } from "@/lib/fee-schedule"
 import { RecordPaymentDialog } from "@/components/students/record-payment-dialog"
+import { DocumentUpload } from "@/components/students/document-upload"
 import { cn } from "@/lib/utils"
 import { auth } from "@/auth"
 import { prisma } from "@/lib/prisma"
-import { Phone, Mail, Calendar } from "lucide-react"
+import { Phone, Mail, Calendar, MapPin, Users, Droplets } from "lucide-react"
 
 export default async function StudentDetailPage({
   params,
@@ -91,13 +92,87 @@ export default async function StudentDetailPage({
               <Mail className="h-4 w-4 text-slate-400 shrink-0" />
               <span className="font-semibold text-slate-700">{student.email}</span>
             </div>
+            {student.bloodGroup && (
+              <div className="flex items-center gap-2.5 text-sm">
+                <Droplets className="h-4 w-4 text-slate-400 shrink-0" />
+                <span className="font-semibold text-slate-700">{student.bloodGroup}</span>
+              </div>
+            )}
             <div className="flex items-center gap-2.5 text-sm">
               <Calendar className="h-4 w-4 text-slate-400 shrink-0" />
               <span className="font-medium text-slate-500">
                 Enrolled {new Date(student.enrollmentDate).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
               </span>
             </div>
+            {student.address && (
+              <div className="flex items-start gap-2.5 text-sm pt-1 border-t border-slate-100">
+                <MapPin className="h-4 w-4 text-slate-400 shrink-0 mt-0.5" />
+                <span className="font-medium text-slate-600 whitespace-pre-line">{student.address}</span>
+              </div>
+            )}
+            {student.localAddress && (
+              <div className="flex items-start gap-2.5 text-sm">
+                <MapPin className="h-4 w-4 text-amber-400 shrink-0 mt-0.5" />
+                <div>
+                  <p className="text-[10px] uppercase tracking-wider font-bold text-slate-400 mb-0.5">Local Address</p>
+                  <span className="font-medium text-slate-600 whitespace-pre-line">{student.localAddress}</span>
+                </div>
+              </div>
+            )}
           </div>
+
+          {/* Parents & Guardian */}
+          {(student.parent1Name || student.parent2Name || student.localGuardianName) && (
+            <div className="bg-white border border-slate-200/50 rounded-2xl shadow-sm p-5 space-y-4">
+              <p className="text-[10px] uppercase tracking-widest font-bold text-slate-400">Parents & Guardian</p>
+
+              {student.parent1Name && (
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2">
+                    <Users className="h-3.5 w-3.5 text-slate-400" />
+                    <p className="text-sm font-bold text-slate-700">{student.parent1Name}</p>
+                  </div>
+                  {student.parent1Phone && (
+                    <p className="text-xs font-medium text-slate-500 pl-5">{student.parent1Phone}</p>
+                  )}
+                  {student.parent1Email && (
+                    <p className="text-xs font-medium text-slate-500 pl-5">{student.parent1Email}</p>
+                  )}
+                </div>
+              )}
+
+              {student.parent2Name && (
+                <div className="space-y-1 pt-3 border-t border-slate-100">
+                  <div className="flex items-center gap-2">
+                    <Users className="h-3.5 w-3.5 text-slate-400" />
+                    <p className="text-sm font-bold text-slate-700">{student.parent2Name}</p>
+                  </div>
+                  {student.parent2Phone && (
+                    <p className="text-xs font-medium text-slate-500 pl-5">{student.parent2Phone}</p>
+                  )}
+                  {student.parent2Email && (
+                    <p className="text-xs font-medium text-slate-500 pl-5">{student.parent2Email}</p>
+                  )}
+                </div>
+              )}
+
+              {student.localGuardianName && (
+                <div className="space-y-1 pt-3 border-t border-slate-100">
+                  <p className="text-[10px] uppercase tracking-wider font-bold text-amber-600 mb-1">Local Guardian</p>
+                  <div className="flex items-center gap-2">
+                    <Users className="h-3.5 w-3.5 text-slate-400" />
+                    <p className="text-sm font-bold text-slate-700">{student.localGuardianName}</p>
+                  </div>
+                  {student.localGuardianPhone && (
+                    <p className="text-xs font-medium text-slate-500 pl-5">{student.localGuardianPhone}</p>
+                  )}
+                  {student.localGuardianEmail && (
+                    <p className="text-xs font-medium text-slate-500 pl-5">{student.localGuardianEmail}</p>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Fee Summary */}
           {fin && (
@@ -229,6 +304,9 @@ export default async function StudentDetailPage({
           </div>
         </div>
       </div>
+
+      {/* Documents */}
+      <DocumentUpload studentId={student.id} documents={student.documents} />
     </div>
   )
 }
