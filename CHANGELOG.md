@@ -4,6 +4,21 @@ All notable changes to the LE Student Roster system are documented here.
 
 ---
 
+## [0.6.0] — 2026-04-09
+
+### Phase 6: Proposal Letter Generation & Phase 5 Reminders Upgrade ✅
+
+#### Added
+- **Global Settings** — `SystemSetting` DB model added. A settings dashboard page created at `/settings` allowing real-time modification of system defaults like Proposal T&Cs.
+- **Dynamic Fee Schedule Overhaul** — Refactored the `Fee Schedule / Edit` page to dynamically construct Offers and Scholarships from the UI rather than relying on seeded data. 
+- **Automated PDF Generator** — Leveraging `@react-pdf/renderer` to dynamically generate a branded LE Proposal PDF including dynamically mapped fee and installment information.
+- **Automated MS Word Generator** — Leveraging `docx` to create a Microsoft Word version of the Proposal document for ad-hoc editability locally.
+- **Download UI** — Included a Proposal view within individual Student pages to quickly click and download the formats.
+- **Reminders Upgrade: Clean Simple Emailing** — Modified the outbound email processor to convert heavy marketing-banner HTML templates into completely unstyled, standard Plain-Text format messaging for Reminders while quietly keeping the `<img>` tracking pixel inside to retain Read Receipt observability.
+- **Reminders Upgrade: Pipeline Dashboard** — Injected a highly visual table covering the `Reminders` Dashboard detailing exactly which Students have `UPCOMING` or `PARTIAL` payments hitting within the next 30 days.
+
+---
+
 ## [0.5.0] — 2026-04-05
 
 ### Phase 4: Payment Tracking ✅
@@ -102,10 +117,6 @@ All notable changes to the LE Student Roster system are documented here.
 - Gmail integration
 - Automated reminders at 1 month, 1 week, and on due date
 - Reminder log per installment
-
-### [0.6.0] — Phase 6: Proposal Letter Generation
-- PDF and Word generation with all fee merge fields
-- Downloadable from student detail page
 
 ### [0.7.0] — Phase 7: Settings & Admin
 - Team member management

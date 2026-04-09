@@ -59,10 +59,10 @@
 - [x] **5.4** ReminderLog: track sent / failed / bounced per installment
 - [x] **5.5** Reminders tab on student detail — view full history of sent reminders
 
-## Phase 6: Proposal Letter Generation
+## Phase 6: Proposal Letter Generation ✅ COMPLETE
 > Goal: Generate branded student proposal letters (PDF + Word)
 
-- [ ] **6.1** Design proposal letter template with all merge fields:
+- [x] **6.1** Design proposal letter template with all merge fields:
   - Student name, roll number, program, batch
   - Base fee (total + year-wise breakdown)
   - Offers applied (itemised)
@@ -71,10 +71,10 @@
   - Net fee (total + year-wise)
   - Installment schedule with dates and amounts
   - Terms and conditions
-- [ ] **6.2** PDF generation using `@react-pdf/renderer`
-- [ ] **6.3** Word generation using `docx` library
-- [ ] **6.4** Proposal page (`/students/[id]/proposal`) — preview and download both formats
-- [ ] **6.5** Configurable T&C text in Settings (admin only)
+- [x] **6.2** PDF generation using `@react-pdf/renderer`
+- [x] **6.3** Word generation using `docx` library
+- [x] **6.4** Proposal page (`/students/[id]/proposal`) — preview and download both formats
+- [x] **6.5** Configurable T&C text in Settings (admin only)
 
 ## Phase 7: Settings & Admin
 > Goal: Team management, API keys, email and system configuration
