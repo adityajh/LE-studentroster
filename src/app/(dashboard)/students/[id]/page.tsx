@@ -5,17 +5,21 @@ import { formatInstallmentStatus, formatStudentStatus } from "@/lib/students"
 import { formatINR } from "@/lib/fee-schedule"
 import { RecordPaymentDialog } from "@/components/students/record-payment-dialog"
 import { DocumentUpload } from "@/components/students/document-upload"
+import { RemindersTab } from "@/components/students/reminders-tab"
 import { cn } from "@/lib/utils"
 import { auth } from "@/auth"
 import { prisma } from "@/lib/prisma"
-import { Phone, Mail, Calendar, MapPin, Users, Droplets, Pencil } from "lucide-react"
+import { Phone, Mail, Calendar, MapPin, Users, Droplets, Pencil, Bell } from "lucide-react"
 
 export default async function StudentDetailPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>
+  searchParams: Promise<{ tab?: string }>
 }) {
   const { id } = await params
+  const { tab = "installments" } = await searchParams
   const student = await getStudentById(id)
   if (!student) notFound()
 
@@ -25,6 +29,13 @@ export default async function StudentDetailPage({
     select: { role: true },
   })
   const canRecord = !!dbUser
+
+  // Fetch reminder logs for this student's installments
+  const reminderLogs = await prisma.reminderLog.findMany({
+    where: { installment: { studentId: id } },
+    include: { installment: { select: { label: true, dueDate: true } } },
+    orderBy: { sentAt: "desc" },
+  })
 
   const fin = student.financial
   const statusStyle = formatStudentStatus(student.status)
@@ -265,75 +276,111 @@ export default async function StudentDetailPage({
           )}
         </div>
 
-        {/* Right column — Installments */}
+        {/* Right column — Tabs: Installments / Reminders */}
         <div className="lg:col-span-2">
           <div className="bg-white border border-slate-200/50 rounded-2xl shadow-sm overflow-hidden">
-            <div className="px-5 py-4 border-b border-slate-100">
-              <p className="text-[10px] uppercase tracking-widest font-bold text-slate-400">Installments</p>
-              <p className="text-base font-extrabold text-slate-900 mt-0.5">Payment Schedule</p>
+            {/* Tab header */}
+            <div className="px-5 py-4 border-b border-slate-100 flex items-center gap-1">
+              <Link
+                href={`/students/${id}?tab=installments`}
+                className={cn(
+                  "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all",
+                  tab === "installments" || tab === undefined
+                    ? "bg-indigo-50 text-indigo-700 border border-indigo-200"
+                    : "text-slate-500 hover:text-slate-700"
+                )}
+              >
+                Payment Schedule
+              </Link>
+              <Link
+                href={`/students/${id}?tab=reminders`}
+                className={cn(
+                  "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all",
+                  tab === "reminders"
+                    ? "bg-indigo-50 text-indigo-700 border border-indigo-200"
+                    : "text-slate-500 hover:text-slate-700"
+                )}
+              >
+                <Bell className="h-3 w-3" />
+                Reminders
+                {reminderLogs.length > 0 && (
+                  <span className="bg-indigo-600 text-white text-[9px] font-black rounded-full w-4 h-4 flex items-center justify-center">
+                    {reminderLogs.length}
+                  </span>
+                )}
+              </Link>
             </div>
-            <div className="divide-y divide-slate-50">
-              {student.installments.map((inst) => {
-                const style = formatInstallmentStatus(inst.status)
-                const isPaid = inst.status === "PAID" || inst.status === "PARTIAL"
-                return (
-                  <div key={inst.id} className="px-5 py-4 flex items-center justify-between gap-4">
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <p className="text-sm font-bold text-slate-800">{inst.label}</p>
-                        <span className={cn(
-                          "inline-flex items-center text-[10px] uppercase tracking-wider font-bold px-2 py-0.5 rounded border",
-                          style.classes
-                        )}>
-                          {style.label}
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-3 mt-0.5 flex-wrap">
-                        <p className="text-[10px] uppercase tracking-wider font-bold text-slate-400">
-                          Due: {new Date(inst.dueDate).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
-                        </p>
-                        {isPaid && inst.paidDate && (
-                          <p className="text-[10px] uppercase tracking-wider font-bold text-emerald-500">
-                            Paid: {new Date(inst.paidDate).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
-                            {inst.paymentMethod && ` · ${inst.paymentMethod}`}
+
+            {/* Installments tab */}
+            {tab !== "reminders" && (
+              <div className="divide-y divide-slate-50">
+                {student.installments.map((inst) => {
+                  const style = formatInstallmentStatus(inst.status)
+                  const isPaid = inst.status === "PAID" || inst.status === "PARTIAL"
+                  return (
+                    <div key={inst.id} className="px-5 py-4 flex items-center justify-between gap-4">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <p className="text-sm font-bold text-slate-800">{inst.label}</p>
+                          <span className={cn(
+                            "inline-flex items-center text-[10px] uppercase tracking-wider font-bold px-2 py-0.5 rounded border",
+                            style.classes
+                          )}>
+                            {style.label}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-3 mt-0.5 flex-wrap">
+                          <p className="text-[10px] uppercase tracking-wider font-bold text-slate-400">
+                            Due: {new Date(inst.dueDate).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
+                          </p>
+                          {isPaid && inst.paidDate && (
+                            <p className="text-[10px] uppercase tracking-wider font-bold text-emerald-500">
+                              Paid: {new Date(inst.paidDate).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
+                              {inst.paymentMethod && ` · ${inst.paymentMethod}`}
+                            </p>
+                          )}
+                        </div>
+                        {fin?.installmentType === "ANNUAL" && inst.year > 0 && waiverPerYear > 0 && yearFees[inst.year] && (
+                          <p className="text-[10px] font-medium text-slate-400 mt-1">
+                            {formatINR(yearFees[inst.year])}
+                            {" − "}
+                            <span className="text-emerald-600 font-semibold">{formatINR(waiverPerYear)} waiver</span>
+                            {" = "}
+                            <span className="font-bold text-slate-600">{formatINR(Math.round(inst.amount.toNumber()))}</span>
                           </p>
                         )}
                       </div>
-                      {fin?.installmentType === "ANNUAL" && inst.year > 0 && waiverPerYear > 0 && yearFees[inst.year] && (
-                        <p className="text-[10px] font-medium text-slate-400 mt-1">
-                          {formatINR(yearFees[inst.year])}
-                          {" − "}
-                          <span className="text-emerald-600 font-semibold">{formatINR(waiverPerYear)} waiver</span>
-                          {" = "}
-                          <span className="font-bold text-slate-600">{formatINR(Math.round(inst.amount.toNumber()))}</span>
+                      <div className="text-right shrink-0">
+                        <p className={cn("text-sm font-extrabold", isPaid ? "text-emerald-600" : "text-slate-800")}>
+                          {isPaid && inst.paidAmount ? formatINR(inst.paidAmount) : formatINR(inst.amount)}
                         </p>
-                      )}
+                        {isPaid && inst.paidAmount && inst.paidAmount.toNumber() !== inst.amount.toNumber() && (
+                          <p className="text-[10px] text-slate-400">of {formatINR(inst.amount)}</p>
+                        )}
+                      </div>
+                      <div className="flex flex-col items-end gap-1.5 shrink-0">
+                        {isPaid && (
+                          <Link
+                            href={`/students/${student.id}/receipts/${inst.id}`}
+                            className="text-xs font-semibold text-indigo-600 hover:text-indigo-800 transition-colors"
+                          >
+                            Receipt →
+                          </Link>
+                        )}
+                        {!isPaid && canRecord && (
+                          <RecordPaymentDialog studentId={student.id} installment={inst} />
+                        )}
+                      </div>
                     </div>
-                    <div className="text-right shrink-0">
-                      <p className={cn("text-sm font-extrabold", isPaid ? "text-emerald-600" : "text-slate-800")}>
-                        {isPaid && inst.paidAmount ? formatINR(inst.paidAmount) : formatINR(inst.amount)}
-                      </p>
-                      {isPaid && inst.paidAmount && inst.paidAmount.toNumber() !== inst.amount.toNumber() && (
-                        <p className="text-[10px] text-slate-400">of {formatINR(inst.amount)}</p>
-                      )}
-                    </div>
-                    <div className="flex flex-col items-end gap-1.5 shrink-0">
-                      {isPaid && (
-                        <Link
-                          href={`/students/${student.id}/receipts/${inst.id}`}
-                          className="text-xs font-semibold text-indigo-600 hover:text-indigo-800 transition-colors"
-                        >
-                          Receipt →
-                        </Link>
-                      )}
-                      {!isPaid && canRecord && (
-                        <RecordPaymentDialog studentId={student.id} installment={inst} />
-                      )}
-                    </div>
-                  </div>
-                )
-              })}
-            </div>
+                  )
+                })}
+              </div>
+            )}
+
+            {/* Reminders tab */}
+            {tab === "reminders" && (
+              <RemindersTab logs={reminderLogs} />
+            )}
           </div>
         </div>
       </div>
