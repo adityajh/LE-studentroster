@@ -41,6 +41,23 @@ export default async function RemindersDashboard() {
   const totalFailed = allLogsStats.filter(l => l.emailStatus === "FAILED" || l.emailStatus === "BOUNCED").length
   const totalRead = allLogsStats.filter(l => l.readAt != null).length
 
+  // Fetch Upcoming pipeline
+  const today = new Date()
+  const maxLookahead = new Date(today)
+  maxLookahead.setDate(maxLookahead.getDate() + 31)
+
+  const upcomingInstallments = await prisma.installment.findMany({
+    where: {
+      status: { in: ["UPCOMING", "DUE", "PARTIAL"] },
+      dueDate: { lte: maxLookahead, gte: today },
+      student: { status: "ACTIVE" }
+    },
+    include: {
+      student: { select: { id: true, name: true, rollNo: true } }
+    },
+    orderBy: { dueDate: "asc" }
+  })
+
   return (
     <div className="space-y-8 max-w-5xl mx-auto">
       <div>
@@ -113,8 +130,8 @@ export default async function RemindersDashboard() {
                 </div>
                 <div>
                   <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-1">Body Preview</p>
-                  <div className="text-sm text-slate-600 p-3 bg-slate-50 rounded-lg border border-slate-200 font-mono text-xs line-clamp-2">
-                    {setting.bodyHtml}
+                  <div className="text-sm text-slate-600 p-3 bg-slate-50 rounded-lg border border-slate-200 font-mono text-xs line-clamp-2 whitespace-pre-wrap">
+                    {setting.bodyText}
                   </div>
                 </div>
               </div>
@@ -195,6 +212,53 @@ export default async function RemindersDashboard() {
                   </tr>
                 )
               })}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* Upcoming Pipeline */}
+      <div>
+        <h2 className="text-lg font-bold text-slate-800 border-b border-slate-200 pb-2 mb-4">Upcoming Installments (Next 30 Days)</h2>
+        <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm max-h-96 overflow-y-auto">
+          <table className="w-full text-left text-sm whitespace-nowrap">
+            <thead className="bg-slate-50 text-[10px] uppercase font-bold tracking-widest text-slate-400 sticky top-0 shadow-sm">
+              <tr>
+                <th className="px-6 py-4 font-headline">Due Date</th>
+                <th className="px-6 py-4 font-headline">Student</th>
+                <th className="px-6 py-4 font-headline">Installment</th>
+                <th className="px-6 py-4 font-headline">Amount</th>
+                <th className="px-6 py-4 font-headline">Status</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {upcomingInstallments.length === 0 && (
+                <tr>
+                  <td colSpan={5} className="px-6 py-8 text-center text-slate-500 font-medium">No upcoming installments in the next 30 days.</td>
+                </tr>
+              )}
+              {upcomingInstallments.map(inst => (
+                <tr key={inst.id} className="hover:bg-slate-50/50 transition-colors">
+                  <td className="px-6 py-4">
+                    <p className="font-semibold text-slate-800">{new Date(inst.dueDate).toLocaleDateString("en-IN", { month: "short", day: "numeric" })}</p>
+                  </td>
+                  <td className="px-6 py-4">
+                    <p className="font-bold text-slate-900">{inst.student.name}</p>
+                    <p className="text-[10px] font-mono text-slate-500">{inst.student.rollNo}</p>
+                  </td>
+                  <td className="px-6 py-4 font-medium text-slate-600">
+                    {inst.label}
+                  </td>
+                  <td className="px-6 py-4 font-bold text-indigo-600">
+                    {formatINR(inst.amount)}
+                  </td>
+                  <td className="px-6 py-4">
+                    <span className="bg-amber-100 text-amber-700 font-bold px-2.5 py-1 rounded-md text-[10px] uppercase tracking-wider border border-amber-200">
+                      {inst.status}
+                    </span>
+                  </td>
+                </tr>
+              ))}
             </tbody>
           </table>
         </div>

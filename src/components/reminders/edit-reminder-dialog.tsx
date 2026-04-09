@@ -16,7 +16,7 @@ type Setting = {
   type: string
   daysOut: number
   subject: string
-  bodyHtml: string
+  bodyText: string
   isActive: boolean
 }
 
@@ -27,7 +27,7 @@ export function EditReminderDialog({ setting }: { setting: Setting }) {
 
   const [formData, setFormData] = useState({
     subject: setting.subject,
-    bodyHtml: setting.bodyHtml,
+    bodyText: setting.bodyText,
     isActive: setting.isActive,
     daysOut: setting.daysOut,
   })
@@ -38,7 +38,7 @@ export function EditReminderDialog({ setting }: { setting: Setting }) {
     try {
       await updateReminderSetting(setting.id, {
         subject: formData.subject,
-        bodyHtml: formData.bodyHtml,
+        bodyText: formData.bodyText,
         isActive: formData.isActive,
         daysOut: Number(formData.daysOut),
       })
@@ -98,11 +98,11 @@ export function EditReminderDialog({ setting }: { setting: Setting }) {
           </div>
 
           <div className="space-y-2">
-            <Label>Email Body (HTML)</Label>
+            <Label>Email Body Message</Label>
             <Textarea
               className="font-mono text-xs h-32"
-              value={formData.bodyHtml}
-              onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setFormData({ ...formData, bodyHtml: e.target.value })}
+              value={formData.bodyText}
+              onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setFormData({ ...formData, bodyText: e.target.value })}
               required
             />
             <p className="text-[10px] uppercase font-bold tracking-wider text-slate-400 mt-1">

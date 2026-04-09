@@ -359,7 +359,7 @@ model ReminderSetting {
   type      String   @unique // "ONE_MONTH", "ONE_WEEK", "DUE_DATE"
   daysOut   Int
   subject   String
-  bodyHtml  String   @db.Text
+  bodyText  String   @db.Text
   isActive  Boolean  @default(true)
   updatedAt DateTime @updatedAt
 }

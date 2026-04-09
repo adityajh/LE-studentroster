@@ -8,7 +8,7 @@ export async function updateReminderSetting(
   id: string,
   data: {
     subject: string
-    bodyHtml: string
+    bodyText: string
     isActive: boolean
     daysOut: number
   }
@@ -27,7 +27,7 @@ export async function updateReminderSetting(
     where: { id },
     data: {
       subject: data.subject,
-      bodyHtml: data.bodyHtml,
+      bodyText: data.bodyText,
       isActive: data.isActive,
       daysOut: data.daysOut,
     },

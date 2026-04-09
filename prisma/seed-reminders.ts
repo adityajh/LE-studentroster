@@ -17,19 +17,19 @@ async function main() {
       type: "ONE_MONTH",
       daysOut: 30,
       subject: "Fee Reminder - {{installmentLabel}} due in 1 month",
-      bodyHtml: "<p>Dear {{studentName}},</p><p>This is a reminder that your upcoming fee payment ({{installmentLabel}}) of <strong>{{amount}}</strong> is due on <strong>{{dueDate}}</strong>.</p>"
+      bodyText: "Dear {{studentName}},\n\nThis is a reminder that your upcoming fee payment ({{installmentLabel}}) of {{amount}} is due on {{dueDate}}.\n\nThank you,\nLet's Enterprise"
     },
     {
       type: "ONE_WEEK",
       daysOut: 7,
       subject: "Fee Reminder - {{installmentLabel}} due in 1 week",
-      bodyHtml: "<p>Dear {{studentName}},</p><p>This is a reminder that your upcoming fee payment ({{installmentLabel}}) of <strong>{{amount}}</strong> is due on <strong>{{dueDate}}</strong>.</p>"
+      bodyText: "Dear {{studentName}},\n\nThis is a reminder that your upcoming fee payment ({{installmentLabel}}) of {{amount}} is due on {{dueDate}}.\n\nThank you,\nLet's Enterprise"
     },
     {
       type: "DUE_DATE",
       daysOut: 0,
       subject: "Payment Due Today - {{installmentLabel}}",
-      bodyHtml: "<p>Dear {{studentName}},</p><p>This is a reminder that your fee payment ({{installmentLabel}}) of <strong>{{amount}}</strong> is due today.</p>"
+      bodyText: "Dear {{studentName}},\n\nThis is a friendly reminder that your fee payment ({{installmentLabel}}) of {{amount}} is due today.\n\nThank you,\nLet's Enterprise"
     }
   ]
 
@@ -41,7 +41,7 @@ async function main() {
         type: setting.type,
         daysOut: setting.daysOut,
         subject: setting.subject,
-        bodyHtml: setting.bodyHtml,
+        bodyText: setting.bodyText,
         isActive: true
       }
     })

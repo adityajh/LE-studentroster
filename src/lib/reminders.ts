@@ -90,6 +90,7 @@ export async function processDailyReminders(): Promise<{
           : inst.amount),
         dueDate:          inst.dueDate,
         reminderType:     setting.type as any,
+        bodyText:         setting.bodyText,
         paymentInstructions: process.env.REMINDER_PAYMENT_INSTRUCTIONS ?? undefined,
         logId:            log.id,
       })
