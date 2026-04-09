@@ -9,8 +9,9 @@ export default async function EditStudentPage({
 }: {
   params: Promise<{ id: string }>
 }) {
-  const session = await auth()
+  const session = (await auth()) as any
   if (!session?.user) redirect("/login")
+  const role = session.user.role
 
   const { id } = await params
   const student = await getStudentById(id)
@@ -54,7 +55,7 @@ export default async function EditStudentPage({
         </div>
       </div>
 
-      <EditStudentForm student={student} />
+      <EditStudentForm student={student as any} role={session.user.role} />
     </div>
   )
 }

@@ -12,7 +12,10 @@ export async function PATCH(
   }
 
   const { id } = await params
-  const student = await prisma.student.findUnique({ where: { id } })
+  const student = await prisma.student.findUnique({ 
+    where: { id },
+    include: { financial: true }
+  })
   if (!student) {
     return NextResponse.json({ error: "Student not found" }, { status: 404 })
   }
@@ -26,6 +29,7 @@ export async function PATCH(
     parent1Name, parent1Email, parent1Phone,
     parent2Name, parent2Email, parent2Phone,
     localGuardianName, localGuardianPhone, localGuardianEmail,
+    baseFee,
   } = body
 
   // Derive full name from first+last if provided
@@ -57,6 +61,30 @@ export async function PATCH(
       localGuardianEmail: localGuardianEmail ?? null,
     },
   })
+
+  // Admin-only: update base fee if provided
+  if (baseFee !== undefined) {
+    // Re-check role from DB for security
+    const dbUser = await prisma.user.findUnique({
+      where: { email: session.user.email! },
+      select: { role: true },
+    })
+    
+    if (dbUser?.role === "ADMIN") {
+      const bFee = parseFloat(baseFee)
+      if (!isNaN(bFee)) {
+        await prisma.studentFinancial.update({
+          where: { studentId: id },
+          data: { 
+            baseFee: bFee,
+            // also update netFee if it's derived or just leave it for manual adjustment
+            // for now, we'll just update baseFee as requested
+            netFee: bFee - Number(student.financial?.totalWaiver || 0) - Number(student.financial?.totalDeduction || 0)
+          }
+        })
+      }
+    }
+  }
 
   return NextResponse.json({ id: updated.id })
 }

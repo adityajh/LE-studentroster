@@ -1,3 +1,7 @@
+import dotenv from "dotenv"
+dotenv.config({ path: ".env.local" })
+dotenv.config() 
+
 import { PrismaClient, Prisma } from "@prisma/client"
 import { PrismaNeon } from "@prisma/adapter-neon"
 
@@ -24,7 +28,7 @@ async function main() {
   // ─── Programs ─────────────────────────────────────────────────────────────
   const programs = [
     {
-      name: "Working BBA - Entrepreneurial Jobs",
+      name: "Enterprise Leadership",
       totalFee: 1350000,
       registrationFee: 50000,
       year1Fee: 565000,

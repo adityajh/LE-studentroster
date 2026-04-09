@@ -121,6 +121,15 @@ enum EmailStatus {
   BOUNCED
 }
 
+enum PaymentMode {
+  CASH
+  CHEQUE
+  NEFT
+  UPI
+  RTGS
+  OTHER
+}
+
 // ─── Batch & Programs ────────────────────────────────────────────────────────
 
 model Batch {
@@ -205,8 +214,8 @@ model Student {
   name           String
   firstName      String?
   lastName       String?
-  contact        String
-  email          String
+  contact        String?
+  email          String?
   bloodGroup     String?
   city           String?
   address        String?       @db.Text
@@ -235,6 +244,7 @@ model Student {
   scholarships StudentScholarship[]
   deductions   StudentDeduction[]
   installments Installment[]
+  payments     Payment[]
   documents    StudentDocument[]
 }
 
@@ -327,6 +337,7 @@ model Installment {
   updatedAt     DateTime          @updatedAt
 
   student      Student       @relation(fields: [studentId], references: [id])
+  payments     Payment[]
   reminderLogs ReminderLog[]
 }
 
@@ -354,4 +365,19 @@ model ApiKey {
   createdAt   DateTime  @default(now())
 
   createdBy User @relation(fields: [createdById], references: [id])
+}
+
+model Payment {
+  id            String       @id @default(cuid())
+  studentId     String
+  installmentId String?
+  date          DateTime
+  amount        Decimal      @db.Decimal(12, 2)
+  payerName     String?
+  paymentMode   PaymentMode?
+  notes         String?      @db.Text
+  createdAt     DateTime     @default(now())
+
+  student     Student      @relation(fields: [studentId], references: [id])
+  installment Installment? @relation(fields: [installmentId], references: [id])
 }

@@ -10,7 +10,7 @@ type Student = {
   lastName: string | null
   name: string
   email: string
-  contact: string
+  contact: string | null
   bloodGroup: string | null
   city: string | null
   address: string | null
@@ -24,6 +24,12 @@ type Student = {
   localGuardianName: string | null
   localGuardianPhone: string | null
   localGuardianEmail: string | null
+  financial: {
+    baseFee: any
+    netFee: any
+    totalWaiver: any
+    totalDeduction: any
+  } | null
 }
 
 const BLOOD_GROUPS = ["A+", "A−", "B+", "B−", "AB+", "AB−", "O+", "O−"]
@@ -54,7 +60,13 @@ const inputSmCls =
 const textareaCls =
   "w-full rounded-xl border-2 border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-800 placeholder:text-slate-400 focus:border-indigo-500 focus:outline-none transition-all resize-none"
 
-export function EditStudentForm({ student }: { student: Student }) {
+export function EditStudentForm({ 
+  student, 
+  role 
+}: { 
+  student: Student 
+  role?: string 
+}) {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
@@ -62,9 +74,10 @@ export function EditStudentForm({ student }: { student: Student }) {
   // Personal
   const [firstName, setFirstName] = useState(student.firstName ?? student.name.split(" ")[0] ?? "")
   const [lastName, setLastName] = useState(student.lastName ?? student.name.split(" ").slice(1).join(" ") ?? "")
-  const [email, setEmail] = useState(student.email)
-  const [contact, setContact] = useState(student.contact)
+  const [email, setEmail] = useState(student.email ?? "")
+  const [contact, setContact] = useState(student.contact ?? "")
   const [bloodGroup, setBloodGroup] = useState(student.bloodGroup ?? "")
+  const [baseFee, setBaseFee] = useState(student.financial?.baseFee?.toString() ?? "0")
 
   // Address
   const [city, setCity] = useState(student.city ?? "")
@@ -113,6 +126,7 @@ export function EditStudentForm({ student }: { student: Student }) {
           localGuardianName:  localGuardianName  || null,
           localGuardianPhone: localGuardianPhone || null,
           localGuardianEmail: localGuardianEmail || null,
+          baseFee:            role === "ADMIN" ? baseFee : undefined,
         }),
       })
       const data = await res.json()
@@ -243,6 +257,33 @@ export function EditStudentForm({ student }: { student: Student }) {
           </div>
         )}
       </div>
+      
+      {/* Section 3 — Admin Overrides (Admin only) */}
+      {role === "ADMIN" && (
+        <div className="bg-indigo-50 border border-indigo-200 rounded-2xl p-6 space-y-4 shadow-sm">
+          <div className="flex items-center gap-2">
+            <p className="text-[10px] uppercase tracking-widest font-bold text-indigo-400">Admin Overrides</p>
+            <span className="bg-indigo-600 text-[8px] text-white px-1.5 py-0.5 rounded-full font-black uppercase tracking-tighter">Admin Only</span>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <Field label="Base Fee Override">
+              <input 
+                type="number" 
+                value={baseFee} 
+                onChange={(e) => setBaseFee(e.target.value)} 
+                placeholder="0" 
+                className="w-full h-11 rounded-xl border-2 border-indigo-200 bg-white px-4 text-sm font-semibold text-slate-800 focus:border-indigo-500 focus:outline-none transition-all shadow-[0_4px_12px_rgba(79,70,229,0.08)]" 
+              />
+            </Field>
+            <div className="flex flex-col justify-end pb-1 translate-y-1.5">
+              <p className="text-[10px] font-bold text-indigo-500/60 uppercase tracking-widest leading-tight">Caution</p>
+              <p className="text-[10.5px] font-medium text-indigo-600 leading-tight">
+                Overriding base fee will automatically re-calculate the net fee based on existing discounts.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
 
       {error && (
         <p className="text-sm font-semibold bg-rose-500/10 border border-rose-500/20 text-rose-600 px-4 py-3 rounded-xl">
