@@ -7,6 +7,7 @@ import { auth } from "@/auth"
 import { prisma } from "@/lib/prisma"
 import { UserPlus, Users } from "lucide-react"
 import { formatStudentStatus } from "@/lib/students"
+import { Eyebrow, SoftCard, AdminCard } from "@/components/ui/brand"
 
 export default async function StudentsPage({
   searchParams,
@@ -40,8 +41,8 @@ export default async function StudentsPage({
       {/* Header */}
       <div className="flex items-start justify-between">
         <div>
-          <p className="text-[10px] uppercase tracking-widest font-bold text-slate-400">Master Roster</p>
-          <h1 className="text-2xl font-extrabold text-slate-900 mt-0.5">Students</h1>
+          <Eyebrow>Master Roster</Eyebrow>
+          <h1 className="text-2xl font-extrabold text-slate-900 mt-0.5 font-headline">Students</h1>
           <p className="text-sm font-medium text-slate-500 mt-1">
             {students.length} student{students.length !== 1 ? "s" : ""}
             {isOverdueTab ? " with overdue payments" : " enrolled"}
@@ -112,7 +113,7 @@ export default async function StudentsPage({
 
       {/* Table */}
       {students.length === 0 ? (
-        <div className="bg-white border border-slate-200/50 rounded-2xl shadow-sm p-16 text-center">
+        <SoftCard className="p-16 text-center">
           <Users className="h-10 w-10 mx-auto mb-3 text-slate-300" />
           <p className="text-sm font-semibold text-slate-500">
             {isOverdueTab ? "No overdue payments" : "No students found"}
@@ -124,9 +125,9 @@ export default async function StudentsPage({
               ? "Try adjusting your filters"
               : "Enroll the first student to get started"}
           </p>
-        </div>
+        </SoftCard>
       ) : (
-        <div className="bg-white border border-slate-200/50 rounded-2xl shadow-sm overflow-hidden">
+        <SoftCard className="p-0 overflow-hidden">
           <table className="w-full">
             <thead>
               <tr className="border-b border-slate-100">
@@ -201,7 +202,7 @@ export default async function StudentsPage({
               })}
             </tbody>
           </table>
-        </div>
+        </SoftCard>
       )}
     </div>
   )
