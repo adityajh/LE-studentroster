@@ -4,6 +4,7 @@ import { formatINR } from "@/lib/fee-schedule"
 import { formatInstallmentStatus } from "@/lib/students"
 import { cn } from "@/lib/utils"
 import { Users, AlertTriangle, Clock, CheckCircle, TrendingUp, IndianRupee } from "lucide-react"
+import { SoftCard, Eyebrow } from "@/components/ui/brand"
 
 async function getDashboardData() {
   const now = new Date()
@@ -148,8 +149,8 @@ export default async function DashboardPage() {
   return (
     <div className="space-y-8 max-w-[1200px]">
       <div>
-        <p className="text-[10px] uppercase tracking-widest font-bold text-slate-400">Overview</p>
-        <h1 className="text-2xl font-extrabold text-slate-900 mt-0.5">Dashboard</h1>
+        <Eyebrow>Overview</Eyebrow>
+        <h1 className="text-2xl font-extrabold text-slate-900 mt-0.5 font-headline">Dashboard</h1>
       </div>
 
       {/* Stat cards */}
@@ -157,18 +158,18 @@ export default async function DashboardPage() {
         {statCards.map((card) => {
           const styles = accentStyles[card.accent]
           const inner = (
-            <div className="bg-white border border-slate-200/50 p-5 rounded-2xl shadow-sm hover:shadow-md transition-shadow">
+            <SoftCard className="p-5">
               <div className="flex items-start justify-between mb-3">
-                <p className="text-[10px] uppercase tracking-widest font-bold text-slate-400">{card.eyebrow}</p>
+                <Eyebrow>{card.eyebrow}</Eyebrow>
                 <div className={`rounded-xl p-2 ${styles.icon}`}>
                   <card.icon className="h-4 w-4" />
                 </div>
               </div>
-              <p className={`font-black ${card.isAmount ? "text-2xl" : "text-3xl"} ${styles.value}`}>
+              <p className={`font-black font-headline ${card.isAmount ? "text-2xl" : "text-3xl"} ${styles.value}`}>
                 {card.value}
               </p>
               {card.sub && <p className="text-xs font-medium text-slate-400 mt-1">{card.sub}</p>}
-            </div>
+            </SoftCard>
           )
           return card.href ? (
             <Link key={card.eyebrow} href={card.href}>{inner}</Link>
@@ -179,10 +180,10 @@ export default async function DashboardPage() {
       </div>
 
       {/* Collection rate bar */}
-      <div className="bg-white border border-slate-200/50 rounded-2xl shadow-sm p-5">
+      <SoftCard className="p-5">
         <div className="flex items-center justify-between mb-3">
           <div>
-            <p className="text-[10px] uppercase tracking-widest font-bold text-slate-400">Overall Collection Rate</p>
+            <Eyebrow>Overall Collection Rate</Eyebrow>
             <p className="text-sm font-semibold text-slate-600 mt-0.5">
               {formatINR(d.totalCollected)} collected of {formatINR(d.totalNetFee)} total
             </p>
@@ -198,17 +199,17 @@ export default async function DashboardPage() {
             style={{ width: `${Math.min(d.collectionRate, 100)}%` }}
           />
         </div>
-      </div>
+      </SoftCard>
 
       {/* Bottom panels */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
 
         {/* Overdue list */}
-        <div className="bg-white border border-slate-200/50 rounded-2xl shadow-sm overflow-hidden">
+        <SoftCard className="p-0 overflow-hidden">
           <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
             <div>
-              <p className="text-[10px] uppercase tracking-widest font-bold text-slate-400">Attention Needed</p>
-              <h2 className="text-base font-extrabold text-slate-900 mt-0.5">Overdue Payments</h2>
+              <Eyebrow>Attention Needed</Eyebrow>
+              <h2 className="text-base font-extrabold text-slate-900 mt-0.5 font-headline">Overdue Payments</h2>
             </div>
             {d.overdueCount > 0 && (
               <Link href="/students?tab=overdue" className="text-xs font-bold text-indigo-600 hover:text-indigo-800">
@@ -245,13 +246,13 @@ export default async function DashboardPage() {
               })}
             </div>
           )}
-        </div>
+        </SoftCard>
 
         {/* Recent payments */}
-        <div className="bg-white border border-slate-200/50 rounded-2xl shadow-sm overflow-hidden">
+        <SoftCard className="p-0 overflow-hidden">
           <div className="px-5 py-4 border-b border-slate-100">
-            <p className="text-[10px] uppercase tracking-widest font-bold text-slate-400">Activity</p>
-            <h2 className="text-base font-extrabold text-slate-900 mt-0.5">Recent Payments</h2>
+            <Eyebrow>Activity</Eyebrow>
+            <h2 className="text-base font-extrabold text-slate-900 mt-0.5 font-headline">Recent Payments</h2>
           </div>
           {d.recentPayments.length === 0 ? (
             <div className="text-center py-10 text-slate-400">
@@ -289,7 +290,7 @@ export default async function DashboardPage() {
               })}
             </div>
           )}
-        </div>
+        </SoftCard>
       </div>
     </div>
   )
