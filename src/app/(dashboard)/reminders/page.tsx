@@ -1,8 +1,10 @@
 import { prisma } from "@/lib/prisma"
 import { Badge } from "@/components/ui/badge" // Wait, I need to create the brand components first! I will just use standard classes for now and update later, or implement basic ones here.
-import { Eye, Mail, MailWarning, Clock } from "lucide-react"
+import { Eye, Mail, MailWarning, Clock, CheckCircle2, XCircle } from "lucide-react"
 import { auth } from "@/auth"
 import { redirect } from "next/navigation"
+import { EditReminderDialog } from "@/components/reminders/edit-reminder-dialog"
+import { formatINR } from "@/lib/fee-schedule"
 
 export default async function RemindersDashboard() {
   const session = await auth()
@@ -22,11 +24,22 @@ export default async function RemindersDashboard() {
 
   const logs = await prisma.reminderLog.findMany({
     orderBy: { sentAt: "desc" },
+    include: {
+      installment: {
+        include: { student: true }
+      }
+    },
+    take: 100, // show last 100 in the UI
   })
 
-  const totalSent = logs.filter(l => l.emailStatus === "SENT").length
-  const totalFailed = logs.filter(l => l.emailStatus === "FAILED" || l.emailStatus === "BOUNCED").length
-  const totalRead = logs.filter(l => l.readAt != null).length
+  // Calculate totals from complete dataset (not just the 100 fetched for display)
+  const allLogsStats = await prisma.reminderLog.findMany({
+    select: { emailStatus: true, readAt: true }
+  })
+  
+  const totalSent = allLogsStats.filter(l => l.emailStatus === "SENT").length
+  const totalFailed = allLogsStats.filter(l => l.emailStatus === "FAILED" || l.emailStatus === "BOUNCED").length
+  const totalRead = allLogsStats.filter(l => l.readAt != null).length
 
   return (
     <div className="space-y-8 max-w-5xl mx-auto">
@@ -106,13 +119,84 @@ export default async function RemindersDashboard() {
                 </div>
               </div>
               <div className="shrink-0">
-                  {/* Future: Add an edit button that opens a modal to patch ReminderSetting */}
-                 <button className="px-4 py-2 border border-slate-300 rounded-lg text-sm font-semibold text-slate-700 hover:bg-slate-50">
-                    Edit Setting
-                 </button>
+                <EditReminderDialog setting={setting} />
               </div>
             </div>
           ))}
+        </div>
+      </div>
+
+      {/* Detailed Log History */}
+      <div>
+        <h2 className="text-lg font-bold text-slate-800 border-b border-slate-200 pb-2 mb-4">Recent Outgoing Logs</h2>
+        <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm">
+          <table className="w-full text-left text-sm whitespace-nowrap">
+            <thead className="bg-slate-50 text-[10px] uppercase font-bold tracking-widest text-slate-400">
+              <tr>
+                <th className="px-6 py-4 font-headline">Time</th>
+                <th className="px-6 py-4 font-headline">Student</th>
+                <th className="px-6 py-4 font-headline">Action</th>
+                <th className="px-6 py-4 font-headline">Status</th>
+                <th className="px-6 py-4 font-headline text-right">Read Receipt</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {logs.length === 0 && (
+                <tr>
+                  <td colSpan={5} className="px-6 py-8 text-center text-slate-500 font-medium">No logs recorded yet.</td>
+                </tr>
+              )}
+              {logs.map(log => {
+                const isSent = log.emailStatus === "SENT"
+                const isFailed = log.emailStatus === "FAILED" || log.emailStatus === "BOUNCED"
+                const isRead = log.readAt != null
+                return (
+                  <tr key={log.id} className="hover:bg-slate-50/50 transition-colors">
+                    <td className="px-6 py-4">
+                      <p className="font-semibold text-slate-800">{new Date(log.sentAt).toLocaleDateString("en-IN", { month: "short", day: "numeric" })}</p>
+                      <p className="text-xs text-slate-400">{new Date(log.sentAt).toLocaleTimeString("en-IN", { hour: "numeric", minute: "2-digit" })}</p>
+                    </td>
+                    <td className="px-6 py-4">
+                      <p className="font-bold text-slate-900">{log.installment.student.name}</p>
+                      <p className="text-xs text-slate-500">{log.installment.label} · {formatINR(log.installment.amount)}</p>
+                    </td>
+                    <td className="px-6 py-4">
+                      <span className="bg-slate-100 text-slate-700 font-bold px-2 py-0.5 rounded text-[10px] uppercase tracking-wider">
+                        {log.type}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4">
+                       {isSent && (
+                         <span className="inline-flex items-center gap-1.5 text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider">
+                           <CheckCircle2 className="w-3 h-3 text-emerald-500" /> Sent
+                         </span>
+                       )}
+                       {isFailed && (
+                         <span className="inline-flex items-center gap-1.5 text-rose-700 bg-rose-50 border border-rose-200 px-2.5 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider tooltip">
+                           <XCircle className="w-3 h-3 text-rose-500" /> {log.emailStatus}
+                           {log.errorMessage && <span className="ml-1 text-rose-400 truncate max-w-[100px] block" title={log.errorMessage}>- {log.errorMessage}</span>}
+                         </span>
+                       )}
+                    </td>
+                    <td className="px-6 py-4 text-right">
+                       {isRead ? (
+                          <div className="flex flex-col items-end">
+                             <span className="inline-flex items-center gap-1 text-emerald-600 font-bold text-[10px] uppercase tracking-wider">
+                               <Eye className="w-3.5 h-3.5" /> Opened
+                             </span>
+                             <span className="text-[10px] text-slate-400 mt-0.5">
+                               {new Date(log.readAt!).toLocaleDateString("en-IN", { month: "short", day: "numeric" })} {new Date(log.readAt!).toLocaleTimeString("en-IN", { hour: "numeric", minute: "2-digit" })}
+                             </span>
+                          </div>
+                       ) : (
+                         isSent ? <span className="text-slate-400 text-xs font-medium">Unread</span> : <span className="text-slate-300 text-xs font-medium">-</span>
+                       )}
+                    </td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
         </div>
       </div>
     </div>
