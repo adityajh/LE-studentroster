@@ -2,6 +2,35 @@
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
 
+@font-face {
+  font-family: 'Prompt';
+  src: url('/fonts/Prompt-Regular.ttf') format('truetype');
+  font-weight: 400;
+  font-style: normal;
+}
+@font-face {
+  font-family: 'Prompt';
+  src: url('/fonts/Prompt-Medium.ttf') format('truetype');
+  font-weight: 500;
+  font-style: normal;
+}
+@font-face {
+  font-family: 'Prompt';
+  src: url('/fonts/Prompt-Bold.ttf') format('truetype');
+  font-weight: 700;
+  font-style: normal;
+}
+@font-face {
+  font-family: 'Supreme';
+  src: url('/fonts/Supreme-Variable.ttf') format('truetype');
+  font-weight: 100 900;
+  font-style: normal;
+}
+@font-face {
+  font-family: 'Acoustica';
+  src: url('/fonts/Acoustica.ttf') format('truetype');
+}
+
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
@@ -46,6 +75,16 @@
   --radius-2xl: calc(var(--radius) * 1.8);
   --radius-3xl: calc(var(--radius) * 2.2);
   --radius-4xl: calc(var(--radius) * 2.6);
+
+  /* LE Brand Colors */
+  --color-enterprise-blue: #3663AD;
+  --color-deep-blue: #160E44;
+  --color-bright-teal: #25BCBD;
+
+  /* LE Typography */
+  --font-headline: "Prompt", Arial, Helvetica, sans-serif;
+  --font-body: "Supreme", Arial, Helvetica, sans-serif;
+  --font-highlight: "Acoustica", cursive;
 }
 
 :root {

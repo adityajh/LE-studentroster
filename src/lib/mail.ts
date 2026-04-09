@@ -17,6 +17,7 @@ export type ReminderEmailPayload = {
   dueDate: Date
   reminderType: "ONE_MONTH" | "ONE_WEEK" | "DUE_DATE"
   paymentInstructions?: string
+  logId?: string
 }
 
 type SendResult =
@@ -46,7 +47,7 @@ function reminderSubject(type: ReminderEmailPayload["reminderType"], label: stri
 }
 
 function reminderHtml(payload: ReminderEmailPayload) {
-  const { studentName, installmentLabel, amount, dueDate, reminderType, paymentInstructions } = payload
+  const { studentName, installmentLabel, amount, dueDate, reminderType, paymentInstructions, logId } = payload
 
   const urgencyLabel: Record<string, string> = {
     ONE_MONTH: "📅 Due in 1 Month",
@@ -60,6 +61,10 @@ function reminderHtml(payload: ReminderEmailPayload) {
   const formattedAmount = new Intl.NumberFormat("en-IN", {
     style: "currency", currency: "INR", maximumFractionDigits: 0,
   }).format(amount)
+
+  const trackingPixel = logId
+    ? `<img src="${process.env.NEXT_PUBLIC_APP_URL}/api/reminders/track/${logId}" width="1" height="1" style="display:none;" />`
+    : ""
 
   return `
 <!DOCTYPE html>
@@ -157,6 +162,7 @@ function reminderHtml(payload: ReminderEmailPayload) {
       </td>
     </tr>
   </table>
+  ${trackingPixel}
 </body>
 </html>
 `

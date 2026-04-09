@@ -3,16 +3,6 @@ import { sendFeeReminder } from "./mail"
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
-type ReminderWindow = {
-  type: "ONE_MONTH" | "ONE_WEEK" | "DUE_DATE"
-  daysOut: number
-}
-
-const WINDOWS: ReminderWindow[] = [
-  { type: "ONE_MONTH", daysOut: 30 },
-  { type: "ONE_WEEK",  daysOut: 7  },
-  { type: "DUE_DATE",  daysOut: 0  },
-]
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -41,6 +31,11 @@ export async function processDailyReminders(): Promise<{
   const maxLookahead = new Date(today)
   maxLookahead.setDate(maxLookahead.getDate() + 31) // look up to 31 days out
 
+  // Fetch active settings from DB
+  const settings = await prisma.reminderSetting.findMany({
+    where: { isActive: true },
+  })
+
   // Fetch all non-paid installments with an email address, within our window
   const installments = await prisma.installment.findMany({
     where: {
@@ -63,18 +58,27 @@ export async function processDailyReminders(): Promise<{
   for (const inst of installments) {
     const daysUntilDue = daysDiff(today, inst.dueDate)
 
-    for (const window of WINDOWS) {
+    for (const setting of settings) {
       // Check if today falls within this reminder window
       const matches =
-        window.type === "DUE_DATE"
+        setting.type === "DUE_DATE"
           ? isSameDay(today, inst.dueDate)
-          : daysUntilDue >= window.daysOut && daysUntilDue <= window.daysOut + 1
+          : daysUntilDue >= setting.daysOut && daysUntilDue <= setting.daysOut + 1
 
       if (!matches) continue
 
       // Already sent this type of reminder for this installment?
-      const alreadySent = inst.reminderLogs.some((l) => l.type === window.type)
+      const alreadySent = inst.reminderLogs.some((l) => l.type === setting.type)
       if (alreadySent) { skipped++; continue }
+
+      // Pre-create log to get an ID for the tracking pixel
+      const log = await prisma.reminderLog.create({
+        data: {
+          installmentId: inst.id,
+          type:          setting.type as any,
+          emailStatus:   "FAILED", // default until successful
+        },
+      })
 
       // Send the email
       const result = await sendFeeReminder({
@@ -85,13 +89,14 @@ export async function processDailyReminders(): Promise<{
           ? Number(inst.amount) - Number(inst.paidAmount)
           : inst.amount),
         dueDate:          inst.dueDate,
-        reminderType:     window.type,
+        reminderType:     setting.type as any,
         paymentInstructions: process.env.REMINDER_PAYMENT_INSTRUCTIONS ?? undefined,
+        logId:            log.id,
       })
 
       // Determine email status
       let emailStatus: "SENT" | "FAILED" = "SENT"
-      let errorMessage: string | undefined
+      let errorMessage: string | null = null
 
       if ("skipped" in result) {
         // Not configured yet — log as FAILED with note but don't count as hard fail
@@ -106,14 +111,10 @@ export async function processDailyReminders(): Promise<{
         sent++
       }
 
-      // Always log the attempt
-      await prisma.reminderLog.create({
-        data: {
-          installmentId: inst.id,
-          type:          window.type,
-          emailStatus,
-          errorMessage:  errorMessage ?? null,
-        },
+      // Update log with final status
+      await prisma.reminderLog.update({
+        where: { id: log.id },
+        data: { emailStatus, errorMessage },
       })
     }
   }

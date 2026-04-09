@@ -9,6 +9,7 @@ import {
   FileText,
   Settings,
   LogOut,
+  Bell,
 } from "lucide-react"
 import { signOut } from "next-auth/react"
 
@@ -56,13 +57,13 @@ export function AppSidebar({ user }: AppSidebarProps) {
   return (
     <Sidebar
       collapsible="icon"
-      className="bg-slate-950 border-slate-800 [&_[data-slot=sidebar]]:bg-slate-950"
+      className="bg-deep-blue border-enterprise-blue/20 [&_[data-slot=sidebar]]:bg-deep-blue"
     >
       {/* Header */}
-      <SidebarHeader className="border-b border-slate-800 px-4 py-4">
+      <SidebarHeader className="border-b border-white/10 px-4 py-4">
         <div className="flex items-center gap-2">
           <Image
-            src="/le-logo-light.png"
+            src="/Let's-Enterprise-Final-Logo_LightMode.png"
             alt="Let's Enterprise"
             width={130}
             height={44}
@@ -78,9 +79,9 @@ export function AppSidebar({ user }: AppSidebarProps) {
       </SidebarHeader>
 
       {/* Main nav */}
-      <SidebarContent className="bg-slate-950">
+      <SidebarContent className="bg-deep-blue">
         <SidebarGroup>
-          <SidebarGroupLabel className="text-[10px] uppercase tracking-widest font-bold text-slate-600 px-3">
+          <SidebarGroupLabel className="text-[10px] uppercase tracking-widest font-bold text-slate-400 px-3 font-headline">
             Navigation
           </SidebarGroupLabel>
           <SidebarGroupContent>
@@ -97,8 +98,8 @@ export function AppSidebar({ user }: AppSidebarProps) {
                       isActive={isActive}
                       tooltip={item.label}
                       className={cn(
-                        "text-slate-400 hover:text-slate-100 hover:bg-slate-800 transition-colors",
-                        isActive && "bg-indigo-500/20 text-indigo-300 hover:bg-indigo-500/25 hover:text-indigo-200"
+                        "text-slate-400 hover:text-white hover:bg-white/5 transition-colors",
+                        isActive && "bg-enterprise-blue/20 text-bright-teal hover:bg-enterprise-blue/30 hover:text-bright-teal"
                       )}
                     >
                       <item.icon className="h-4 w-4" />
@@ -107,11 +108,29 @@ export function AppSidebar({ user }: AppSidebarProps) {
                   </SidebarMenuItem>
                 )
               })}
+              
+              {/* Conditional nav items */}
+              {user?.role === "ADMIN" && (
+                <SidebarMenuItem>
+                  <SidebarMenuButton
+                    render={<Link href="/reminders" />}
+                    isActive={pathname.startsWith("/reminders")}
+                    tooltip="Reminders"
+                    className={cn(
+                      "text-slate-400 hover:text-white hover:bg-white/5 transition-colors",
+                      pathname.startsWith("/reminders") && "bg-enterprise-blue/20 text-bright-teal hover:bg-enterprise-blue/30 hover:text-bright-teal"
+                    )}
+                  >
+                    <Bell className="h-4 w-4" />
+                    <span className="font-medium">Reminders</span>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              )}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
 
-        <SidebarSeparator className="bg-slate-800" />
+        <SidebarSeparator className="bg-white/10" />
 
         <SidebarGroup>
           <SidebarGroupContent>
@@ -125,8 +144,8 @@ export function AppSidebar({ user }: AppSidebarProps) {
                       isActive={isActive}
                       tooltip={item.label}
                       className={cn(
-                        "text-slate-400 hover:text-slate-100 hover:bg-slate-800 transition-colors",
-                        isActive && "bg-indigo-500/20 text-indigo-300 hover:bg-indigo-500/25 hover:text-indigo-200"
+                         "text-slate-400 hover:text-white hover:bg-white/5 transition-colors",
+                        isActive && "bg-enterprise-blue/20 text-bright-teal hover:bg-enterprise-blue/30 hover:text-bright-teal"
                       )}
                     >
                       <item.icon className="h-4 w-4" />
@@ -141,10 +160,10 @@ export function AppSidebar({ user }: AppSidebarProps) {
       </SidebarContent>
 
       {/* Footer — user info + logout */}
-      <SidebarFooter className="border-t border-slate-800 bg-slate-950 p-3">
+      <SidebarFooter className="border-t border-white/10 bg-deep-blue p-3">
         <div className="flex items-center gap-3">
           <Avatar className="h-8 w-8 shrink-0">
-            <AvatarFallback className="bg-indigo-500/20 text-indigo-300 text-xs font-bold">
+            <AvatarFallback className="bg-enterprise-blue/20 text-bright-teal text-xs font-bold">
               {initials}
             </AvatarFallback>
           </Avatar>
@@ -156,8 +175,8 @@ export function AppSidebar({ user }: AppSidebarProps) {
               className={cn(
                 "text-[10px] uppercase tracking-wider font-bold px-1.5 py-0.5 rounded",
                 user?.role === "ADMIN"
-                  ? "bg-indigo-500/20 text-indigo-400"
-                  : "bg-slate-700 text-slate-400"
+                  ? "bg-enterprise-blue/20 text-bright-teal border border-enterprise-blue/30"
+                  : "bg-white/5 text-slate-400 border border-white/10"
               )}
             >
               {user?.role ?? "STAFF"}

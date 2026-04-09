@@ -346,11 +346,22 @@ model ReminderLog {
   installmentId String
   type          ReminderType
   sentAt        DateTime     @default(now())
+  readAt        DateTime?
   emailStatus   EmailStatus
   errorMessage  String?      @db.Text
   createdAt     DateTime     @default(now())
 
   installment Installment @relation(fields: [installmentId], references: [id])
+}
+
+model ReminderSetting {
+  id        String   @id @default(cuid())
+  type      String   @unique // "ONE_MONTH", "ONE_WEEK", "DUE_DATE"
+  daysOut   Int
+  subject   String
+  bodyHtml  String   @db.Text
+  isActive  Boolean  @default(true)
+  updatedAt DateTime @updatedAt
 }
 
 // ─── API Keys ────────────────────────────────────────────────────────────────
