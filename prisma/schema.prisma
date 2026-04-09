@@ -392,3 +392,12 @@ model Payment {
   student     Student      @relation(fields: [studentId], references: [id])
   installment Installment? @relation(fields: [installmentId], references: [id])
 }
+
+// ─── System Settings ─────────────────────────────────────────────────────────
+
+model SystemSetting {
+  key       String   @id
+  value     String   @db.Text
+  updatedAt DateTime @updatedAt
+  updatedBy String?
+}

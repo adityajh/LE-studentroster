@@ -17,7 +17,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 })
   }
 
-  const { feeScheduleId, programs, offers, scholarships } = await req.json()
+  const { feeScheduleId, programs, offers, scholarships, deletedOfferIds = [], deletedScholarshipIds = [] } = await req.json()
 
   // Check schedule isn't locked
   const schedule = await prisma.feeSchedule.findUnique({
@@ -50,28 +50,60 @@ export async function POST(req: NextRequest) {
       })
     }
 
-    // Update offers
-    for (const o of offers) {
-      await tx.offer.update({
-        where: { id: o.id },
-        data: {
-          name: o.name,
-          waiverAmount: parseFloat(o.waiverAmount),
-          deadline: o.deadline ? new Date(o.deadline) : null,
-        },
-      })
+    // Delete removed items
+    if (deletedOfferIds.length > 0) {
+      await tx.offer.deleteMany({ where: { id: { in: deletedOfferIds } } })
+    }
+    if (deletedScholarshipIds.length > 0) {
+      await tx.scholarship.deleteMany({ where: { id: { in: deletedScholarshipIds } } })
     }
 
-    // Update scholarships
+    // Upsert offers
+    for (const o of offers) {
+      if (o.id.startsWith("new-")) {
+        await tx.offer.create({
+          data: {
+            feeScheduleId,
+            type: o.type,
+            name: o.name,
+            waiverAmount: parseFloat(o.waiverAmount || "0"),
+            deadline: o.deadline ? new Date(o.deadline) : null,
+          },
+        })
+      } else {
+        await tx.offer.update({
+          where: { id: o.id },
+          data: {
+            name: o.name,
+            waiverAmount: parseFloat(o.waiverAmount || "0"),
+            deadline: o.deadline ? new Date(o.deadline) : null,
+          },
+        })
+      }
+    }
+
+    // Upsert scholarships
     for (const s of scholarships) {
-      await tx.scholarship.update({
-        where: { id: s.id },
-        data: {
-          name: s.name,
-          minAmount: parseFloat(s.minAmount),
-          maxAmount: parseFloat(s.maxAmount),
-        },
-      })
+      if (s.id.startsWith("new-")) {
+        await tx.scholarship.create({
+          data: {
+            feeScheduleId,
+            category: s.category,
+            name: s.name,
+            minAmount: parseFloat(s.minAmount || "0"),
+            maxAmount: parseFloat(s.maxAmount || "0"),
+          },
+        })
+      } else {
+        await tx.scholarship.update({
+          where: { id: s.id },
+          data: {
+            name: s.name,
+            minAmount: parseFloat(s.minAmount || "0"),
+            maxAmount: parseFloat(s.maxAmount || "0"),
+          },
+        })
+      }
     }
   })
 

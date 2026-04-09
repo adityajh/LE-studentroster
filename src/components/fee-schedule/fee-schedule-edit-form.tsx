@@ -86,6 +86,9 @@ export function FeeScheduleEditForm({ batch }: { batch: Batch }) {
     }))
   )
 
+  const [deletedOfferIds, setDeletedOfferIds] = useState<string[]>([])
+  const [deletedScholarshipIds, setDeletedScholarshipIds] = useState<string[]>([])
+
   const updateProgram = (id: string, field: string, value: string) => {
     setPrograms((prev) => prev.map((p) => (p.id === id ? { ...p, [field]: value } : p)))
   }
@@ -94,8 +97,44 @@ export function FeeScheduleEditForm({ batch }: { batch: Batch }) {
     setOffers((prev) => prev.map((o) => (o.id === id ? { ...o, [field]: value } : o)))
   }
 
+  const removeOffer = (id: string) => {
+    setOffers((prev) => prev.filter((o) => o.id !== id))
+    if (!id.startsWith("new-")) setDeletedOfferIds((prev) => [...prev, id])
+  }
+
+  const addOffer = () => {
+    setOffers((prev) => [
+      ...prev,
+      {
+        id: `new-${Date.now()}`,
+        name: "",
+        type: "FULL_PAYMENT", // default enum
+        waiverAmount: "0",
+        deadline: "",
+      },
+    ])
+  }
+
   const updateScholarship = (id: string, field: string, value: string) => {
     setScholarships((prev) => prev.map((s) => (s.id === id ? { ...s, [field]: value } : s)))
+  }
+
+  const removeScholarship = (id: string) => {
+    setScholarships((prev) => prev.filter((s) => s.id !== id))
+    if (!id.startsWith("new-")) setDeletedScholarshipIds((prev) => [...prev, id])
+  }
+
+  const addScholarship = (category: string) => {
+    setScholarships((prev) => [
+      ...prev,
+      {
+        id: `new-${Date.now()}-${category}`,
+        name: "",
+        category,
+        minAmount: "0",
+        maxAmount: "0",
+      },
+    ])
   }
 
   const handleSave = async () => {
@@ -110,6 +149,8 @@ export function FeeScheduleEditForm({ batch }: { batch: Batch }) {
           programs,
           offers,
           scholarships,
+          deletedOfferIds,
+          deletedScholarshipIds,
         }),
       })
       if (!res.ok) throw new Error("Failed")
@@ -187,6 +228,12 @@ export function FeeScheduleEditForm({ batch }: { batch: Batch }) {
 
         {/* Offers */}
         <TabsContent value="offers" className="mt-4 space-y-4">
+          <div className="flex justify-between items-center mb-4">
+            <h3 className="text-sm font-semibold text-gray-700">Offers configured</h3>
+            <Button variant="outline" size="sm" onClick={addOffer}>
+              + Add Offer
+            </Button>
+          </div>
           {offers.map((offer) => (
             <Card key={offer.id} className="shadow-sm">
               <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-4">
@@ -213,16 +260,26 @@ export function FeeScheduleEditForm({ batch }: { batch: Batch }) {
                     onChange={(e) => updateOffer(offer.id, "deadline", e.target.value)}
                   />
                 </div>
+                <div className="md:col-span-3 flex justify-end">
+                  <Button variant="ghost" size="sm" className="text-red-500 hover:text-red-700 hover:bg-red-50" onClick={() => removeOffer(offer.id)}>
+                    Remove Offer
+                  </Button>
+                </div>
               </CardContent>
             </Card>
           ))}
         </TabsContent>
 
         {/* Scholarships */}
-        <TabsContent value="scholarships" className="mt-4 space-y-4">
+        <TabsContent value="scholarships" className="mt-4 space-y-6">
           {["A", "B"].map((cat) => (
             <div key={cat}>
-              <h3 className="text-sm font-semibold text-gray-700 mb-2">Category {cat}</h3>
+              <div className="flex justify-between items-center mb-2">
+                <h3 className="text-sm font-semibold text-gray-700">Category {cat}</h3>
+                <Button variant="outline" size="sm" onClick={() => addScholarship(cat)}>
+                  + Add Scholarship
+                </Button>
+              </div>
               {scholarships
                 .filter((s) => s.category === cat)
                 .map((s) => (
@@ -250,6 +307,11 @@ export function FeeScheduleEditForm({ batch }: { batch: Batch }) {
                           value={s.maxAmount}
                           onChange={(e) => updateScholarship(s.id, "maxAmount", e.target.value)}
                         />
+                      </div>
+                      <div className="md:col-span-3 flex justify-end">
+                        <Button variant="ghost" size="sm" className="text-red-500 hover:text-red-700 hover:bg-red-50" onClick={() => removeScholarship(s.id)}>
+                          Remove Scholarship
+                        </Button>
                       </div>
                     </CardContent>
                   </Card>

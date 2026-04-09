@@ -1,22 +1,29 @@
-import { Card, CardContent } from "@/components/ui/card"
+import { getSetting } from "@/app/actions/settings"
+import { ProposalSettings } from "@/components/settings/proposal-settings"
+import { Eyebrow, SoftCard } from "@/components/ui/brand"
 import { Settings } from "lucide-react"
 
-export default function SettingsPage() {
+const DEFAULT_TERMS = `1. All fees laid out in the structure above must be paid on or before the due date.
+2. In the event of withdrawal, the registration fee and deposit are strictly non-refundable.
+3. The scholarship and waiver discounts have already been deducted from your base fee computation.`
+
+export default async function SettingsPage() {
+  const terms = await getSetting("PROPOSAL_TERMS", DEFAULT_TERMS)
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-8 max-w-[1000px]">
       <div>
-        <h1 className="text-2xl font-semibold text-gray-900">Settings</h1>
-        <p className="text-sm text-muted-foreground mt-1">
-          Manage team members, email configuration, and API keys
-        </p>
+        <Eyebrow>Configuration</Eyebrow>
+        <h1 className="text-2xl font-extrabold font-headline text-slate-900 mt-0.5">System Settings</h1>
       </div>
-      <Card className="shadow-sm">
-        <CardContent className="flex flex-col items-center justify-center py-16 text-muted-foreground">
-          <Settings className="h-12 w-12 mb-3 text-gray-300" />
-          <p className="text-sm font-medium">Coming in Phase 7</p>
-          <p className="text-xs mt-1">Team management, email config, API keys</p>
-        </CardContent>
-      </Card>
+      
+      <ProposalSettings initialTerms={terms} />
+
+      <SoftCard className="p-16 text-center">
+        <Settings className="h-10 w-10 mx-auto mb-3 text-slate-300" />
+        <p className="text-sm font-semibold text-slate-500">More settings coming in Phase 7</p>
+        <p className="text-xs font-medium text-slate-400 mt-1">Team management, email config, API keys</p>
+      </SoftCard>
     </div>
   )
 }

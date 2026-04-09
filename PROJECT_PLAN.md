@@ -47,17 +47,17 @@
 - [x] **4.6** Payment receipt page at `/students/[id]/receipts/[installmentId]` — printable
 - [x] **4.7** Overdue tab on students list
 
-## Phase 5: Email Reminders
+## Phase 5: Email Reminders ✅ COMPLETE
 > Goal: Automated fee reminders via Gmail
 
-- [ ] **5.1** Gmail API / SMTP setup (App Password for Google Workspace)
-- [ ] **5.2** Email template for fee reminders (with configurable payment link)
-- [ ] **5.3** Vercel Cron job: daily reminder check
+- [x] **5.1** Gmail API / SMTP setup (App Password for Google Workspace)
+- [x] **5.2** Email template for fee reminders (with configurable payment link)
+- [x] **5.3** Vercel Cron job: daily reminder check
   - 30 days before due → ONE_MONTH reminder (if not already sent)
   - 7 days before due → ONE_WEEK reminder
   - On due date → DUE_DATE reminder
-- [ ] **5.4** ReminderLog: track sent / failed / bounced per installment
-- [ ] **5.5** Reminders tab on student detail — view full history of sent reminders
+- [x] **5.4** ReminderLog: track sent / failed / bounced per installment
+- [x] **5.5** Reminders tab on student detail — view full history of sent reminders
 
 ## Phase 6: Proposal Letter Generation
 > Goal: Generate branded student proposal letters (PDF + Word)

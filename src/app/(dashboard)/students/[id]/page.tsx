@@ -6,10 +6,11 @@ import { formatINR } from "@/lib/fee-schedule"
 import { RecordPaymentDialog } from "@/components/students/record-payment-dialog"
 import { DocumentUpload } from "@/components/students/document-upload"
 import { RemindersTab } from "@/components/students/reminders-tab"
+import { ProposalTab } from "@/components/students/proposal-tab"
 import { cn } from "@/lib/utils"
 import { auth } from "@/auth"
 import { prisma } from "@/lib/prisma"
-import { Phone, Mail, Calendar, MapPin, Users, Droplets, Pencil, Bell } from "lucide-react"
+import { Phone, Mail, Calendar, MapPin, Users, Droplets, Pencil, Bell, FileText } from "lucide-react"
 
 export default async function StudentDetailPage({
   params,
@@ -309,10 +310,22 @@ export default async function StudentDetailPage({
                   </span>
                 )}
               </Link>
+              <Link
+                href={`/students/${id}?tab=proposal`}
+                className={cn(
+                  "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all",
+                  tab === "proposal"
+                    ? "bg-indigo-50 text-indigo-700 border border-indigo-200"
+                    : "text-slate-500 hover:text-slate-700"
+                )}
+              >
+                <FileText className="h-3 w-3" />
+                Proposal
+              </Link>
             </div>
 
             {/* Installments tab */}
-            {tab !== "reminders" && (
+            {(tab === "installments" || tab === undefined) && (
               <div className="divide-y divide-slate-50">
                 {student.installments.map((inst) => {
                   const style = formatInstallmentStatus(inst.status)
@@ -380,6 +393,11 @@ export default async function StudentDetailPage({
             {/* Reminders tab */}
             {tab === "reminders" && (
               <RemindersTab logs={reminderLogs} />
+            )}
+
+            {/* Proposal tab */}
+            {tab === "proposal" && (
+              <ProposalTab studentId={student.id} />
             )}
           </div>
         </div>
