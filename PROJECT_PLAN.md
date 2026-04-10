@@ -51,13 +51,14 @@
 > Goal: Automated fee reminders via Gmail
 
 - [x] **5.1** Gmail API / SMTP setup (App Password for Google Workspace)
-- [x] **5.2** Email template for fee reminders (with configurable payment link)
+- [x] **5.2** Email template for fee reminders (configurable plain-text body with tracking pixel)
 - [x] **5.3** Vercel Cron job: daily reminder check
   - 30 days before due → ONE_MONTH reminder (if not already sent)
   - 7 days before due → ONE_WEEK reminder
   - On due date → DUE_DATE reminder
 - [x] **5.4** ReminderLog: track sent / failed / bounced per installment
 - [x] **5.5** Reminders tab on student detail — view full history of sent reminders
+- [x] **5.6** Reminders dashboard — template management, stats, upcoming pipeline (next 30 days)
 
 ## Phase 6: Proposal Letter Generation ✅ COMPLETE
 > Goal: Generate branded student proposal letters (PDF + Word)
@@ -73,26 +74,37 @@
   - Terms and conditions
 - [x] **6.2** PDF generation using `@react-pdf/renderer`
 - [x] **6.3** Word generation using `docx` library
-- [x] **6.4** Proposal page (`/students/[id]/proposal`) — preview and download both formats
+- [x] **6.4** Proposal page (`/students/[id]?tab=proposal`) — download PDF and Word
 - [x] **6.5** Configurable T&C text in Settings (admin only)
+- [x] **6.6** Dynamic Offers & Scholarships — admin can add/remove from fee schedule without code changes
 
-## Phase 7: Settings & Admin
+## Phase 7: Settings & Admin ✅ COMPLETE
 > Goal: Team management, API keys, email and system configuration
 
-- [ ] **7.1** Team members management — invite by email, assign ADMIN/STAFF role
-- [ ] **7.2** API key management — generate, revoke, view last used
-- [ ] **7.3** Email settings — sender name, payment link URL, reminder email template
-- [ ] **7.4** System settings — roll number format/prefix per batch
+- [x] **7.1** Team members view — see all users, change roles (ADMIN ↔ STAFF)
+- [x] **7.2** API key management — generate (shown once), revoke, view last-used timestamp
+- [x] **7.3** Email configuration — SMTP user, App Password, display name, From address, payment URL (all stored in DB, no redeploy required)
+- [x] **7.4** Settings hub — 4-tab layout: Team / API Keys / Email / Proposal
 
-## Phase 8: Polish & Deploy
+## Phase 8: Polish & Deploy ✅ COMPLETE
 > Goal: Production-ready, fully tested
 
-- [ ] **8.1** Error handling and loading states across all pages
-- [ ] **8.2** Mobile responsiveness check (staff may use on phone)
-- [ ] **8.3** Vercel production deploy with all env vars configured
-- [ ] **8.4** Seed production database with 2026 fee schedule (already done in Phase 1)
-- [ ] **8.5** Create initial admin user, invite staff members
-- [ ] **8.6** End-to-end test: enroll student → generate proposal → track payment → receive reminder
+- [x] **8.1** Loading skeletons on all 5 routes (Dashboard, Students, Student detail, Reminders, Settings)
+- [x] **8.2** Global error boundary (`error.tsx`) — catches runtime crashes, "Try Again" button
+- [x] **8.3** Not-found page (`not-found.tsx`) — handles invalid IDs gracefully
+- [x] **8.4** Mobile responsiveness — sidebar offcanvas drawer, tables scroll horizontally, reduced padding
+- [x] **8.5** External API completion — `GET /api/v1/students/[rollNo]` with full financial + installment data
+- [x] **8.6** Production database seeded and live on Vercel
+
+---
+
+## Pending (owner: Aditya)
+
+- [ ] Upload LE Logo / Letterhead for Proposal PDF (currently placeholder)
+- [ ] Set Gmail App Password via Settings → Email tab
+- [ ] Draft final proposal letter body text in Settings → Proposal tab
+- [ ] Refine Offers, Scholarships, and T&C wording in Fee Schedule
+- [ ] End-to-end test: enroll student → generate proposal → record payment → confirm reminder
 
 ---
 
@@ -104,6 +116,7 @@
 - **Student portal** — read-only view for students to check payment status
 - **WhatsApp reminders** — via WhatsApp Business API
 - **Multi-year fee schedule comparison** — view fee changes across batches
+- **Invite-by-email flow** — formal staff onboarding with magic link invite
 
 ---
 
@@ -112,6 +125,6 @@
 - [x] Neon PostgreSQL — project created, connection strings configured
 - [x] GitHub — repo `adityajh/LE-studentroster` created and connected
 - [x] Vercel — project renamed `le-student-roster`, env vars set, auto-deploy from `main`
-- [ ] Gmail App Password — for magic link + reminder emails (Google Account → Security → 2-Step Verification → App Passwords)
-- [ ] LE Logo files — proper PNG/SVG files for proposal letter (currently using placeholder)
-- [ ] Proposal Letter — sample/template with exact T&C wording for Phase 6
+- [ ] Gmail App Password — configure via Settings → Email (no redeploy needed)
+- [ ] LE Logo files — PNG/SVG for proposal letter header
+- [ ] Proposal Letter copy — final body text and T&C wording

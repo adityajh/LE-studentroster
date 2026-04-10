@@ -4,7 +4,39 @@ All notable changes to the LE Student Roster system are documented here.
 
 ---
 
+## [0.8.0] — 2026-04-10
+
+### Phase 8: Polish & Deploy ✅
+
+#### Added
+- **Loading skeletons** — animated pulse skeletons on all 5 main routes (Dashboard, Students list, Student detail, Reminders, Settings) so the UI never shows a blank white screen mid-load.
+- **Global error boundary** (`error.tsx`) — catches any runtime crash inside the dashboard segment and presents a clean "Something went wrong / Try Again" screen with the Vercel error digest ID for debugging.
+- **Not-found page** (`not-found.tsx`) — gracefully handles invalid student IDs or removed records with a helpful "Go to Dashboard" CTA instead of a raw 404.
+- **`GET /api/v1/students/[rollNo]`** external API endpoint — returns the full student record (profile, financials, installments, offers, scholarships) authenticated by `x-api-key` header, matching the same key infrastructure as the existing list and fee-schedule APIs.
+
+#### Fixed / Improved
+- **Mobile sidebar** — switched from `collapsible="icon"` to `collapsible="offcanvas"` so the sidebar opens as a full-screen drawer on phones instead of collapsing to icon-only.
+- **Table horizontal scroll** — students table (and all data tables) now scroll horizontally on small viewports instead of overflowing or compressing text illegibly.
+- **Responsive padding** — page content padding reduces from `p-6` on desktop to `p-4` on mobile.
+
+---
+
+## [0.7.0] — 2026-04-10
+
+### Phase 7: Settings & Admin ✅
+
+#### Added
+- **Settings hub** — rebuilt `/settings` as a 4-tab control panel: Team / API Keys / Email / Proposal.
+- **Team management** (`/settings?tab=team`) — view all registered users with role badges; change any user's role (ADMIN ↔ STAFF) inline via a dropdown; self-demotion blocked.
+- **API key management** (`/settings?tab=api-keys`) — generate cryptographically signed keys (`le_<48 hex chars>`); key is shown exactly once at creation with a copy button; keys can be revoked; last-used timestamp displayed per key.
+- **Email configuration** (`/settings?tab=email`) — SMTP Gmail address, App Password (stored in DB, not env vars), display name, From address override, and payment instructions URL; all configurable without a Vercel redeploy.
+- **Dynamic SMTP in mailer** — `src/lib/mail.ts` now reads SMTP credentials from `SystemSetting` DB first, falls back to env vars for backwards compatibility.
+- **Server actions** — `src/app/actions/team.ts` (role management) and `src/app/actions/api-keys.ts` (key generation/revocation), both admin-gated.
+
+---
+
 ## [0.6.0] — 2026-04-09
+
 
 ### Phase 6: Proposal Letter Generation & Phase 5 Reminders Upgrade ✅
 
