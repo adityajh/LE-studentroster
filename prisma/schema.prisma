@@ -286,7 +286,7 @@ model StudentFinancial {
   createdAt            DateTime        @default(now())
   updatedAt            DateTime        @updatedAt
 
-  student Student @relation(fields: [studentId], references: [id])
+  student Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
 }
 
 model StudentOffer {
@@ -296,7 +296,7 @@ model StudentOffer {
   waiverAmount Decimal  @db.Decimal(12, 2)
   createdAt    DateTime @default(now())
 
-  student Student @relation(fields: [studentId], references: [id])
+  student Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
   offer   Offer   @relation(fields: [offerId], references: [id])
 
   @@unique([studentId, offerId])
@@ -309,7 +309,7 @@ model StudentScholarship {
   amount        Decimal  @db.Decimal(12, 2)
   createdAt     DateTime @default(now())
 
-  student     Student     @relation(fields: [studentId], references: [id])
+  student     Student     @relation(fields: [studentId], references: [id], onDelete: Cascade)
   scholarship Scholarship @relation(fields: [scholarshipId], references: [id])
 
   @@unique([studentId, scholarshipId])
@@ -322,7 +322,7 @@ model StudentDeduction {
   amount      Decimal  @db.Decimal(12, 2)
   createdAt   DateTime @default(now())
 
-  student Student @relation(fields: [studentId], references: [id])
+  student Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
 }
 
 // ─── Installments ────────────────────────────────────────────────────────────
@@ -343,7 +343,7 @@ model Installment {
   createdAt     DateTime          @default(now())
   updatedAt     DateTime          @updatedAt
 
-  student      Student       @relation(fields: [studentId], references: [id])
+  student      Student       @relation(fields: [studentId], references: [id], onDelete: Cascade)
   payments     Payment[]
   reminderLogs ReminderLog[]
 }
@@ -358,7 +358,7 @@ model ReminderLog {
   errorMessage  String?      @db.Text
   createdAt     DateTime     @default(now())
 
-  installment Installment @relation(fields: [installmentId], references: [id])
+  installment Installment @relation(fields: [installmentId], references: [id], onDelete: Cascade)
 }
 
 model ReminderSetting {
@@ -399,7 +399,7 @@ model Payment {
   receiptSentAt  DateTime?
   createdAt      DateTime     @default(now())
 
-  student     Student      @relation(fields: [studentId], references: [id])
+  student     Student      @relation(fields: [studentId], references: [id], onDelete: Cascade)
   installment Installment? @relation(fields: [installmentId], references: [id])
   recordedBy  User?        @relation("RecordedPayments", fields: [recordedById], references: [id])
 }

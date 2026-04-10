@@ -114,3 +114,35 @@ export async function PATCH(
     return NextResponse.json({ error: "Failed to update record" }, { status: 500 })
   }
 }
+
+export async function DELETE(
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const session = await auth()
+  if (!session?.user) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+  }
+
+  // Get user role for enforcement
+  const dbUser = await prisma.user.findUnique({
+    where: { email: session.user.email! },
+    select: { role: true },
+  })
+  
+  if (dbUser?.role !== "ADMIN") {
+    return NextResponse.json({ error: "Only admins can delete records." }, { status: 403 })
+  }
+
+  const { id } = await params
+
+  try {
+    await prisma.student.delete({
+      where: { id }
+    })
+    return NextResponse.json({ success: true })
+  } catch (err) {
+    console.error("Delete failed:", err)
+    return NextResponse.json({ error: "Failed to delete student record" }, { status: 500 })
+  }
+}

@@ -257,6 +257,7 @@ export function EnrollForm({ batches, defaultTerms }: { batches: Batch[], defaul
   const handleNext = () => {
     if (step === 1) {
       if (!firstName || !lastName || !email || !contact) return setError("Please fill in all required student details")
+      if (!parent1Name || !parent1Phone || !parent1Email) return setError("Parent 1 details are mandatory")
       setError("")
       setStep(2)
     } else if (step === 2) {
@@ -340,12 +341,23 @@ export function EnrollForm({ batches, defaultTerms }: { batches: Batch[], defaul
 
             <div className="bg-white border border-slate-200/50 rounded-2xl shadow-sm p-6 space-y-5">
               <p className="text-[10px] uppercase tracking-widest font-bold text-slate-400">Parents & Guardian</p>
-              <div className="space-y-3">
-                <p className="text-xs font-bold text-slate-600">Parent 1</p>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                  <input value={parent1Name} onChange={(e) => setParent1Name(e.target.value)} placeholder="Full Name" className="h-10 rounded-xl border-2 border-slate-200 bg-white px-3 text-sm font-semibold text-slate-800 focus:border-indigo-500 focus:outline-none transition-all" />
-                  <input value={parent1Phone} onChange={(e) => setParent1Phone(e.target.value)} placeholder="Phone" className="h-10 rounded-xl border-2 border-slate-200 bg-white px-3 text-sm font-semibold text-slate-800 focus:border-indigo-500 focus:outline-none transition-all" />
-                  <input type="email" value={parent1Email} onChange={(e) => setParent1Email(e.target.value)} placeholder="Email" className="h-10 rounded-xl border-2 border-slate-200 bg-white px-3 text-sm font-semibold text-slate-800 focus:border-indigo-500 focus:outline-none transition-all" />
+              <div className="space-y-4">
+                <div>
+                  <p className="text-xs font-bold text-slate-600 mb-2">Parent 1 <span className="text-rose-500">*</span></p>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                    <input value={parent1Name} onChange={(e) => setParent1Name(e.target.value)} placeholder="Full Name" className="h-10 rounded-xl border-2 border-slate-200 bg-white px-3 text-sm font-semibold text-slate-800 focus:border-indigo-500 focus:outline-none transition-all" />
+                    <input value={parent1Phone} onChange={(e) => setParent1Phone(e.target.value)} placeholder="Phone" className="h-10 rounded-xl border-2 border-slate-200 bg-white px-3 text-sm font-semibold text-slate-800 focus:border-indigo-500 focus:outline-none transition-all" />
+                    <input type="email" value={parent1Email} onChange={(e) => setParent1Email(e.target.value)} placeholder="Email" className="h-10 rounded-xl border-2 border-slate-200 bg-white px-3 text-sm font-semibold text-slate-800 focus:border-indigo-500 focus:outline-none transition-all" />
+                  </div>
+                </div>
+
+                <div className="pt-4 border-t border-slate-100">
+                  <p className="text-xs font-bold text-slate-600 mb-2">Parent 2 <span className="text-slate-400 font-medium">(Optional)</span></p>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                    <input value={parent2Name} onChange={(e) => setParent2Name(e.target.value)} placeholder="Full Name" className="h-10 rounded-xl border-2 border-slate-200 bg-white px-3 text-sm font-semibold text-slate-800 focus:border-indigo-500 focus:outline-none transition-all" />
+                    <input value={parent2Phone} onChange={(e) => setParent2Phone(e.target.value)} placeholder="Phone" className="h-10 rounded-xl border-2 border-slate-200 bg-white px-3 text-sm font-semibold text-slate-800 focus:border-indigo-500 focus:outline-none transition-all" />
+                    <input type="email" value={parent2Email} onChange={(e) => setParent2Email(e.target.value)} placeholder="Email" className="h-10 rounded-xl border-2 border-slate-200 bg-white px-3 text-sm font-semibold text-slate-800 focus:border-indigo-500 focus:outline-none transition-all" />
+                  </div>
                 </div>
               </div>
             </div>
@@ -385,13 +397,29 @@ export function EnrollForm({ batches, defaultTerms }: { batches: Batch[], defaul
                 )}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {scholarshipsA.length > 0 && (
-                    <select className="h-10 rounded-xl border-2 border-slate-200 bg-white px-3 text-sm font-semibold" value={scholarshipA?.id ?? ""} onChange={(e) => {
-                      const s = scholarshipsA.find(x => x.id === e.target.value)
-                      setScholarshipA(s ? { id: s.id, amount: parseFloat(s.minAmount.toString()) } : null)
-                    }}>
-                      <option value="">Scholarship A: None</option>
-                      {scholarshipsA.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-                    </select>
+                    <div className="space-y-1.5">
+                      <label className="text-[10px] uppercase tracking-widest font-bold text-slate-400 px-1">Category A Scholarship</label>
+                      <select className="w-full h-10 rounded-xl border-2 border-slate-200 bg-white px-3 text-sm font-semibold text-slate-800 focus:border-indigo-500 focus:outline-none transition-all" value={scholarshipA?.id ?? ""} onChange={(e) => {
+                        const s = scholarshipsA.find(x => x.id === e.target.value)
+                        setScholarshipA(s ? { id: s.id, amount: parseFloat(s.minAmount.toString()) } : null)
+                      }}>
+                        <option value="">None</option>
+                        {scholarshipsA.map(s => <option key={s.id} value={s.id}>{s.name} (₹{parseFloat(s.minAmount.toString()).toLocaleString()})</option>)}
+                      </select>
+                    </div>
+                  )}
+
+                  {scholarshipsB.length > 0 && (
+                    <div className="space-y-1.5">
+                      <label className="text-[10px] uppercase tracking-widest font-bold text-slate-400 px-1">Category B Scholarship</label>
+                      <select className="w-full h-10 rounded-xl border-2 border-slate-200 bg-white px-3 text-sm font-semibold text-slate-800 focus:border-indigo-500 focus:outline-none transition-all" value={scholarshipB?.id ?? ""} onChange={(e) => {
+                        const s = scholarshipsB.find(x => x.id === e.target.value)
+                        setScholarshipB(s ? { id: s.id, amount: parseFloat(s.minAmount.toString()) } : null)
+                      }}>
+                        <option value="">None</option>
+                        {scholarshipsB.map(s => <option key={s.id} value={s.id}>{s.name} (₹{parseFloat(s.minAmount.toString()).toLocaleString()})</option>)}
+                      </select>
+                    </div>
                   )}
                 </div>
               </div>

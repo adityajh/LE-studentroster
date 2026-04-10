@@ -12,7 +12,8 @@ import { PaymentsTab } from "@/components/students/payments-tab"
 import { cn } from "@/lib/utils"
 import { auth } from "@/auth"
 import { prisma } from "@/lib/prisma"
-import { Phone, Mail, Calendar, MapPin, Users, Droplets, Pencil, Bell, FileText, History } from "lucide-react"
+import { Phone, Mail, Calendar, MapPin, Users, Droplets, Pencil, Bell, FileText, History, Trash2, AlertTriangle } from "lucide-react"
+import { DeleteStudentButton } from "@/components/students/delete-student-button"
 
 export default async function StudentDetailPage({
   params,
@@ -104,15 +105,20 @@ export default async function StudentDetailPage({
             </div>
           </div>
 
-          {canRecord && (
-            <Link
-              href={`/students/${student.id}/edit`}
-              className="flex items-center gap-1.5 h-9 px-4 rounded-xl border-2 border-slate-200 text-sm font-bold text-slate-600 hover:border-indigo-300 hover:text-indigo-600 hover:bg-indigo-50 transition-all shrink-0"
-            >
-              <Pencil className="h-3.5 w-3.5" />
-              Edit
-            </Link>
-          )}
+          <div className="flex items-center gap-2">
+            {dbUser?.role === "ADMIN" && (
+              <DeleteStudentButton studentId={student.id} studentName={student.name} />
+            )}
+            {canRecord && (
+              <Link
+                href={`/students/${student.id}/edit`}
+                className="flex items-center gap-1.5 h-9 px-4 rounded-xl border-2 border-slate-200 text-sm font-bold text-slate-600 hover:border-indigo-300 hover:text-indigo-600 hover:bg-indigo-50 transition-all shrink-0"
+              >
+                <Pencil className="h-3.5 w-3.5" />
+                Edit
+              </Link>
+            )}
+          </div>
         </div>
       </div>
 
@@ -226,18 +232,30 @@ export default async function StudentDetailPage({
                   <span className="font-medium text-slate-500">Base fee</span>
                   <span className="font-bold text-slate-700">{formatINR(fin.baseFee)}</span>
                 </div>
-                {fin.totalWaiver.toNumber() > 0 && (
-                  <div className="flex justify-between text-sm">
-                    <span className="font-medium text-slate-500">Waivers</span>
-                    <span className="font-bold text-emerald-600">−{formatINR(fin.totalWaiver)}</span>
-                  </div>
-                )}
-                {fin.totalDeduction.toNumber() > 0 && (
-                  <div className="flex justify-between text-sm">
-                    <span className="font-medium text-slate-500">Deductions</span>
-                    <span className="font-bold text-emerald-600">−{formatINR(fin.totalDeduction)}</span>
-                  </div>
-                )}
+                {student.offers.length > 0 && 
+                  student.offers.map(so => (
+                    <div key={so.id} className="flex justify-between text-[11px] pl-2 border-l-2 border-emerald-100">
+                      <span className="font-medium text-slate-400 italic">{so.offer.name}</span>
+                      <span className="font-bold text-emerald-600/70">−{formatINR(so.waiverAmount)}</span>
+                    </div>
+                  ))
+                }
+                {student.scholarships.length > 0 && 
+                  student.scholarships.map(ss => (
+                    <div key={ss.id} className="flex justify-between text-[11px] pl-2 border-l-2 border-indigo-100">
+                      <span className="font-medium text-slate-400 italic">Scholarship: {ss.scholarship.name}</span>
+                      <span className="font-bold text-indigo-600/70">−{formatINR(ss.amount)}</span>
+                    </div>
+                  ))
+                }
+                {student.deductions.length > 0 && 
+                  student.deductions.map(sd => (
+                    <div key={sd.id} className="flex justify-between text-[11px] pl-2 border-l-2 border-rose-100 italic">
+                      <span className="font-medium text-slate-400">{sd.description}</span>
+                      <span className="font-bold text-rose-600/70">−{formatINR(sd.amount)}</span>
+                    </div>
+                  ))
+                }
                 <div className="flex justify-between border-t border-slate-100 pt-2">
                   <span className="text-sm font-bold text-slate-700">Net fee</span>
                   <span className="text-base font-black text-indigo-600">{formatINR(fin.netFee)}</span>
@@ -252,29 +270,6 @@ export default async function StudentDetailPage({
                 </div>
               </div>
 
-              {student.offers.length > 0 && (
-                <div className="mt-4 pt-3 border-t border-slate-100 space-y-1">
-                  <p className="text-[10px] uppercase tracking-widest font-bold text-slate-400 mb-2">Offers Applied</p>
-                  {student.offers.map((o) => (
-                    <div key={o.id} className="flex justify-between text-xs">
-                      <span className="font-medium text-slate-500">{o.offer.name}</span>
-                      <span className="font-bold text-emerald-600">−{formatINR(o.waiverAmount)}</span>
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              {student.scholarships.length > 0 && (
-                <div className="mt-3 space-y-1">
-                  <p className="text-[10px] uppercase tracking-widest font-bold text-slate-400 mb-2">Scholarships</p>
-                  {student.scholarships.map((s) => (
-                    <div key={s.id} className="flex justify-between text-xs">
-                      <span className="font-medium text-slate-500">{s.scholarship.name}</span>
-                      <span className="font-bold text-emerald-600">−{formatINR(s.amount)}</span>
-                    </div>
-                  ))}
-                </div>
-              )}
             </div>
           )}
         </div>

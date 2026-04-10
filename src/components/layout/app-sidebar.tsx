@@ -111,20 +111,36 @@ export function AppSidebar({ user }: AppSidebarProps) {
               
               {/* Conditional nav items */}
               {user?.role === "ADMIN" && (
-                <SidebarMenuItem>
-                  <SidebarMenuButton
-                    render={<Link href="/reminders" />}
-                    isActive={pathname.startsWith("/reminders")}
-                    tooltip="Reminders"
-                    className={cn(
-                      "text-slate-400 hover:text-white hover:bg-slate-800 transition-colors",
-                      pathname.startsWith("/reminders") && "bg-slate-800 text-white shadow-sm"
-                    )}
-                  >
-                    <Bell className="h-4 w-4" />
-                    <span className="font-medium">Reminders</span>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
+                <>
+                  <SidebarMenuItem>
+                    <SidebarMenuButton
+                      render={<Link href="/reminders" />}
+                      isActive={pathname.startsWith("/reminders")}
+                      tooltip="Reminders"
+                      className={cn(
+                        "text-slate-400 hover:text-white hover:bg-slate-800 transition-colors",
+                        pathname.startsWith("/reminders") && "bg-slate-800 text-white shadow-sm"
+                      )}
+                    >
+                      <Bell className="h-4 w-4" />
+                      <span className="font-medium">Reminders</span>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                  <SidebarMenuItem>
+                    <SidebarMenuButton
+                      render={<Link href="/audit-logs" />}
+                      isActive={pathname.startsWith("/audit-logs")}
+                      tooltip="Changelog"
+                      className={cn(
+                        "text-slate-400 hover:text-white hover:bg-slate-800 transition-colors",
+                        pathname.startsWith("/audit-logs") && "bg-slate-800 text-white shadow-sm"
+                      )}
+                    >
+                      <History className="h-4 w-4" />
+                      <span className="font-medium">Changelog</span>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                </>
               )}
             </SidebarMenu>
           </SidebarGroupContent>
