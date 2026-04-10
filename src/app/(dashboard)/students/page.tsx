@@ -128,6 +128,7 @@ export default async function StudentsPage({
         </SoftCard>
       ) : (
         <SoftCard className="p-0 overflow-hidden">
+          <div className="overflow-x-auto">
           <table className="w-full">
             <thead>
               <tr className="border-b border-slate-100">
@@ -154,14 +155,14 @@ export default async function StudentsPage({
                       <span className="text-xs font-mono font-bold text-slate-400">{s.rollNo}</span>
                     </td>
                     <td className="px-5 py-3.5">
-                      <p className="text-sm font-bold text-slate-900">{s.name}</p>
+                      <p className="text-sm font-bold text-slate-900 whitespace-nowrap">{s.name}</p>
                       <p className="text-xs font-medium text-slate-400">{s.email}</p>
                     </td>
                     <td className="px-5 py-3.5">
-                      <span className="text-sm font-medium text-slate-600">{s.program.name}</span>
+                      <span className="text-sm font-medium text-slate-600 whitespace-nowrap">{s.program.name}</span>
                     </td>
                     <td className="px-5 py-3.5">
-                      <span className="text-sm font-bold text-slate-800">
+                      <span className="text-sm font-bold text-slate-800 whitespace-nowrap">
                         {s.financial ? formatINR(s.financial.netFee) : "—"}
                       </span>
                     </td>
@@ -193,7 +194,7 @@ export default async function StudentsPage({
                       </span>
                     </td>
                     <td className="px-5 py-3.5 text-right">
-                      <Link href={`/students/${s.id}`} className="text-xs font-semibold text-indigo-600 hover:text-indigo-800 transition-colors">
+                      <Link href={`/students/${s.id}`} className="text-xs font-semibold text-indigo-600 hover:text-indigo-800 transition-colors whitespace-nowrap">
                         View →
                       </Link>
                     </td>
@@ -202,6 +203,7 @@ export default async function StudentsPage({
               })}
             </tbody>
           </table>
+          </div>
         </SoftCard>
       )}
     </div>

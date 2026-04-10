@@ -44,7 +44,7 @@ export default async function DashboardLayout({
         </header>
 
         {/* Page content */}
-        <main className="flex-1 p-6 bg-slate-50 min-h-screen">{children}</main>
+        <main className="flex-1 p-4 md:p-6 bg-slate-50 min-h-screen overflow-x-auto">{children}</main>
       </SidebarInset>
     </SidebarProvider>
   )

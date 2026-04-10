@@ -56,7 +56,7 @@ export function AppSidebar({ user }: AppSidebarProps) {
 
   return (
     <Sidebar
-      collapsible="icon"
+      collapsible="offcanvas"
       className="bg-slate-950 border-slate-800 [&_[data-slot=sidebar]]:bg-slate-950"
     >
       {/* Header */}

@@ -19,7 +19,7 @@
 - [x] **2.2** Fee schedule detail page (`/fee-schedule/[year]`) — view programs, offers, scholarships
 - [x] **2.3** Fee schedule edit page (`/fee-schedule/[year]/edit`) — admin only, blocked if locked
 - [x] **2.4** Lock/unlock mechanism with confirmation dialog
-- [ ] **2.5** External API: `GET /api/v1/fee-schedule/[year]` with API key auth
+- [x] **2.5** External API: `GET /api/v1/fee-schedule/[year]` with API key auth
 
 ## Phase 3: Student Roster & Enrollment ✅ COMPLETE
 > Goal: CRUD for students, enrollment flow with fee calculation
@@ -34,7 +34,7 @@
   - Select installment type (Annual / One-Time / Custom) → generates installment schedule
 - [x] **3.4** Edit student profile — personal, address, parents, guardian (master fields locked)
 - [x] **3.5** Roll number generation (auto-increment per batch, e.g. LE2026001)
-- [ ] **3.6** External API: `GET /api/v1/students` and `GET /api/v1/students/[rollNo]` with API key auth
+- [x] **3.6** External API: `GET /api/v1/students` and `GET /api/v1/students/[rollNo]` with API key auth
 
 ## Phase 4: Payment Tracking ✅ COMPLETE
 > Goal: Record payments, auto-calculate installment status
