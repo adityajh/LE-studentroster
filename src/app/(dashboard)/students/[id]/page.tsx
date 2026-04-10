@@ -109,6 +109,10 @@ export default async function StudentDetailPage({
             {dbUser?.role === "ADMIN" && (
               <DeleteStudentButton studentId={student.id} studentName={student.name} />
             )}
+            <RecordPaymentDialog
+              studentId={student.id}
+              studentName={student.name}
+            />
             {canRecord && (
               <Link
                 href={`/students/${student.id}/edit`}
@@ -234,28 +238,41 @@ export default async function StudentDetailPage({
                 </div>
                 {student.offers.length > 0 && 
                   student.offers.map(so => (
-                    <div key={so.id} className="flex justify-between text-[11px] pl-2 border-l-2 border-emerald-100">
-                      <span className="font-medium text-slate-400 italic">{so.offer.name}</span>
-                      <span className="font-bold text-emerald-600/70">−{formatINR(so.waiverAmount)}</span>
+                    <div key={so.id} className="flex justify-between text-xs pl-2 border-l-2 border-emerald-500/30">
+                      <span className="font-semibold text-slate-500 italic">{so.offer.name}</span>
+                      <span className="font-bold text-emerald-600">−{formatINR(so.waiverAmount)}</span>
                     </div>
                   ))
                 }
                 {student.scholarships.length > 0 && 
                   student.scholarships.map(ss => (
-                    <div key={ss.id} className="flex justify-between text-[11px] pl-2 border-l-2 border-indigo-100">
-                      <span className="font-medium text-slate-400 italic">Scholarship: {ss.scholarship.name}</span>
-                      <span className="font-bold text-indigo-600/70">−{formatINR(ss.amount)}</span>
+                    <div key={ss.id} className="flex justify-between text-xs pl-2 border-l-2 border-indigo-500/30">
+                      <span className="font-semibold text-slate-500 italic">Scholarship: {ss.scholarship.name}</span>
+                      <span className="font-bold text-indigo-600">−{formatINR(ss.amount)}</span>
                     </div>
                   ))
                 }
                 {student.deductions.length > 0 && 
                   student.deductions.map(sd => (
-                    <div key={sd.id} className="flex justify-between text-[11px] pl-2 border-l-2 border-rose-100 italic">
-                      <span className="font-medium text-slate-400">{sd.description}</span>
-                      <span className="font-bold text-rose-600/70">−{formatINR(sd.amount)}</span>
+                    <div key={sd.id} className="flex justify-between text-xs pl-2 border-l-2 border-rose-500/30">
+                      <span className="font-semibold text-slate-500 italic">{sd.description}</span>
+                      <span className="font-bold text-rose-600">−{formatINR(sd.amount)}</span>
                     </div>
                   ))
                 }
+                {/* Fallback for legacy data or manual overrides not in items */}
+                {fin.totalWaiver.toNumber() > 0 && student.offers.length === 0 && student.scholarships.length === 0 && (
+                  <div className="flex justify-between text-xs pl-2 border-l-2 border-slate-200">
+                    <span className="font-semibold text-slate-500 italic">Applied Waivers</span>
+                    <span className="font-bold text-emerald-600">−{formatINR(fin.totalWaiver)}</span>
+                  </div>
+                )}
+                {fin.totalDeduction.toNumber() > 0 && student.deductions.length === 0 && (
+                  <div className="flex justify-between text-xs pl-2 border-l-2 border-slate-200">
+                    <span className="font-semibold text-slate-500 italic">Fixed Deductions</span>
+                    <span className="font-bold text-rose-600">−{formatINR(fin.totalDeduction)}</span>
+                  </div>
+                )}
                 <div className="flex justify-between border-t border-slate-100 pt-2">
                   <span className="text-sm font-bold text-slate-700">Net fee</span>
                   <span className="text-base font-black text-indigo-600">{formatINR(fin.netFee)}</span>

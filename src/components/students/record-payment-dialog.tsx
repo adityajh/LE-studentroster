@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import { useRouter } from "next/navigation"
-import { Loader2 } from "lucide-react"
+import { Loader2, Wallet } from "lucide-react"
 import {
   Dialog,
   DialogContent,
@@ -80,8 +80,11 @@ export function RecordPaymentDialog({ studentId, studentName, installment }: Pro
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger
         render={
-          <button className="text-xs font-bold text-indigo-600 hover:text-indigo-800 transition-colors px-3 py-1.5 rounded-lg border border-indigo-200 hover:bg-indigo-50">
-            {installment ? "Record Payment" : "Record Ad-hoc Payment"}
+          <button className="flex items-center gap-2 h-10 px-4 bg-indigo-50 border-2 border-indigo-100 text-indigo-600 hover:bg-indigo-100 font-bold rounded-xl transition-all shadow-sm shrink-0">
+            <Wallet className="h-4 w-4" />
+            <span className="hidden sm:inline">
+              {installment ? "Record Payment" : "Record Payment"}
+            </span>
           </button>
         }
       />

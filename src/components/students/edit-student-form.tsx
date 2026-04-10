@@ -2,8 +2,10 @@
 
 import { useState } from "react"
 import { useRouter } from "next/navigation"
-import { Loader2, ChevronDown } from "lucide-react"
+import { Loader2, ChevronDown, Plus, X, AlertTriangle } from "lucide-react"
 import { cn } from "@/lib/utils"
+
+// ─── Types ────────────────────────────────────────────────────────────────────
 
 type Student = {
   id: string
@@ -32,20 +34,23 @@ type Student = {
     totalDeduction: any
     customTerms: string | null
     isLocked: boolean
+    installmentType: string
   } | null
+  offers: { id: string; offerId: string; waiverAmount: any; offer: { id: string; name: string; type: string; waiverAmount: any } }[]
+  scholarships: { id: string; scholarshipId: string; amount: any; scholarship: { id: string; name: string; category: string } }[]
+  deductions: { id: string; description: string; amount: any }[]
 }
+
+type FeeSchedule = {
+  offers: { id: string; name: string; type: string; waiverAmount: any }[]
+  scholarships: { id: string; name: string; category: string; minAmount: any; maxAmount: any }[]
+} | null
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
 
 const BLOOD_GROUPS = ["A+", "A−", "B+", "B−", "AB+", "AB−", "O+", "O−"]
 
-function Field({
-  label,
-  children,
-  span2,
-}: {
-  label: string
-  children: React.ReactNode
-  span2?: boolean
-}) {
+function Field({ label, children, span2 }: { label: string; children: React.ReactNode; span2?: boolean }) {
   return (
     <div className={`space-y-1.5 ${span2 ? "md:col-span-2" : ""}`}>
       <label className="text-[10px] uppercase tracking-widest font-bold text-slate-400">{label}</label>
@@ -54,27 +59,36 @@ function Field({
   )
 }
 
-const inputCls =
-  "w-full h-11 rounded-xl border-2 border-slate-200 bg-white px-4 text-sm font-semibold text-slate-800 placeholder:text-slate-400 focus:border-indigo-500 focus:outline-none transition-all"
+const inputCls = "w-full h-11 rounded-xl border-2 border-slate-200 bg-white px-4 text-sm font-semibold text-slate-800 placeholder:text-slate-400 focus:border-indigo-500 focus:outline-none transition-all"
+const inputSmCls = "w-full h-10 rounded-xl border-2 border-slate-200 bg-white px-3 text-sm font-semibold text-slate-800 placeholder:text-slate-400 focus:border-indigo-500 focus:outline-none transition-all"
+const textareaCls = "w-full rounded-xl border-2 border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-800 placeholder:text-slate-400 focus:border-indigo-500 focus:outline-none transition-all resize-none"
 
-const inputSmCls =
-  "w-full h-10 rounded-xl border-2 border-slate-200 bg-white px-3 text-sm font-semibold text-slate-800 placeholder:text-slate-400 focus:border-indigo-500 focus:outline-none transition-all"
+function formatINR(n: number) {
+  if (n >= 100000) return `₹${(n / 100000).toFixed(2).replace(/\.?0+$/, "")}L`
+  if (n >= 1000) return `₹${(n / 1000).toFixed(1).replace(/\.?0+$/, "")}K`
+  return `₹${n}`
+}
 
-const textareaCls =
-  "w-full rounded-xl border-2 border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-800 placeholder:text-slate-400 focus:border-indigo-500 focus:outline-none transition-all resize-none"
+// ─── Main Form ────────────────────────────────────────────────────────────────
 
-export function EditStudentForm({ 
-  student, 
-  role 
-}: { 
-  student: Student 
-  role?: string 
+export function EditStudentForm({
+  student,
+  role,
+  feeSchedule,
+  totalPaid = 0,
+}: {
+  student: Student
+  role?: string
+  feeSchedule?: FeeSchedule
+  totalPaid?: number
 }) {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
 
-  // Personal
+  const isAdmin = role === "ADMIN"
+
+  // ── Personal ──
   const [firstName, setFirstName] = useState(student.firstName ?? student.name.split(" ")[0] ?? "")
   const [lastName, setLastName] = useState(student.lastName ?? student.name.split(" ").slice(1).join(" ") ?? "")
   const [email, setEmail] = useState(student.email ?? "")
@@ -86,16 +100,14 @@ export function EditStudentForm({
 
   const initialBaseFee = student.financial?.baseFee?.toString() ?? "0"
   const initialCustomTerms = student.financial?.customTerms ?? ""
-  const isFinancialChanged = baseFee !== initialBaseFee || customTerms !== initialCustomTerms
-  const showReasonField = (student.financial?.isLocked && isFinancialChanged)
 
-  // Address
+  // ── Address ──
   const [city, setCity] = useState(student.city ?? "")
   const [address, setAddress] = useState(student.address ?? "")
   const [localAddressDifferent, setLocalAddressDifferent] = useState(!!student.localAddress)
   const [localAddress, setLocalAddress] = useState(student.localAddress ?? "")
 
-  // Parents & Guardian
+  // ── Parents & Guardian ──
   const [parent1Name, setParent1Name] = useState(student.parent1Name ?? "")
   const [parent1Phone, setParent1Phone] = useState(student.parent1Phone ?? "")
   const [parent1Email, setParent1Email] = useState(student.parent1Email ?? "")
@@ -106,10 +118,71 @@ export function EditStudentForm({
   const [localGuardianPhone, setLocalGuardianPhone] = useState(student.localGuardianPhone ?? "")
   const [localGuardianEmail, setLocalGuardianEmail] = useState(student.localGuardianEmail ?? "")
 
+  // ── Financial Plan (Admin only) ──
+  const [selectedOfferIds, setSelectedOfferIds] = useState<string[]>(
+    student.offers.map(so => so.offerId)
+  )
+  const [selectedScholarships, setSelectedScholarships] = useState<{ scholarshipId: string; amount: number }[]>(
+    student.scholarships.map(ss => ({ scholarshipId: ss.scholarshipId, amount: Number(ss.amount) }))
+  )
+  const [deductions, setDeductions] = useState<{ description: string; amount: number }[]>(
+    student.deductions.map(d => ({ description: d.description, amount: Number(d.amount) }))
+  )
+
+  // ── Fee Preview ──
+  const baseFeeNum = parseFloat(baseFee) || 0
+  const offerWaiverTotal = (feeSchedule?.offers ?? [])
+    .filter(o => selectedOfferIds.includes(o.id))
+    .reduce((sum, o) => sum + Number(o.waiverAmount), 0)
+  const scholarshipWaiverTotal = selectedScholarships.reduce((sum, s) => sum + s.amount, 0)
+  const deductionTotal = deductions.reduce((sum, d) => sum + d.amount, 0)
+  const previewNetFee = baseFeeNum - offerWaiverTotal - scholarshipWaiverTotal - deductionTotal
+
+  const isFinancialChanged =
+    baseFee !== initialBaseFee ||
+    customTerms !== initialCustomTerms ||
+    JSON.stringify(selectedOfferIds.sort()) !== JSON.stringify(student.offers.map(o => o.offerId).sort()) ||
+    JSON.stringify(selectedScholarships) !== JSON.stringify(student.scholarships.map(ss => ({ scholarshipId: ss.scholarshipId, amount: Number(ss.amount) }))) ||
+    JSON.stringify(deductions) !== JSON.stringify(student.deductions.map(d => ({ description: d.description, amount: Number(d.amount) })))
+
+  const showReasonField = student.financial?.isLocked && isFinancialChanged
+  const isCustomPlan = student.financial?.installmentType === "CUSTOM"
+  const isOverpaid = previewNetFee < totalPaid
+
+  // ── Helpers for scholarship editing ──
+  const toggleOffer = (offerId: string) => {
+    setSelectedOfferIds(prev =>
+      prev.includes(offerId) ? prev.filter(id => id !== offerId) : [...prev, offerId]
+    )
+  }
+
+  const upsertScholarship = (scholarshipId: string, amount: number) => {
+    setSelectedScholarships(prev => {
+      const existing = prev.find(s => s.scholarshipId === scholarshipId)
+      if (existing) return prev.map(s => s.scholarshipId === scholarshipId ? { ...s, amount } : s)
+      return [...prev, { scholarshipId, amount }]
+    })
+  }
+
+  const removeScholarship = (scholarshipId: string) => {
+    setSelectedScholarships(prev => prev.filter(s => s.scholarshipId !== scholarshipId))
+  }
+
+  const addDeduction = () => setDeductions(prev => [...prev, { description: "", amount: 0 }])
+  const removeDeduction = (i: number) => setDeductions(prev => prev.filter((_, idx) => idx !== i))
+  const updateDeduction = (i: number, field: "description" | "amount", value: string | number) => {
+    setDeductions(prev => prev.map((d, idx) => idx === i ? { ...d, [field]: value } : d))
+  }
+
+  // ── Submit ──
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!firstName || !lastName || !email || !contact) {
       setError("First name, last name, email and contact are required.")
+      return
+    }
+    if (isAdmin && isOverpaid) {
+      setError(`Cannot save: new Net Fee (${formatINR(previewNetFee)}) is less than amount already paid (${formatINR(totalPaid)}). Remove some offers/scholarships or increase the base fee first.`)
       return
     }
     setLoading(true)
@@ -136,8 +209,11 @@ export function EditStudentForm({
           localGuardianName:  localGuardianName  || null,
           localGuardianPhone: localGuardianPhone || null,
           localGuardianEmail: localGuardianEmail || null,
-          baseFee:            role === "ADMIN" ? baseFee : undefined,
-          customTerms:        role === "ADMIN" ? customTerms : undefined,
+          baseFee:            isAdmin ? baseFee : undefined,
+          customTerms:        isAdmin ? customTerms : undefined,
+          offers:             isAdmin && isFinancialChanged ? selectedOfferIds : undefined,
+          scholarships:       isAdmin && isFinancialChanged ? selectedScholarships : undefined,
+          deductions:         isAdmin && isFinancialChanged ? deductions : undefined,
           changeReason:       showReasonField ? changeReason : undefined,
         }),
       })
@@ -158,7 +234,6 @@ export function EditStudentForm({
       {/* Section 1 — Personal Details */}
       <div className="bg-white border border-slate-200/50 rounded-2xl shadow-sm p-6 space-y-4">
         <p className="text-[10px] uppercase tracking-widest font-bold text-slate-400">Personal Details</p>
-
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <Field label="First Name">
             <input value={firstName} onChange={(e) => setFirstName(e.target.value)} required placeholder="Rahul" className={inputCls} />
@@ -269,53 +344,205 @@ export function EditStudentForm({
           </div>
         )}
       </div>
-      
+
       {/* Section 3 — Admin Overrides (Admin only) */}
-      {role === "ADMIN" && (
-        <div className="bg-indigo-50 border border-indigo-200 rounded-2xl p-6 space-y-4 shadow-sm">
+      {isAdmin && (
+        <div className="bg-indigo-50 border border-indigo-200 rounded-2xl p-6 space-y-6 shadow-sm">
           <div className="flex items-center gap-2">
-            <p className="text-[10px] uppercase tracking-widest font-bold text-indigo-400">Admin Overrides</p>
+            <p className="text-[10px] uppercase tracking-widest font-bold text-indigo-400">Admin — Financial Plan</p>
             <span className="bg-indigo-600 text-[8px] text-white px-1.5 py-0.5 rounded-full font-black uppercase tracking-tighter">Admin Only</span>
           </div>
+
+          {/* Base Fee */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Field label="Base Fee Override">
-              <input 
-                type="number" 
-                value={baseFee} 
-                onChange={(e) => setBaseFee(e.target.value)} 
-                placeholder="0" 
-                className="w-full h-11 rounded-xl border-2 border-indigo-200 bg-white px-4 text-sm font-semibold text-slate-800 focus:border-indigo-500 focus:outline-none transition-all shadow-[0_4px_12px_rgba(79,70,229,0.08)]" 
+              <input
+                type="number"
+                value={baseFee}
+                onChange={(e) => setBaseFee(e.target.value)}
+                placeholder="0"
+                className="w-full h-11 rounded-xl border-2 border-indigo-200 bg-white px-4 text-sm font-semibold text-slate-800 focus:border-indigo-500 focus:outline-none transition-all"
               />
             </Field>
-            <Field label="Custom Terms & Conditions" span2>
-              <textarea
-                value={customTerms}
-                onChange={(e) => setCustomTerms(e.target.value)}
-                rows={4}
-                className={cn(textareaCls, "border-indigo-100 bg-white/50")}
-                placeholder="Student-specific terms..."
-              />
-            </Field>
-            {showReasonField && (
-              <Field label="Reason for Change (Required)" span2>
-                <input
-                  value={changeReason}
-                  onChange={(e) => setChangeReason(e.target.value)}
-                  required
-                  placeholder="e.g. Scholarship correction, fee restructure authorized by principal"
-                  className={cn(inputCls, "border-amber-300 bg-amber-50 focus:border-amber-500")}
-                />
-              </Field>
-            )}
-            <div className="flex flex-col justify-end pb-1 md:col-span-2">
-              <p className="text-[10px] font-bold text-indigo-500/60 uppercase tracking-widest leading-tight">Caution</p>
-              <p className="text-[10.5px] font-medium text-indigo-600 leading-tight">
-                {student.financial?.isLocked 
-                  ? "This record is LOCKED. Any changes to financial fields will be logged with the provided reason."
-                  : "Modifying these fields will automatically re-calculate the net fee based on existing discounts."}
+
+            {/* Net Fee Preview */}
+            <div className="flex flex-col justify-end">
+              <p className="text-[10px] uppercase tracking-widest font-bold text-indigo-400 mb-1">Net Fee Preview</p>
+              <p className={cn("text-2xl font-black", isOverpaid ? "text-rose-600" : "text-indigo-700")}>
+                {formatINR(Math.max(0, previewNetFee))}
               </p>
+              {totalPaid > 0 && (
+                <p className="text-xs font-medium text-slate-500 mt-0.5">
+                  Paid so far: <strong className="text-slate-700">{formatINR(totalPaid)}</strong>
+                </p>
+              )}
+              {isOverpaid && (
+                <p className="text-xs font-bold text-rose-600 mt-1 flex items-center gap-1">
+                  <AlertTriangle className="h-3 w-3" />
+                  Net fee is below amount already paid
+                </p>
+              )}
             </div>
           </div>
+
+          {/* Offers */}
+          {feeSchedule && feeSchedule.offers.length > 0 && (
+            <div className="space-y-2">
+              <p className="text-xs font-bold text-slate-600">Offers Applied</p>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                {feeSchedule.offers.map(offer => (
+                  <label
+                    key={offer.id}
+                    className={cn(
+                      "flex items-center gap-3 px-3 py-2.5 rounded-xl border-2 cursor-pointer transition-all",
+                      selectedOfferIds.includes(offer.id)
+                        ? "border-emerald-400 bg-emerald-50"
+                        : "border-slate-200 bg-white hover:border-slate-300"
+                    )}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={selectedOfferIds.includes(offer.id)}
+                      onChange={() => toggleOffer(offer.id)}
+                      className="w-4 h-4 accent-emerald-600 shrink-0"
+                    />
+                    <div className="min-w-0">
+                      <p className="text-xs font-bold text-slate-700 truncate">{offer.name}</p>
+                      <p className="text-[10px] font-semibold text-emerald-600">−{formatINR(Number(offer.waiverAmount))}</p>
+                    </div>
+                  </label>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Scholarships */}
+          {feeSchedule && feeSchedule.scholarships.length > 0 && (
+            <div className="space-y-2">
+              <p className="text-xs font-bold text-slate-600">Scholarships</p>
+              <div className="space-y-2">
+                {feeSchedule.scholarships.map(sc => {
+                  const applied = selectedScholarships.find(s => s.scholarshipId === sc.id)
+                  return (
+                    <div
+                      key={sc.id}
+                      className={cn(
+                        "flex items-center gap-3 px-3 py-2.5 rounded-xl border-2 transition-all",
+                        applied ? "border-indigo-400 bg-indigo-50" : "border-slate-200 bg-white"
+                      )}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={!!applied}
+                        onChange={() => applied ? removeScholarship(sc.id) : upsertScholarship(sc.id, Number(sc.minAmount))}
+                        className="w-4 h-4 accent-indigo-600 shrink-0"
+                      />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs font-bold text-slate-700">
+                          <span className="text-[9px] font-black uppercase tracking-widest text-indigo-400 mr-1.5">Cat {sc.category}</span>
+                          {sc.name}
+                        </p>
+                        <p className="text-[10px] text-slate-400">Range: {formatINR(Number(sc.minAmount))} – {formatINR(Number(sc.maxAmount))}</p>
+                      </div>
+                      {applied && (
+                        <input
+                          type="number"
+                          value={applied.amount}
+                          min={Number(sc.minAmount)}
+                          max={Number(sc.maxAmount)}
+                          onChange={(e) => upsertScholarship(sc.id, Number(e.target.value))}
+                          className="w-24 h-9 rounded-lg border-2 border-indigo-200 bg-white px-2 text-sm font-bold text-indigo-700 focus:border-indigo-500 focus:outline-none text-right"
+                        />
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* Manual Deductions */}
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <p className="text-xs font-bold text-slate-600">Manual Deductions</p>
+              <button
+                type="button"
+                onClick={addDeduction}
+                className="flex items-center gap-1 text-[10px] font-bold text-indigo-600 hover:text-indigo-800 transition-colors"
+              >
+                <Plus className="h-3 w-3" />
+                Add Deduction
+              </button>
+            </div>
+            {deductions.length === 0 && (
+              <p className="text-xs text-slate-400 italic px-1">No manual deductions applied.</p>
+            )}
+            {deductions.map((d, i) => (
+              <div key={i} className="flex items-center gap-2">
+                <input
+                  value={d.description}
+                  onChange={(e) => updateDeduction(i, "description", e.target.value)}
+                  placeholder="Description (e.g. Covid Support)"
+                  className="flex-1 h-10 rounded-xl border-2 border-rose-200 bg-white px-3 text-sm font-semibold text-slate-800 placeholder:text-slate-400 focus:border-rose-400 focus:outline-none transition-all"
+                />
+                <input
+                  type="number"
+                  value={d.amount}
+                  min={0}
+                  onChange={(e) => updateDeduction(i, "amount", Number(e.target.value))}
+                  className="w-28 h-10 rounded-xl border-2 border-rose-200 bg-white px-3 text-sm font-bold text-rose-700 focus:border-rose-400 focus:outline-none text-right"
+                />
+                <button
+                  type="button"
+                  onClick={() => removeDeduction(i)}
+                  className="h-10 w-10 flex items-center justify-center rounded-xl border-2 border-rose-200 text-rose-400 hover:text-rose-600 hover:border-rose-400 transition-all"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+            ))}
+          </div>
+
+          {/* Custom T&C */}
+          <Field label="Custom Terms & Conditions" span2>
+            <textarea
+              value={customTerms}
+              onChange={(e) => setCustomTerms(e.target.value)}
+              rows={4}
+              className={cn(textareaCls, "border-indigo-100 bg-white/50")}
+              placeholder="Student-specific terms..."
+            />
+          </Field>
+
+          {/* Custom plan warning */}
+          {isCustomPlan && isFinancialChanged && (
+            <div className="flex items-start gap-2 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3">
+              <AlertTriangle className="h-4 w-4 text-amber-500 shrink-0 mt-0.5" />
+              <p className="text-xs font-semibold text-amber-700">
+                This student is on a <strong>Custom</strong> installment plan. After saving, please manually adjust the installment amounts to reflect the new Net Fee — the system will not auto-redistribute them.
+              </p>
+            </div>
+          )}
+
+          {/* Reason for change */}
+          {showReasonField && (
+            <Field label="Reason for Change (Required)" span2>
+              <input
+                value={changeReason}
+                onChange={(e) => setChangeReason(e.target.value)}
+                required
+                placeholder="e.g. Late scholarship approved, fee restructure authorized by principal"
+                className={cn(inputCls, "border-amber-300 bg-amber-50 focus:border-amber-500")}
+              />
+            </Field>
+          )}
+
+          {/* Info */}
+          <p className="text-[10.5px] font-medium text-indigo-600 leading-snug">
+            {student.financial?.isLocked
+              ? "⚠️ This record is LOCKED. All financial changes require a reason and will be logged to the Changelog."
+              : "Changes to financial fields will automatically recalculate the Net Fee and redistribute future installments."}
+          </p>
         </div>
       )}
 
@@ -328,7 +555,7 @@ export function EditStudentForm({
       <div className="flex items-center gap-3">
         <button
           type="submit"
-          disabled={loading}
+          disabled={loading || (isAdmin && isOverpaid)}
           className="h-12 px-8 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold rounded-xl transition-all flex items-center gap-2"
         >
           {loading && <Loader2 className="h-4 w-4 animate-spin" />}

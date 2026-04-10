@@ -3,6 +3,7 @@ import Link from "next/link"
 import { auth } from "@/auth"
 import { getStudentById } from "@/lib/students"
 import { EditStudentForm } from "@/components/students/edit-student-form"
+import { prisma } from "@/lib/prisma"
 
 export default async function EditStudentPage({
   params,
@@ -16,6 +17,21 @@ export default async function EditStudentPage({
   const { id } = await params
   const student = await getStudentById(id)
   if (!student) notFound()
+
+  // Fetch the fee schedule for this student's batch (offers + scholarships)
+  const feeSchedule = await prisma.feeSchedule.findUnique({
+    where: { batchId: student.batchId },
+    include: {
+      offers: { orderBy: { waiverAmount: "desc" } },
+      scholarships: { orderBy: [{ category: "asc" }, { minAmount: "asc" }] },
+    },
+  })
+
+  // Compute total already paid across all installments
+  const totalPaid = student.payments.reduce(
+    (sum, p) => sum + p.amount.toNumber(),
+    0
+  )
 
   return (
     <div className="max-w-[800px] space-y-8">
@@ -55,7 +71,12 @@ export default async function EditStudentPage({
         </div>
       </div>
 
-      <EditStudentForm student={student as any} role={session.user.role} />
+      <EditStudentForm
+        student={student as any}
+        role={role}
+        feeSchedule={feeSchedule as any}
+        totalPaid={totalPaid}
+      />
     </div>
   )
 }
