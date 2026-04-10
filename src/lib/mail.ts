@@ -1,13 +1,17 @@
 import nodemailer from "nodemailer"
+import { prisma } from "./prisma"
 
-// ── Reminder email config (separate from auth SMTP) ──────────────────────────
+// ── Reminder email config ─────────────────────────────────────────────────────
 //
-// Set these in .env.local / Vercel env vars when ready.
-// If not set, sendFeeReminder() will return { skipped: true } without throwing.
+// Priority order for SMTP credentials:
+//   1. SystemSetting in DB (set via /settings → Email tab)
+//   2. Environment variables (REMINDER_GMAIL_USER / REMINDER_GMAIL_APP_PASSWORD)
 //
-// REMINDER_EMAIL_FROM   — e.g. "LE Fees <fees@letsent.com>"
-// REMINDER_GMAIL_USER   — the Gmail account
-// REMINDER_GMAIL_APP_PASSWORD — App Password for that account
+// SystemSetting keys used:
+//   SMTP_USER         — Gmail address to send from
+//   SMTP_PASSWORD     — Gmail App Password
+//   SMTP_FROM_NAME    — Display name, e.g. "Let's Enterprise Fees"
+//   SMTP_FROM_EMAIL   — Override "from" address (defaults to SMTP_USER)
 
 export type ReminderEmailPayload = {
   to: string
@@ -26,16 +30,39 @@ type SendResult =
   | { ok: false; error: string }
   | { ok: false; skipped: true; reason: string }
 
-function createTransporter() {
-  const user = process.env.REMINDER_GMAIL_USER
-  const pass = process.env.REMINDER_GMAIL_APP_PASSWORD
+type SmtpConfig = {
+  user: string
+  pass: string
+  fromName: string
+  fromEmail: string
+}
+
+async function getSmtpConfig(): Promise<SmtpConfig | null> {
+  // Fetch all four keys in one query
+  const settings = await prisma.systemSetting.findMany({
+    where: { key: { in: ["SMTP_USER", "SMTP_PASSWORD", "SMTP_FROM_NAME", "SMTP_FROM_EMAIL"] } },
+  })
+  const map: Record<string, string> = {}
+  for (const s of settings) map[s.key] = s.value
+
+  // DB config takes priority; fall back to env vars
+  const user = map["SMTP_USER"] || process.env.REMINDER_GMAIL_USER || ""
+  const pass = map["SMTP_PASSWORD"] || process.env.REMINDER_GMAIL_APP_PASSWORD || ""
+
   if (!user || !pass) return null
 
+  const fromName = map["SMTP_FROM_NAME"] || "Let's Enterprise"
+  const fromEmail = map["SMTP_FROM_EMAIL"] || user
+
+  return { user, pass, fromName, fromEmail }
+}
+
+function createTransporter(config: SmtpConfig) {
   return nodemailer.createTransport({
     host: "smtp.gmail.com",
     port: 465,
     secure: true,
-    auth: { user, pass },
+    auth: { user: config.user, pass: config.pass },
   })
 }
 
@@ -61,8 +88,8 @@ function reminderHtml(payload: ReminderEmailPayload) {
     ? `<img src="${process.env.NEXT_PUBLIC_APP_URL}/api/reminders/track/${logId}" width="1" height="1" style="display:none;opacity:0;border:0;outline:none;" />`
     : ""
 
-  // Safely inject text and convert newlines to `<br/>`
-  let htmlMessage = bodyText
+  // Safely inject text and convert newlines to <br/>
+  const htmlMessage = bodyText
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;")
     .replace(/{{studentName}}/g, studentName)
@@ -71,8 +98,8 @@ function reminderHtml(payload: ReminderEmailPayload) {
     .replace(/{{amount}}/g, formattedAmount)
     .replace(/\n/g, "<br/>")
 
-  const pmInstructions = paymentInstructions 
-    ? `<p style="margin-top:20px; font-weight:bold;">Payment Instructions:</p><p>${paymentInstructions.replace(/\n/g, '<br/>')}</p>` 
+  const pmInstructions = paymentInstructions
+    ? `<p style="margin-top:20px; font-weight:bold;">Payment Instructions:</p><p>${paymentInstructions.replace(/\n/g, "<br/>")}</p>`
     : ""
 
   return `
@@ -94,23 +121,26 @@ function reminderHtml(payload: ReminderEmailPayload) {
 }
 
 export async function sendFeeReminder(payload: ReminderEmailPayload): Promise<SendResult> {
-  const transporter = createTransporter()
-
-  if (!transporter) {
-    return {
-      ok: false,
-      skipped: true,
-      reason: "REMINDER_GMAIL_USER or REMINDER_GMAIL_APP_PASSWORD not configured",
-    }
-  }
-
   if (!payload.to) {
     return { ok: false, skipped: true, reason: "Student has no email address" }
   }
 
+  const config = await getSmtpConfig()
+
+  if (!config) {
+    return {
+      ok: false,
+      skipped: true,
+      reason: "SMTP not configured. Set SMTP_USER and SMTP_PASSWORD in Settings → Email, or via environment variables.",
+    }
+  }
+
+  const transporter = createTransporter(config)
+  const from = `${config.fromName} <${config.fromEmail}>`
+
   try {
     const info = await transporter.sendMail({
-      from: process.env.REMINDER_EMAIL_FROM || process.env.REMINDER_GMAIL_USER,
+      from,
       to: payload.to,
       subject: reminderSubject(payload.reminderType, payload.installmentLabel),
       html: reminderHtml(payload),
