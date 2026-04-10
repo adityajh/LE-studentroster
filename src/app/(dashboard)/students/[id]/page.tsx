@@ -12,7 +12,7 @@ import { PaymentsTab } from "@/components/students/payments-tab"
 import { cn } from "@/lib/utils"
 import { auth } from "@/auth"
 import { prisma } from "@/lib/prisma"
-import { Phone, Mail, Calendar, MapPin, Users, Droplets, Pencil, Bell, FileText, History, Trash2, AlertTriangle } from "lucide-react"
+import { Phone, Mail, Calendar, MapPin, Users, Droplets, Pencil, Bell, FileText, History, Trash2, AlertTriangle, Wallet } from "lucide-react"
 import { DeleteStudentButton } from "@/components/students/delete-student-button"
 
 export default async function StudentDetailPage({

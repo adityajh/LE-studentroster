@@ -159,6 +159,3 @@ export default async function ReceiptPage({
     </div>
   )
 }
-    </div>
-  )
-}

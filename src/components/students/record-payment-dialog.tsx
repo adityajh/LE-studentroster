@@ -78,11 +78,13 @@ export function RecordPaymentDialog({ studentId, studentName, installment }: Pro
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <button className="text-xs font-bold text-indigo-600 hover:text-indigo-800 transition-colors px-3 py-1.5 rounded-lg border border-indigo-200 hover:bg-indigo-50">
-          {installment ? "Record Payment" : "Record Ad-hoc Payment"}
-        </button>
-      </DialogTrigger>
+      <DialogTrigger
+        render={
+          <button className="text-xs font-bold text-indigo-600 hover:text-indigo-800 transition-colors px-3 py-1.5 rounded-lg border border-indigo-200 hover:bg-indigo-50">
+            {installment ? "Record Payment" : "Record Ad-hoc Payment"}
+          </button>
+        }
+      />
       <DialogContent className="max-w-md rounded-2xl border-slate-200">
         <DialogHeader>
           <p className="text-[10px] uppercase tracking-widest font-bold text-slate-400">Payment</p>
