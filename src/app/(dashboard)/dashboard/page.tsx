@@ -3,7 +3,7 @@ import { prisma } from "@/lib/prisma"
 import { formatINR } from "@/lib/fee-schedule"
 import { formatInstallmentStatus } from "@/lib/students"
 import { cn } from "@/lib/utils"
-import { Users, AlertTriangle, Clock, CheckCircle, TrendingUp, IndianRupee } from "lucide-react"
+import { Users, AlertTriangle, Clock, CheckCircle, TrendingUp, IndianRupee, Send } from "lucide-react"
 import { SoftCard, Eyebrow } from "@/components/ui/brand"
 
 async function getDashboardData() {
@@ -13,6 +13,7 @@ async function getDashboardData() {
 
   const [
     totalStudents,
+    pendingOffers,
     overdueInstallments,
     dueThisMonthInstallments,
     paidThisMonthInstallments,
@@ -20,6 +21,7 @@ async function getDashboardData() {
     recentPayments,
   ] = await Promise.all([
     prisma.student.count({ where: { status: "ACTIVE" } }),
+    prisma.student.count({ where: { status: "OFFERED" } }),
 
     // Overdue: full details for list
     prisma.installment.findMany({
@@ -85,6 +87,7 @@ async function getDashboardData() {
 
   return {
     totalStudents,
+    pendingOffers,
     overdueInstallments,
     overdueAmount,
     overdueCount: overdueInstallments.length,
@@ -109,6 +112,14 @@ export default async function DashboardPage() {
       icon: Users,
       accent: "indigo" as const,
       href: "/students",
+    },
+    {
+      eyebrow: "Pending Offers",
+      value: d.pendingOffers,
+      sub: d.pendingOffers > 0 ? "Awaiting registration payment" : "No open offers",
+      icon: Send,
+      accent: "violet" as const,
+      href: "/students?tab=offered",
     },
     {
       eyebrow: "Overdue",
@@ -138,9 +149,10 @@ export default async function DashboardPage() {
   ]
 
   const accentStyles = {
-    indigo:  { icon: "bg-indigo-500/10 text-indigo-600",  value: "text-indigo-600" },
-    rose:    { icon: "bg-rose-500/10 text-rose-600",      value: "text-rose-600" },
-    amber:   { icon: "bg-amber-500/10 text-amber-600",    value: "text-amber-600" },
+    indigo:  { icon: "bg-indigo-500/10 text-indigo-600",   value: "text-indigo-600" },
+    violet:  { icon: "bg-violet-500/10 text-violet-600",   value: "text-violet-600" },
+    rose:    { icon: "bg-rose-500/10 text-rose-600",       value: "text-rose-600" },
+    amber:   { icon: "bg-amber-500/10 text-amber-600",     value: "text-amber-600" },
     emerald: { icon: "bg-emerald-500/10 text-emerald-600", value: "text-emerald-600" },
   }
 
@@ -154,7 +166,7 @@ export default async function DashboardPage() {
       </div>
 
       {/* Stat cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
         {statCards.map((card) => {
           const styles = accentStyles[card.accent]
           const inner = (

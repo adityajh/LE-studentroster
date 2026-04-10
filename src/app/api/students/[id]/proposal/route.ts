@@ -38,7 +38,7 @@ export async function GET(
   const globalTerms = await getSetting("PROPOSAL_TERMS", "1. All fees laid out in the structure above must be paid on or before the due date.")
   const terms = student.financial?.customTerms || globalTerms
 
-  const filename = `Proposal_${student.rollNo}_${student.name.replace(/\s+/g, "_")}`
+  const filename = `Proposal_${student.rollNo ?? "Draft"}_${student.name.replace(/\s+/g, "_")}`
 
   if (format === "pdf") {
     // Return PDF

@@ -182,7 +182,7 @@ export function ProposalDocument({ student, terms }: ProposalDocumentProps) {
           </View>
           <View style={styles.row}>
             <Text style={styles.label}>Roll No:</Text>
-            <Text style={styles.value}>{student.rollNo}</Text>
+            <Text style={styles.value}>{student.rollNo ?? "Pending Enrolment"}</Text>
           </View>
           <View style={styles.row}>
             <Text style={styles.label}>Program:</Text>

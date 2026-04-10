@@ -38,7 +38,7 @@ export async function generateDocxProposal(student: FullStudent, terms: string):
           children: [new TextRun("Student Details")],
         }),
         new Paragraph({ text: `Name: ${student.name}` }),
-        new Paragraph({ text: `Roll No: ${student.rollNo}` }),
+        new Paragraph({ text: `Roll No: ${student.rollNo ?? "Pending Enrolment"}` }),
         new Paragraph({ text: `Program: ${student.program.name} (Batch ${student.batch.year})` }),
         
         new Paragraph({ text: "" }),

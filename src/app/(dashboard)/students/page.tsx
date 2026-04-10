@@ -5,7 +5,7 @@ import { buttonVariants } from "@/lib/button-variants"
 import { cn } from "@/lib/utils"
 import { auth } from "@/auth"
 import { prisma } from "@/lib/prisma"
-import { UserPlus, Users } from "lucide-react"
+import { UserPlus, Users, Send } from "lucide-react"
 import { formatStudentStatus } from "@/lib/students"
 import { Eyebrow, SoftCard, AdminCard } from "@/components/ui/brand"
 
@@ -16,6 +16,7 @@ export default async function StudentsPage({
 }) {
   const { search, status, batch, tab } = await searchParams
   const isOverdueTab = tab === "overdue"
+  const isOfferedTab = tab === "offered"
 
   const session = await auth()
   const dbUser = await prisma.user.findUnique({
@@ -24,42 +25,54 @@ export default async function StudentsPage({
   })
   const isAdmin = dbUser?.role === "ADMIN"
 
+  // Count pending offers for tab badge
+  const offeredCount = await prisma.student.count({ where: { status: "OFFERED" } })
+
   const students = await getStudents({
     search,
-    status: isOverdueTab ? undefined : status,
+    status: isOverdueTab ? undefined : isOfferedTab ? "OFFERED" : status,
     batchYear: batch ? parseInt(batch) : undefined,
     overdueOnly: isOverdueTab,
   })
 
+  const now = new Date()
+
   const tabs = [
     { label: "All Students", value: undefined },
+    { label: `Offers${offeredCount > 0 ? ` (${offeredCount})` : ""}`, value: "offered" },
     { label: "Overdue", value: "overdue" },
   ]
 
   return (
     <div className="space-y-6 max-w-[1200px]">
       {/* Header */}
-      <div className="flex items-start justify-between">
+      <div className="flex items-start justify-between gap-4">
         <div>
           <Eyebrow>Master Roster</Eyebrow>
           <h1 className="text-2xl font-extrabold text-slate-900 mt-0.5 font-headline">Students</h1>
           <p className="text-sm font-medium text-slate-500 mt-1">
             {students.length} student{students.length !== 1 ? "s" : ""}
-            {isOverdueTab ? " with overdue payments" : " enrolled"}
+            {isOverdueTab ? " with overdue payments" : isOfferedTab ? " with pending offers" : " total"}
           </p>
         </div>
         {isAdmin && (
-          <Link href="/students/new" className={cn(buttonVariants(), "bg-indigo-600 hover:bg-indigo-700 text-white")}>
-            <UserPlus className="h-4 w-4 mr-2" />
-            Enroll Student
-          </Link>
+          <div className="flex items-center gap-2">
+            <Link href="/students/offer/new" className={cn(buttonVariants(), "bg-violet-600 hover:bg-violet-700 text-white")}>
+              <Send className="h-4 w-4 mr-2" />
+              Create Offer
+            </Link>
+            <Link href="/students/new" className={cn(buttonVariants(), "bg-indigo-600 hover:bg-indigo-700 text-white")}>
+              <UserPlus className="h-4 w-4 mr-2" />
+              Enroll Directly
+            </Link>
+          </div>
         )}
       </div>
 
       {/* Tabs */}
       <div className="flex gap-1 bg-slate-100 rounded-xl p-1 w-fit">
         {tabs.map((t) => {
-          const active = isOverdueTab ? t.value === "overdue" : !t.value
+          const active = isOfferedTab ? t.value === "offered" : isOverdueTab ? t.value === "overdue" : !t.value
           const href = t.value ? `/students?tab=${t.value}` : "/students"
           return (
             <Link
@@ -79,7 +92,7 @@ export default async function StudentsPage({
       </div>
 
       {/* Filters — only on All tab */}
-      {!isOverdueTab && (
+      {!isOverdueTab && !isOfferedTab && (
         <form method="GET" className="flex gap-3 flex-wrap">
           <input
             name="search"
@@ -143,16 +156,25 @@ export default async function StudentsPage({
             </thead>
             <tbody>
               {students.map((s) => {
+                const isOffered = s.status === "OFFERED"
                 const overdueCount = s.installments.filter((i) => i.status === "OVERDUE").length
                 const partialCount = s.installments.filter((i) => i.status === "PARTIAL").length
                 const paidCount = s.installments.filter((i) => i.status === "PAID" || i.status === "PARTIAL").length
                 const totalCount = s.installments.length
                 const statusStyle = formatStudentStatus(s.status)
 
+                // Offer expiry countdown
+                const offerExpiry = s.offerExpiresAt ? new Date(s.offerExpiresAt) : null
+                const daysLeft = offerExpiry
+                  ? Math.ceil((offerExpiry.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
+                  : null
+
                 return (
                   <tr key={s.id} className="border-b border-slate-50 hover:bg-slate-50/70 transition-colors">
                     <td className="px-5 py-3.5">
-                      <span className="text-xs font-mono font-bold text-slate-400">{s.rollNo}</span>
+                      <span className="text-xs font-mono font-bold text-slate-400">
+                        {s.rollNo ?? <span className="text-violet-400 font-sans">—</span>}
+                      </span>
                     </td>
                     <td className="px-5 py-3.5">
                       <p className="text-sm font-bold text-slate-900 whitespace-nowrap">{s.name}</p>
@@ -167,23 +189,47 @@ export default async function StudentsPage({
                       </span>
                     </td>
                     <td className="px-5 py-3.5">
-                      <div className="flex items-center gap-1.5 flex-wrap">
-                        {overdueCount > 0 && (
-                          <span className="inline-flex items-center gap-1 bg-rose-500/10 text-rose-700 border border-rose-500/20 text-[10px] uppercase tracking-wider font-bold px-2 py-0.5 rounded">
-                            {overdueCount} overdue
-                          </span>
-                        )}
-                        {partialCount > 0 && (
-                          <span className="inline-flex items-center gap-1 bg-orange-500/10 text-orange-700 border border-orange-500/20 text-[10px] uppercase tracking-wider font-bold px-2 py-0.5 rounded">
-                            {partialCount} partial
-                          </span>
-                        )}
-                        {overdueCount === 0 && partialCount === 0 && (
-                          <span className="text-xs font-medium text-slate-400">
-                            {paidCount}/{totalCount} paid
-                          </span>
-                        )}
-                      </div>
+                      {isOffered ? (
+                        <div className="flex items-center gap-1.5">
+                          {daysLeft === null ? (
+                            <span className="text-xs font-medium text-slate-400">No email sent</span>
+                          ) : daysLeft < 0 ? (
+                            <span className="inline-flex items-center gap-1 bg-slate-500/10 text-slate-600 border border-slate-500/20 text-[10px] uppercase tracking-wider font-bold px-2 py-0.5 rounded">
+                              Expired
+                            </span>
+                          ) : daysLeft <= 1 ? (
+                            <span className="inline-flex items-center gap-1 bg-rose-500/10 text-rose-700 border border-rose-500/20 text-[10px] uppercase tracking-wider font-bold px-2 py-0.5 rounded">
+                              Expires today
+                            </span>
+                          ) : daysLeft <= 3 ? (
+                            <span className="inline-flex items-center gap-1 bg-amber-500/10 text-amber-700 border border-amber-500/20 text-[10px] uppercase tracking-wider font-bold px-2 py-0.5 rounded">
+                              {daysLeft}d left
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 bg-violet-500/10 text-violet-700 border border-violet-500/20 text-[10px] uppercase tracking-wider font-bold px-2 py-0.5 rounded">
+                              {daysLeft}d left
+                            </span>
+                          )}
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          {overdueCount > 0 && (
+                            <span className="inline-flex items-center gap-1 bg-rose-500/10 text-rose-700 border border-rose-500/20 text-[10px] uppercase tracking-wider font-bold px-2 py-0.5 rounded">
+                              {overdueCount} overdue
+                            </span>
+                          )}
+                          {partialCount > 0 && (
+                            <span className="inline-flex items-center gap-1 bg-orange-500/10 text-orange-700 border border-orange-500/20 text-[10px] uppercase tracking-wider font-bold px-2 py-0.5 rounded">
+                              {partialCount} partial
+                            </span>
+                          )}
+                          {overdueCount === 0 && partialCount === 0 && (
+                            <span className="text-xs font-medium text-slate-400">
+                              {paidCount}/{totalCount} paid
+                            </span>
+                          )}
+                        </div>
+                      )}
                     </td>
                     <td className="px-5 py-3.5">
                       <span className={cn(

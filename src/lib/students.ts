@@ -1,8 +1,10 @@
 import { prisma } from "./prisma"
+import { $Enums } from "@prisma/client"
 
 export async function generateRollNo(batchYear: number): Promise<string> {
+  // Count only enrolled students (those with a rollNo assigned)
   const count = await prisma.student.count({
-    where: { batch: { year: batchYear } },
+    where: { batch: { year: batchYear }, rollNo: { not: null } },
   })
   const seq = String(count + 1).padStart(3, "0")
   return `LE${batchYear}${seq}`
@@ -18,7 +20,7 @@ export async function getStudents(opts?: {
     where: {
       ...(opts?.batchYear ? { batch: { year: opts.batchYear } } : {}),
       ...(opts?.status && opts.status !== "ALL"
-        ? { status: opts.status as "ACTIVE" | "ALUMNI" | "WITHDRAWN" }
+        ? { status: opts.status as $Enums.StudentStatus }
         : {}),
       ...(opts?.search
         ? {
@@ -99,8 +101,9 @@ export function formatInstallmentStatus(status: string) {
 
 export function formatStudentStatus(status: string) {
   const map: Record<string, { label: string; classes: string }> = {
-    ACTIVE: { label: "Active", classes: "bg-emerald-500/10 text-emerald-700 border-emerald-500/20" },
-    ALUMNI: { label: "Alumni", classes: "bg-indigo-500/10 text-indigo-700 border-indigo-500/20" },
+    OFFERED:   { label: "Offered",   classes: "bg-violet-500/10 text-violet-700 border-violet-500/20" },
+    ACTIVE:    { label: "Active",    classes: "bg-emerald-500/10 text-emerald-700 border-emerald-500/20" },
+    ALUMNI:    { label: "Alumni",    classes: "bg-indigo-500/10 text-indigo-700 border-indigo-500/20" },
     WITHDRAWN: { label: "Withdrawn", classes: "bg-slate-500/10 text-slate-600 border-slate-500/20" },
   }
   return map[status] ?? { label: status, classes: "bg-slate-500/10 text-slate-600 border-slate-500/20" }

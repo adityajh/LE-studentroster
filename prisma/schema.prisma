@@ -70,6 +70,7 @@ enum Role {
 }
 
 enum StudentStatus {
+  OFFERED
   ACTIVE
   ALUMNI
   WITHDRAWN
@@ -212,7 +213,7 @@ model Scholarship {
 
 model Student {
   id             String        @id @default(cuid())
-  rollNo         String        @unique
+  rollNo         String?       @unique  // null until enrolment confirmed (status=OFFERED)
   name           String
   firstName      String?
   lastName       String?
@@ -234,7 +235,16 @@ model Student {
   batchId        String
   programId      String
   enrollmentDate DateTime      @default(now())
-  status         StudentStatus @default(ACTIVE)
+  status         StudentStatus @default(OFFERED)
+
+  // Offer-window tracking
+  offerSentAt           DateTime?
+  offerExpiresAt        DateTime?
+  offerReminder1SentAt  DateTime?
+  offerReminder2SentAt  DateTime?
+  offerRevised          Boolean   @default(false)
+  onboardingEmailSentAt DateTime?
+
   createdAt      DateTime      @default(now())
   updatedAt      DateTime      @updatedAt
 

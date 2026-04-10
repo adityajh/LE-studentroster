@@ -9,10 +9,12 @@ import { RemindersTab } from "@/components/students/reminders-tab"
 import { ProposalTab } from "@/components/students/proposal-tab"
 import { HistoryTab } from "@/components/students/history-tab"
 import { PaymentsTab } from "@/components/students/payments-tab"
+import { ConfirmEnrolmentDialog } from "@/components/students/confirm-enrolment-dialog"
+import { SendOfferButton } from "@/components/students/send-offer-button"
 import { cn } from "@/lib/utils"
 import { auth } from "@/auth"
 import { prisma } from "@/lib/prisma"
-import { Phone, Mail, Calendar, MapPin, Users, Droplets, Pencil, Bell, FileText, History, Trash2, AlertTriangle, Wallet } from "lucide-react"
+import { Phone, Mail, Calendar, MapPin, Users, Droplets, Pencil, Bell, FileText, History, Trash2, AlertTriangle, Wallet, Clock } from "lucide-react"
 import { DeleteStudentButton } from "@/components/students/delete-student-button"
 
 export default async function StudentDetailPage({
@@ -61,8 +63,55 @@ export default async function StudentDetailPage({
   const hasAddress = student.city || student.address || student.localAddress
   const hasParents = student.parent1Name || student.parent2Name || student.localGuardianName
 
+  // Offer expiry calculations
+  const isOffered = student.status === "OFFERED"
+  const offerExpiry = student.offerExpiresAt ? new Date(student.offerExpiresAt) : null
+  const daysLeft = offerExpiry
+    ? Math.ceil((offerExpiry.getTime() - Date.now()) / (1000 * 60 * 60 * 24))
+    : null
+  const offerExpired = daysLeft !== null && daysLeft < 0
+
   return (
     <div className="space-y-8 max-w-[1000px]">
+      {/* Offer expiry banner */}
+      {isOffered && offerExpiry && (
+        <div className={cn(
+          "flex items-start gap-3 rounded-xl px-4 py-3 border",
+          offerExpired
+            ? "bg-rose-50 border-rose-200 text-rose-800"
+            : daysLeft !== null && daysLeft <= 1
+            ? "bg-amber-50 border-amber-200 text-amber-800"
+            : "bg-violet-50 border-violet-200 text-violet-800"
+        )}>
+          <Clock className="h-4 w-4 mt-0.5 shrink-0" />
+          <div className="text-sm">
+            {offerExpired ? (
+              <span>
+                <strong>Offer window closed</strong> — the 7-day confirmation deadline passed on{" "}
+                {offerExpiry.toLocaleDateString("en-IN", { day: "numeric", month: "short" })}.
+                {student.offerRevised
+                  ? " Revised offer (without 7-day waiver) has been sent."
+                  : " The 7-day waiver will be revoked automatically overnight."}
+              </span>
+            ) : (
+              <span>
+                <strong>Offer expires in {daysLeft} day{daysLeft !== 1 ? "s" : ""}</strong>
+                {" "}({offerExpiry.toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })})
+                {student.offerSentAt
+                  ? ` — offer email sent ${new Date(student.offerSentAt).toLocaleDateString("en-IN", { day: "numeric", month: "short" })}`
+                  : " — offer email not yet sent"}
+              </span>
+            )}
+          </div>
+        </div>
+      )}
+      {isOffered && !offerExpiry && (
+        <div className="flex items-center gap-3 rounded-xl px-4 py-3 border bg-violet-50 border-violet-200 text-violet-800 text-sm">
+          <Clock className="h-4 w-4 shrink-0" />
+          <span><strong>Offer pending</strong> — send the offer email to start the 7-day confirmation window.</span>
+        </div>
+      )}
+
       {/* Header */}
       <div>
         <div className="flex items-center gap-2 mb-1">
@@ -71,7 +120,7 @@ export default async function StudentDetailPage({
           </Link>
           <span className="text-slate-300">/</span>
           <span className="text-[10px] uppercase tracking-widest font-bold text-slate-500 font-mono">
-            {student.rollNo}
+            {student.rollNo ?? "Pending Enrolment"}
           </span>
         </div>
 
@@ -98,18 +147,33 @@ export default async function StudentDetailPage({
                 <span className="bg-indigo-500/10 text-indigo-700 border border-indigo-500/20 text-[10px] uppercase tracking-wider font-bold px-2.5 py-1 rounded-lg">
                   {student.program.name}
                 </span>
-                <span className="bg-slate-500/10 text-slate-600 border border-slate-500/20 text-[10px] uppercase tracking-wider font-bold px-2.5 py-1 rounded-lg font-mono">
-                  {student.rollNo}
-                </span>
+                {student.rollNo && (
+                  <span className="bg-slate-500/10 text-slate-600 border border-slate-500/20 text-[10px] uppercase tracking-wider font-bold px-2.5 py-1 rounded-lg font-mono">
+                    {student.rollNo}
+                  </span>
+                )}
               </div>
             </div>
           </div>
 
           <div className="flex items-center gap-2">
-            <RecordPaymentDialog
-              studentId={student.id}
-              studentName={student.name}
-            />
+            {isOffered ? (
+              <>
+                <SendOfferButton
+                  studentId={student.id}
+                  alreadySent={!!student.offerSentAt}
+                />
+                <ConfirmEnrolmentDialog
+                  studentId={student.id}
+                  studentName={student.name}
+                />
+              </>
+            ) : (
+              <RecordPaymentDialog
+                studentId={student.id}
+                studentName={student.name}
+              />
+            )}
             {canRecord && (
               <Link
                 href={`/students/${student.id}/edit`}

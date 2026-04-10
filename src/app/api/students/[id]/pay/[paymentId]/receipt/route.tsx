@@ -43,7 +43,7 @@ export async function GET(
   const totalPaid = allPayments.reduce((sum, p) => sum + Number(p.amount), 0)
   const netFee = Number(student.financial?.netFee ?? 0)
 
-  const filename = `Receipt_${student.rollNo}_${payment.id.slice(-6).toUpperCase()}`
+  const filename = `Receipt_${student.rollNo ?? student.id.slice(-6)}_${payment.id.slice(-6).toUpperCase()}`
 
   // Return PDF stream
   const stream = await renderToStream(
@@ -101,7 +101,7 @@ export async function POST(
   const totalPaid = allPayments.reduce((sum, p) => sum + Number(p.amount), 0)
   const netFee = Number(student.financial?.netFee ?? 0)
 
-  const receiptNo = `RCP-${student.rollNo}-${payment.id.slice(-6).toUpperCase()}`
+  const receiptNo = `RCP-${student.rollNo ?? student.id.slice(-6)}-${payment.id.slice(-6).toUpperCase()}`
 
   try {
     // Generate PDF buffer

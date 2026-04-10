@@ -181,7 +181,7 @@ export async function POST(req: NextRequest) {
         localGuardianEmail: localGuardianEmail ?? null,
         batchId,
         programId,
-        status: "ACTIVE",
+        status: "ACTIVE" as const,  // direct-enrol path always creates ACTIVE students
       },
     })
 

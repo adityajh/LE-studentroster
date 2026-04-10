@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createHash } from "crypto"
 import { prisma } from "@/lib/prisma"
+import { $Enums } from "@prisma/client"
 
 export async function GET(req: NextRequest) {
   const apiKey = req.headers.get("x-api-key")
@@ -28,7 +29,7 @@ export async function GET(req: NextRequest) {
   const students = await prisma.student.findMany({
     where: {
       ...(batchYear ? { batch: { year: batchYear } } : {}),
-      ...(status ? { status: status as "ACTIVE" | "ALUMNI" | "WITHDRAWN" } : {}),
+      ...(status ? { status: status as $Enums.StudentStatus } : {}),
       ...(rollNo ? { rollNo: { contains: rollNo, mode: "insensitive" } } : {}),
     },
     include: {

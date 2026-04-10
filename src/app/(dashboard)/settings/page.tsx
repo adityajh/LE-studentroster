@@ -9,9 +9,10 @@ import { ProposalSettings } from "@/components/settings/proposal-settings"
 import { TeamTab } from "@/components/settings/team-tab"
 import { ApiKeysTab } from "@/components/settings/api-keys-tab"
 import { EmailTab } from "@/components/settings/email-tab"
+import { OfferSettings } from "@/components/settings/offer-settings"
 import { Eyebrow } from "@/components/ui/brand"
 import { cn } from "@/lib/utils"
-import { Users, Key, Mail, FileText } from "lucide-react"
+import { Users, Key, Mail, FileText, Send } from "lucide-react"
 
 const DEFAULT_TERMS = `1. All fees laid out in the structure above must be paid on or before the due date.
 2. In the event of withdrawal, the registration fee and deposit are strictly non-refundable.
@@ -22,6 +23,7 @@ const TABS = [
   { id: "api-keys", label: "API Keys", icon: Key },
   { id: "email",    label: "Email",    icon: Mail },
   { id: "proposal", label: "Proposal", icon: FileText },
+  { id: "offers",   label: "Offers",   icon: Send },
 ] as const
 
 type Tab = typeof TABS[number]["id"]
@@ -41,11 +43,22 @@ export default async function SettingsPage({
   if (dbUser?.role !== "ADMIN") redirect("/dashboard")
 
   // Load data for each tab
-  const [members, apiKeys, emailSettings, terms] = await Promise.all([
+  const [members, apiKeys, emailSettings, terms, offerSettings] = await Promise.all([
     getTeamMembers(),
     getApiKeys(),
     getSettings(["SMTP_USER", "SMTP_PASSWORD", "SMTP_FROM_NAME", "SMTP_FROM_EMAIL", "REMINDER_PAYMENT_URL"]),
     getSetting("PROPOSAL_TERMS", DEFAULT_TERMS),
+    getSettings([
+      "OFFER_EMAIL_BODY",
+      "OFFER_LETTER_BODY",
+      "OFFER_REMINDER_1_BODY",
+      "OFFER_REMINDER_2_BODY",
+      "ONBOARDING_EMAIL_BODY",
+      "BANK_DETAILS",
+      "ONBOARDING_HANDBOOK_URL",
+      "ONBOARDING_WELCOME_KIT_URL",
+      "ONBOARDING_YEAR1_URL",
+    ]),
   ])
 
   const activeTab = (TABS.some(t => t.id === tab) ? tab : "team") as Tab
@@ -100,6 +113,22 @@ export default async function SettingsPage({
 
         {activeTab === "proposal" && (
           <ProposalSettings initialTerms={terms} />
+        )}
+
+        {activeTab === "offers" && (
+          <OfferSettings
+            initial={{
+              offerEmailBody:     offerSettings["OFFER_EMAIL_BODY"] || "",
+              offerLetterBody:    offerSettings["OFFER_LETTER_BODY"] || "",
+              offerReminder1Body: offerSettings["OFFER_REMINDER_1_BODY"] || "",
+              offerReminder2Body: offerSettings["OFFER_REMINDER_2_BODY"] || "",
+              onboardingEmailBody:offerSettings["ONBOARDING_EMAIL_BODY"] || "",
+              bankDetails:        offerSettings["BANK_DETAILS"] || "",
+              handbookUrl:        offerSettings["ONBOARDING_HANDBOOK_URL"] || "",
+              welcomeKitUrl:      offerSettings["ONBOARDING_WELCOME_KIT_URL"] || "",
+              year1Url:           offerSettings["ONBOARDING_YEAR1_URL"] || "",
+            }}
+          />
         )}
       </div>
     </div>

@@ -98,6 +98,209 @@
 
 ---
 
+## Phase 9: Polish & Audit ✅ COMPLETE
+> Goal: Guided onboarding, financial locking, full audit trail, payment journal
+
+- [x] **9.1** 3-step enrollment wizard with guided onboarding UX
+- [x] **9.2** Financial plan locking (lock after enrollment, admin can unlock)
+- [x] **9.3** StudentAuditLog — mandatory "reason for change" on any edit, full history tab
+- [x] **9.4** Global audit log page (`/audit-logs`)
+- [x] **9.5** Itemised fees display on student detail
+- [x] **9.6** Delete student (soft audit, admin only)
+- [x] **9.7** Mandatory parent contacts on enrollment
+- [x] **9.8** Collapsible financial plan panel on student detail
+
+---
+
+## Phase 10: Offer → Enrolment Workflow
+
+> Goal: Replace the "enroll first" model with the real admissions workflow:
+> **Offer → Receive ₹50K Payment → Enrol → Onboard**
+>
+> A student exists in the system from the moment an offer is made — not just after enrolment.
+> The ₹50K registration payment is the trigger that converts a candidate into an enrolled student.
+
+---
+
+### 10A — Schema & Data Alignment
+
+**Schema migration (`prisma/schema.prisma`)**
+
+1. Add `OFFERED` to `StudentStatus` enum (sits before `ACTIVE`).
+2. Make `Student.rollNo` nullable (`String? @unique`) — assigned at enrolment confirmation, not at offer stage.
+3. Add offer-window tracking fields to `Student`:
+   ```
+   offerSentAt          DateTime?   // when offer email was first sent
+   offerExpiresAt       DateTime?   // = offerSentAt + 7 days
+   offerReminder1SentAt DateTime?   // Day-3 nudge
+   offerReminder2SentAt DateTime?   // Day-6 nudge
+   offerRevised         Boolean     @default(false)  // true once 7-day waiver revoked on Day 8
+   onboardingEmailSentAt DateTime?  // sent after ₹50K confirmed
+   ```
+4. Remove `REFERRAL` from `OfferType` enum (handled as scholarship instead — see data step below). Keep existing `StudentOffer` rows intact; referral simply won't appear as an offer type going forward.
+
+**Fee schedule data alignment (seed / admin edit)**
+
+Update the 2026 batch fee schedule to exactly match the UG-MED PDF:
+
+| Item | Change |
+|---|---|
+| Year 1 due date | `7 August 2026` (was generic `1 Jul 2026`) |
+| Year 2 due date | `15 May 2027` (was `1 Jul 2027`) |
+| Year 3 due date | `15 May 2028` (was `1 Jul 2028`) |
+| Early bird — 30 Mar 2026 | ₹1,00,000 — deadline `30 Mar 2026` |
+| Early bird — 31 May 2026 | ₹50,000 — deadline `31 May 2026` |
+| Full 3-year payment | Store as ₹1,35,000 (10% of ₹13,50,000); add note in `conditions` JSON |
+| Scholarship: Young Innovator | ₹25,000–₹1,00,000 (Cat A) |
+| Scholarship: Entrepreneurial Spirit | ₹0–₹1,00,000 (Cat A) |
+| Scholarship: Leadership & Community Impact | ₹15,000–₹50,000 (Cat A) |
+| Scholarship: Athlete Excellence | ₹15,000–₹50,000 (Cat A) — conditions JSON stores state/national/international tiers |
+| Scholarship: Creative Talent | ₹15,000–₹50,000 (Cat A) |
+| Scholarship: Referral | ₹25,000 per referral (Cat B) — **applied to referring student's record, not the new student's** |
+| Scholarship: Defence | ₹25,000 (Cat B) |
+| Scholarship: Single Parent | ₹25,000 (Cat B) |
+| Scholarship: Learning Differences | ₹25,000 (Cat B) |
+| Remove: NIOS scholarship | Was in seed, not in 2026 PDF |
+
+---
+
+### 10B — Offer Flow (UI + API)
+
+**New "Create Offer" form** (`/students/new/offer` or modal from students list)
+
+A lightweight 2-step form — only what's needed at offer stage:
+- Step 1: Name, email, phone, city
+- Step 2: Program selection + applicable offers + scholarships + intended installment type
+
+On submit:
+- Creates `Student` with `status = OFFERED`, no `rollNo`, no installments
+- Sets `offerExpiresAt = now + 7 days`
+- Offers/scholarships saved to `StudentOffer` / `StudentScholarship`
+- Financial totals computed and saved to `StudentFinancial` (same as enrolment, minus installments)
+- Redirects to student detail with "Send Offer Email" prompt
+
+**Preserve direct-enrol path**
+
+The existing 3-step enrollment wizard (`/students/new`) remains for cases where the student is already confirmed (retroactive entries, walk-ins). It creates an `ACTIVE` student with roll number and installments immediately, same as today.
+
+**Student detail page — OFFERED state**
+
+When `status = OFFERED`, show:
+- Offer expiry countdown banner (e.g. "Offer expires in 4 days — ₹25K waiver at risk")
+- "Send Offer Email" button (disabled after first send; shows "Resend" after)
+- "Confirm Enrolment" primary CTA — opens a dialog to record the ₹50K registration payment
+
+**Offer email** (`sendOfferEmail()` in `mail.ts`)
+
+- Body: configurable template (SystemSetting key `OFFER_EMAIL_BODY`) with merge fields `{{studentName}}`, `{{programName}}`, `{{offerExpiryDate}}`, `{{bankDetails}}`
+- Default body matches `OfferEmail.md`
+- Attachment 1: **Offer Letter PDF** (new template — see 10D)
+- Attachment 2 (optional, staff can toggle): **Proposal PDF** — the existing Phase 6 proposal generator, adapted to run pre-enrolment (without roll number/installments; shows fee breakdown with scholarships/offers applied). Replaces the manual "FinalPaymentScheme" breakdown currently sent as a separate email.
+- On send: sets `Student.offerSentAt = now`, `offerExpiresAt = now + 7 days`
+
+---
+
+### 10C — 7-Day Window Automation (extend existing cron)
+
+Extend `/api/cron/update-statuses` (already runs daily) to process `OFFERED` students:
+
+| Day | Condition | Action |
+|---|---|---|
+| Day 3 | `offerReminder1SentAt` is null AND `offerRevised` is false | Send Reminder 1 email: "Your offer expires in 4 days — seat not yet secured" |
+| Day 6 | `offerReminder2SentAt` is null AND `offerRevised` is false | Send Reminder 2 email: "Offer expires tomorrow — ₹25K waiver will be lost" |
+| Day 8+ | `offerRevised` is false AND status is still `OFFERED` | Revoke ₹25K ACCEPTANCE_7DAY offer: remove from `StudentOffer`, recalculate `StudentFinancial` net fee, set `offerRevised = true`, send Revised Offer Email (see below) |
+
+**Reminder email** (`sendOfferReminderEmail()`)
+- Configurable template (SystemSetting keys `OFFER_REMINDER_1_BODY`, `OFFER_REMINDER_2_BODY`)
+- Merge fields: `{{studentName}}`, `{{daysLeft}}`, `{{offerExpiryDate}}`
+
+**Revised Offer Email** (`sendRevisedOfferEmail()`)
+- Same format as offer email but without the 7-day waiver
+- Attachment: regenerated Offer Letter PDF (and optionally Proposal PDF) reflecting the revised net fee
+- Subject line: "Updated Offer — Working BBA 2026"
+
+---
+
+### 10D — Offer Letter PDF
+
+**New PDF template** (`src/lib/offer-letter-generator.tsx`)
+
+Generates the formal offer letter matching `OfferEmailAttachmentLetter.pdf`:
+- LE letterhead / logo
+- Student name, program name, batch year
+- "About Working BBA" section (static body text, configurable via SystemSetting `OFFER_LETTER_BODY`)
+- Program Expectations section (static)
+- Acknowledgement line at bottom
+
+This is intentionally simpler than the Proposal PDF — it's a welcome/admission letter, not a financial document. The financial breakdown is handled by the existing Proposal PDF (Phase 6).
+
+---
+
+### 10E — Enrolment Confirmation & Onboarding
+
+**"Confirm Enrolment" action** (on OFFERED student detail)
+
+Dialog flow:
+1. Staff records ₹50K registration payment (amount, date, mode, reference no)
+2. On confirm:
+   - Payment saved to `Payment` table
+   - `StudentFinancial.registrationPaid = true`, `registrationPaidDate = now`
+   - Roll number generated (existing `generateRollNo()`)
+   - Installments created (existing logic from enrol route)
+   - `Student.status → ACTIVE`
+   - `StudentFinancial.isLocked = true`
+   - Prompt: "Send onboarding email now?" (yes/no)
+
+**Onboarding email** (`sendOnboardingEmail()`)
+- Body: configurable template (SystemSetting key `ONBOARDING_EMAIL_BODY`)
+- Default body matches `OnboardingEmail.rtf`
+- Merge fields: `{{studentName}}`, `{{programName}}`
+- Attachment: Proposal PDF (existing Phase 6 generator — now has roll number and installment schedule)
+- Configurable resource links stored in SystemSettings: `ONBOARDING_HANDBOOK_URL`, `ONBOARDING_WELCOME_KIT_URL`, `ONBOARDING_YEAR1_URL`
+- On send: sets `Student.onboardingEmailSentAt = now`
+- "Send Onboarding Email" button also available manually on student detail if `onboardingEmailSentAt` is null
+
+---
+
+### 10F — Settings Additions
+
+New entries in **Settings → Email** tab:
+
+| Key | Label | Default |
+|---|---|---|
+| `OFFER_EMAIL_BODY` | Offer email body | (from OfferEmail.md) |
+| `OFFER_LETTER_BODY` | Offer letter body (PDF) | (from OfferEmailAttachmentLetter.pdf) |
+| `OFFER_REMINDER_1_BODY` | Day-3 reminder body | Generic nudge |
+| `OFFER_REMINDER_2_BODY` | Day-6 reminder body | Urgency nudge |
+| `ONBOARDING_EMAIL_BODY` | Onboarding email body | (from OnboardingEmail.rtf) |
+| `BANK_DETAILS` | Payment bank details block | ICICI / Storysells details |
+| `ONBOARDING_HANDBOOK_URL` | Handbook PDF link | — |
+| `ONBOARDING_WELCOME_KIT_URL` | Welcome Kit link | — |
+| `ONBOARDING_YEAR1_URL` | Year 1 program flow link | — |
+
+---
+
+### 10G — Students List Updates
+
+- Add **"Offered"** tab alongside All / Active / Overdue
+- Each offered student row shows a **"X days left"** badge (yellow → red as expiry nears)
+- Expired offers (Day 8+, `offerRevised = true`) shown with a "Revised" badge
+- Dashboard: add "Pending Offers" count card
+
+---
+
+### 10H — Owner Actions (before going live)
+
+- [ ] Configure SMTP in Settings → Email if not already done
+- [ ] Set bank payment details (`BANK_DETAILS` in Settings → Email)
+- [ ] Set onboarding resource links (`ONBOARDING_HANDBOOK_URL`, etc.) in Settings → Email
+- [ ] Review and customise offer email body template
+- [ ] Review and customise offer letter PDF body text
+- [ ] Update fee schedule due dates and scholarship amounts to match UG-MED PDF
+- [ ] Verify referral scholarship appears as Category B and test adding it to a referring student
+
+---
+
 ## Pending (owner: Aditya)
 
 - [ ] Upload LE Logo / Letterhead for Proposal PDF (currently placeholder)

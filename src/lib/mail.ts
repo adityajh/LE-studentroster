@@ -218,3 +218,222 @@ export async function sendReceiptEmail(payload: ReceiptEmailPayload): Promise<Se
     }
   }
 }
+
+// ── Offer emails ──────────────────────────────────────────────────────────────
+
+export type OfferEmailPayload = {
+  to: string[]
+  cc?: string[]
+  studentName: string
+  programName: string
+  batchYear: number
+  offerExpiryDate: Date
+  bodyText: string          // from SystemSetting OFFER_EMAIL_BODY
+  bankDetails: string       // from SystemSetting BANK_DETAILS
+  offerLetterPdf: Buffer    // generated offer letter PDF
+  proposalPdf?: Buffer      // optional fee breakdown proposal PDF
+}
+
+function offerEmailHtml(payload: OfferEmailPayload) {
+  const expiry = payload.offerExpiryDate.toLocaleDateString("en-IN", {
+    day: "numeric", month: "long", year: "numeric",
+  })
+  const body = payload.bodyText
+    .replace(/{{studentName}}/g, payload.studentName)
+    .replace(/{{programName}}/g, payload.programName)
+    .replace(/{{batchYear}}/g, String(payload.batchYear))
+    .replace(/{{offerExpiryDate}}/g, expiry)
+    .replace(/</g, "&lt;").replace(/>/g, "&gt;")
+    .replace(/\n/g, "<br/>")
+
+  const bankHtml = payload.bankDetails
+    .replace(/</g, "&lt;").replace(/>/g, "&gt;")
+    .replace(/\n/g, "<br/>")
+
+  return `<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1.0" /></head>
+<body style="margin:0;padding:24px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:#333;font-size:15px;line-height:1.6;background:#fff;">
+  <div>${body}</div>
+  <div style="margin-top:20px;padding:16px;background:#f4f7fc;border-radius:6px;font-size:14px;">
+    <strong>Payment Details:</strong><br/>${bankHtml}
+  </div>
+  <p style="margin-top:20px;font-size:13px;color:#555;">Your official Offer Letter is attached to this email.</p>
+</body>
+</html>`
+}
+
+export async function sendOfferEmail(payload: OfferEmailPayload): Promise<SendResult> {
+  if (!payload.to.length) return { ok: false, skipped: true, reason: "No recipient email" }
+  const config = await getSmtpConfig()
+  if (!config) return { ok: false, skipped: true, reason: "SMTP not configured" }
+
+  const transporter = createTransporter(config)
+  const expiry = payload.offerExpiryDate.toLocaleDateString("en-IN", {
+    day: "numeric", month: "long", year: "numeric",
+  })
+
+  const attachments: { filename: string; content: Buffer; contentType: string }[] = [
+    { filename: `Offer_Letter_${payload.studentName.replace(/\s+/g, "_")}.pdf`, content: payload.offerLetterPdf, contentType: "application/pdf" },
+  ]
+  if (payload.proposalPdf) {
+    attachments.push({ filename: `Fee_Breakdown_${payload.studentName.replace(/\s+/g, "_")}.pdf`, content: payload.proposalPdf, contentType: "application/pdf" })
+  }
+
+  try {
+    const info = await transporter.sendMail({
+      from: `${config.fromName} <${config.fromEmail}>`,
+      to: payload.to,
+      cc: payload.cc,
+      subject: `Offer of Admission — ${payload.programName} (${payload.batchYear}) — Confirm by ${expiry}`,
+      html: offerEmailHtml(payload),
+      attachments,
+    })
+    return { ok: true, messageId: info.messageId }
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message : String(err) }
+  }
+}
+
+export type OfferReminderPayload = {
+  to: string
+  studentName: string
+  programName: string
+  offerExpiryDate: Date
+  daysLeft: number
+  reminderNumber: 1 | 2
+  bodyText: string   // from SystemSetting OFFER_REMINDER_1_BODY or OFFER_REMINDER_2_BODY
+}
+
+function offerReminderHtml(payload: OfferReminderPayload) {
+  const expiry = payload.offerExpiryDate.toLocaleDateString("en-IN", {
+    day: "numeric", month: "long", year: "numeric",
+  })
+  const body = payload.bodyText
+    .replace(/{{studentName}}/g, payload.studentName)
+    .replace(/{{programName}}/g, payload.programName)
+    .replace(/{{daysLeft}}/g, String(payload.daysLeft))
+    .replace(/{{offerExpiryDate}}/g, expiry)
+    .replace(/</g, "&lt;").replace(/>/g, "&gt;")
+    .replace(/\n/g, "<br/>")
+  return `<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8" /></head>
+<body style="margin:0;padding:24px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:#333;font-size:15px;line-height:1.6;background:#fff;">
+  <div>${body}</div>
+</body>
+</html>`
+}
+
+export async function sendOfferReminderEmail(payload: OfferReminderPayload): Promise<SendResult> {
+  if (!payload.to) return { ok: false, skipped: true, reason: "No recipient email" }
+  const config = await getSmtpConfig()
+  if (!config) return { ok: false, skipped: true, reason: "SMTP not configured" }
+
+  const transporter = createTransporter(config)
+  const expiry = payload.offerExpiryDate.toLocaleDateString("en-IN", {
+    day: "numeric", month: "long", year: "numeric",
+  })
+
+  try {
+    const info = await transporter.sendMail({
+      from: `${config.fromName} <${config.fromEmail}>`,
+      to: payload.to,
+      subject: `Reminder: Confirm your ${payload.programName} offer by ${expiry} (${payload.daysLeft} days left)`,
+      html: offerReminderHtml(payload),
+    })
+    return { ok: true, messageId: info.messageId }
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message : String(err) }
+  }
+}
+
+export type RevisedOfferPayload = OfferEmailPayload  // same shape, different subject line
+
+export async function sendRevisedOfferEmail(payload: RevisedOfferPayload): Promise<SendResult> {
+  if (!payload.to.length) return { ok: false, skipped: true, reason: "No recipient email" }
+  const config = await getSmtpConfig()
+  if (!config) return { ok: false, skipped: true, reason: "SMTP not configured" }
+
+  const transporter = createTransporter(config)
+  const attachments: { filename: string; content: Buffer; contentType: string }[] = [
+    { filename: `Updated_Offer_Letter_${payload.studentName.replace(/\s+/g, "_")}.pdf`, content: payload.offerLetterPdf, contentType: "application/pdf" },
+  ]
+  if (payload.proposalPdf) {
+    attachments.push({ filename: `Updated_Fee_Breakdown_${payload.studentName.replace(/\s+/g, "_")}.pdf`, content: payload.proposalPdf, contentType: "application/pdf" })
+  }
+
+  try {
+    const info = await transporter.sendMail({
+      from: `${config.fromName} <${config.fromEmail}>`,
+      to: payload.to,
+      cc: payload.cc,
+      subject: `Updated Offer — ${payload.programName} (${payload.batchYear}) — Your seat is still available`,
+      html: offerEmailHtml(payload),
+      attachments,
+    })
+    return { ok: true, messageId: info.messageId }
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message : String(err) }
+  }
+}
+
+export type OnboardingEmailPayload = {
+  to: string[]
+  cc?: string[]
+  studentName: string
+  programName: string
+  bodyText: string          // from SystemSetting ONBOARDING_EMAIL_BODY
+  handbookUrl?: string      // from SystemSetting ONBOARDING_HANDBOOK_URL
+  welcomeKitUrl?: string    // from SystemSetting ONBOARDING_WELCOME_KIT_URL
+  year1Url?: string         // from SystemSetting ONBOARDING_YEAR1_URL
+  proposalPdf: Buffer       // full proposal with roll number + installments
+}
+
+function onboardingEmailHtml(payload: OnboardingEmailPayload) {
+  const body = payload.bodyText
+    .replace(/{{studentName}}/g, payload.studentName)
+    .replace(/{{programName}}/g, payload.programName)
+    .replace(/</g, "&lt;").replace(/>/g, "&gt;")
+    .replace(/\n/g, "<br/>")
+
+  const links = [
+    payload.year1Url ? `<li><a href="${payload.year1Url}">Program Flow (Year 1)</a></li>` : "",
+    payload.handbookUrl ? `<li><a href="${payload.handbookUrl}">Onboarding Handbook</a></li>` : "",
+    payload.welcomeKitUrl ? `<li><a href="${payload.welcomeKitUrl}">Working BBA Welcome Kit</a></li>` : "",
+  ].filter(Boolean).join("\n")
+
+  return `<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8" /></head>
+<body style="margin:0;padding:24px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:#333;font-size:15px;line-height:1.6;background:#fff;">
+  <div>${body}</div>
+  ${links ? `<ul style="margin-top:16px;">${links}</ul>` : ""}
+  <p style="margin-top:16px;font-size:13px;color:#555;">Your personalised fee structure document is attached.</p>
+</body>
+</html>`
+}
+
+export async function sendOnboardingEmail(payload: OnboardingEmailPayload): Promise<SendResult> {
+  if (!payload.to.length) return { ok: false, skipped: true, reason: "No recipient email" }
+  const config = await getSmtpConfig()
+  if (!config) return { ok: false, skipped: true, reason: "SMTP not configured" }
+
+  const transporter = createTransporter(config)
+
+  try {
+    const info = await transporter.sendMail({
+      from: `${config.fromName} <${config.fromEmail}>`,
+      to: payload.to,
+      cc: payload.cc,
+      subject: `Welcome to ${payload.programName} — Let's Enterprise`,
+      html: onboardingEmailHtml(payload),
+      attachments: [
+        { filename: `Fee_Structure_${payload.studentName.replace(/\s+/g, "_")}.pdf`, content: payload.proposalPdf, contentType: "application/pdf" },
+      ],
+    })
+    return { ok: true, messageId: info.messageId }
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message : String(err) }
+  }
+}

@@ -28,25 +28,28 @@ async function main() {
   // ─── Programs ─────────────────────────────────────────────────────────────
   const programs = [
     {
-      name: "Enterprise Leadership",
+      name: "UG-MED (Working BBA)",
       totalFee: 1350000,
       registrationFee: 50000,
       year1Fee: 565000,
       year2Fee: 400000,
-      year3Fee: 335000,
+      year3Fee: 350000,
       targetStudents: 35,
       yearWiseDetails: {
         year1: {
           label: "Growth Year",
+          dueDate: "2026-08-07",
           details: "Common across all programs",
         },
         year2: {
           label: "Projects Year",
+          dueDate: "2027-05-15",
           details:
             "2 Apprenticeships, 4 Advanced Challenges, 1 Consulting Project, 1 Kickstart Project, 2 Skill Tracks, 1 Camp, 1 Career Workshop, 4 Career Coaching",
         },
         year3: {
           label: "Work Year",
+          dueDate: "2028-05-15",
           details:
             "Multi-Domain Project, 2 Final Challenges, 2 Skill Tracks, 4 Career Coaching, 9 month apprenticeship",
         },
@@ -141,28 +144,20 @@ async function main() {
       conditions: { maxStudents: 10 },
     },
     {
-      name: "Early Bird - Before 31 Jan 2026",
+      // 1st year payment before 30 Mar 2026 — ₹1,00,000 spread across 3 years
+      name: "Early Payment — Before 30 Mar 2026",
       type: "EARLY_BIRD" as const,
       waiverAmount: 100000,
-      deadline: new Date("2026-01-31T23:59:59Z"),
+      deadline: new Date("2026-03-30T23:59:59Z"),
+      conditions: { spreadAcrossYears: true },
     },
     {
-      name: "Early Bird - Before 28 Feb 2026",
-      type: "EARLY_BIRD" as const,
-      waiverAmount: 75000,
-      deadline: new Date("2026-02-28T23:59:59Z"),
-    },
-    {
-      name: "Early Bird - Before 31 Mar 2026",
+      // 1st year payment before 31 May 2026 — ₹50,000 spread across 3 years
+      name: "Early Payment — Before 31 May 2026",
       type: "EARLY_BIRD" as const,
       waiverAmount: 50000,
-      deadline: new Date("2026-03-31T23:59:59Z"),
-    },
-    {
-      name: "Early Bird - Before 30 Apr 2026",
-      type: "EARLY_BIRD" as const,
-      waiverAmount: 25000,
-      deadline: new Date("2026-04-30T23:59:59Z"),
+      deadline: new Date("2026-05-31T23:59:59Z"),
+      conditions: { spreadAcrossYears: true },
     },
     {
       name: "Pay Within 7 Days of Acceptance Letter",
@@ -171,15 +166,11 @@ async function main() {
       conditions: { daysFromAcceptance: 7 },
     },
     {
+      // 10% of ₹13,50,000 = ₹1,35,000
       name: "Full 3-Year Payment",
       type: "FULL_PAYMENT" as const,
-      waiverAmount: 100000,
-    },
-    {
-      name: "Friends & Family Referral",
-      type: "REFERRAL" as const,
-      waiverAmount: 25000,
-      conditions: { perReferral: true, requiresForm: true },
+      waiverAmount: 135000,
+      conditions: { percentageOfTotal: 10, note: "10% waiver on total fees" },
     },
   ]
 
@@ -188,30 +179,31 @@ async function main() {
   await prisma.offer.createMany({
     data: offers.map((o) => ({ ...o, feeScheduleId: feeSchedule.id })),
   })
-  console.log("✓ 8 Offers created")
+  console.log("✓ 5 Offers created")
 
   // ─── Scholarships ─────────────────────────────────────────────────────────
   const scholarships = [
-    // Category A — 15K to 50K
-    { category: "A" as const, name: "Young Innovator", minAmount: 15000, maxAmount: 50000 },
-    { category: "A" as const, name: "Community Impact", minAmount: 15000, maxAmount: 50000 },
-    { category: "A" as const, name: "Athlete Excellence", minAmount: 15000, maxAmount: 50000 },
-    { category: "A" as const, name: "Entrepreneurial Spirit", minAmount: 15000, maxAmount: 50000 },
+    // Category A — max 1 per student
+    { category: "A" as const, name: "Young Innovator", minAmount: 25000, maxAmount: 100000 },
+    { category: "A" as const, name: "Leadership & Community Impact", minAmount: 15000, maxAmount: 50000 },
+    { category: "A" as const, name: "Athlete Excellence", minAmount: 15000, maxAmount: 50000,
+      // conditions JSON stores tier info for reference
+    },
+    { category: "A" as const, name: "Entrepreneurial Spirit", minAmount: 0, maxAmount: 100000 },
     { category: "A" as const, name: "Creative Talent", minAmount: 15000, maxAmount: 50000 },
-    { category: "A" as const, name: "Leadership", minAmount: 15000, maxAmount: 50000 },
-    { category: "A" as const, name: "Family Business Contributor", minAmount: 15000, maxAmount: 50000 },
-    // Category B — 25K flat
+    // Category B — max 1 per student
+    // Note: Referral is applied to the REFERRING student's record, not the new student
+    { category: "B" as const, name: "Referral", minAmount: 25000, maxAmount: 25000 },
     { category: "B" as const, name: "Defence", minAmount: 25000, maxAmount: 25000 },
     { category: "B" as const, name: "Single Parent", minAmount: 25000, maxAmount: 25000 },
     { category: "B" as const, name: "Learning Differences", minAmount: 25000, maxAmount: 25000 },
-    { category: "B" as const, name: "NIOS (10th)", minAmount: 25000, maxAmount: 25000 },
   ]
 
   await prisma.scholarship.deleteMany({ where: { feeScheduleId: feeSchedule.id } })
   await prisma.scholarship.createMany({
     data: scholarships.map((s) => ({ ...s, feeScheduleId: feeSchedule.id })),
   })
-  console.log("✓ 11 Scholarships created (7 Cat A, 4 Cat B)")
+  console.log("✓ 9 Scholarships created (5 Cat A, 4 Cat B)")
 
   console.log("\n✅ Seed complete!")
 }

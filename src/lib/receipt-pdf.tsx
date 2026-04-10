@@ -104,7 +104,7 @@ const styles = StyleSheet.create({
 interface ReceiptDocumentProps {
   student: {
     name: string
-    rollNo: string
+    rollNo: string | null
     program: { name: string }
     batch: { year: number }
   }
@@ -122,7 +122,7 @@ interface ReceiptDocumentProps {
 }
 
 export function ReceiptDocument({ student, payment, netFee, totalPaid }: ReceiptDocumentProps) {
-  const receiptNo = `RCP-${student.rollNo}-${payment.id.slice(-6).toUpperCase()}`
+  const receiptNo = `RCP-${student.rollNo ?? "PENDING"}-${payment.id.slice(-6).toUpperCase()}`
   const balance = Math.max(0, netFee - totalPaid)
 
   return (
@@ -153,7 +153,7 @@ export function ReceiptDocument({ student, payment, netFee, totalPaid }: Receipt
           </View>
           <View style={styles.row}>
             <Text style={styles.label}>Roll Number:</Text>
-            <Text style={styles.value}>{student.rollNo}</Text>
+            <Text style={styles.value}>{student.rollNo ?? "—"}</Text>
           </View>
           <View style={styles.row}>
             <Text style={styles.label}>Program:</Text>
