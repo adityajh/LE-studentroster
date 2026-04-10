@@ -56,6 +56,13 @@ export async function getStudentById(id: string) {
       deductions: true,
       installments: { orderBy: { dueDate: "asc" } },
       documents: { orderBy: { uploadedAt: "desc" } },
+      payments: {
+        include: { 
+          recordedBy: { select: { name: true } },
+          installment: { select: { label: true } }
+        },
+        orderBy: { date: "desc" }
+      },
       auditLogs: {
         include: { changedByUser: { select: { name: true, email: true, role: true } } },
         orderBy: { createdAt: "desc" },

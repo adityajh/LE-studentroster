@@ -153,3 +153,68 @@ export async function sendFeeReminder(payload: ReminderEmailPayload): Promise<Se
     }
   }
 }
+
+export type ReceiptEmailPayload = {
+  to: string[]
+  cc?: string[]
+  studentName: string
+  amount: number
+  paymentDate: Date
+  paymentMode: string
+  installmentLabel: string
+  receiptNo: string
+  pdfBuffer: Buffer
+}
+
+export async function sendReceiptEmail(payload: ReceiptEmailPayload): Promise<SendResult> {
+  const config = await getSmtpConfig()
+  if (!config) return { ok: false, skipped: true, reason: "SMTP not configured" }
+
+  const transporter = createTransporter(config)
+  const from = `${config.fromName} <${config.fromEmail}>`
+
+  const formattedDate = payload.paymentDate.toLocaleDateString("en-IN", {
+    day: "numeric", month: "long", year: "numeric",
+  })
+  const formattedAmount = new Intl.NumberFormat("en-IN", {
+    style: "currency", currency: "INR", maximumFractionDigits: 0,
+  }).format(payload.amount)
+
+  const html = `
+    <div style="font-family: sans-serif; line-height: 1.6; color: #333;">
+      <p>Dear ${payload.studentName},</p>
+      <p>This is to confirm that we have received your payment of <strong>${formattedAmount}</strong> on ${formattedDate}.</p>
+      <p><strong>Payment Details:</strong></p>
+      <ul>
+        <li><strong>Receipt No:</strong> ${payload.receiptNo}</li>
+        <li><strong>Mode:</strong> ${payload.paymentMode}</li>
+        <li><strong>For:</strong> ${payload.installmentLabel}</li>
+      </ul>
+      <p>Please find the official payment receipt attached to this email.</p>
+      <p>Regards,<br/><strong>Let's Enterprise Team</strong></p>
+    </div>
+  `
+
+  try {
+    const info = await transporter.sendMail({
+      from,
+      to: payload.to,
+      cc: payload.cc,
+      subject: `Payment Receipt — ${payload.installmentLabel} — ${payload.studentName}`,
+      html,
+      attachments: [
+        {
+          filename: `Receipt_${payload.receiptNo}.pdf`,
+          content: payload.pdfBuffer,
+          contentType: 'application/pdf',
+        }
+      ]
+    })
+    return { ok: true, messageId: info.messageId }
+  } catch (err) {
+    return {
+      ok: false,
+      error: err instanceof Error ? err.message : String(err),
+    }
+  }
+}

@@ -8,6 +8,7 @@ import { DocumentUpload } from "@/components/students/document-upload"
 import { RemindersTab } from "@/components/students/reminders-tab"
 import { ProposalTab } from "@/components/students/proposal-tab"
 import { HistoryTab } from "@/components/students/history-tab"
+import { PaymentsTab } from "@/components/students/payments-tab"
 import { cn } from "@/lib/utils"
 import { auth } from "@/auth"
 import { prisma } from "@/lib/prisma"
@@ -42,8 +43,8 @@ export default async function StudentDetailPage({
   const fin = student.financial
   const statusStyle = formatStudentStatus(student.status)
 
-  const paidInstallments = student.installments.filter((i) => i.status === "PAID")
-  const totalPaid = paidInstallments.reduce((s, i) => s + Math.round(i.paidAmount?.toNumber() ?? i.amount.toNumber()), 0)
+  // Use payments journal as source of truth for total paid
+  const totalPaid = (student.payments || []).reduce((s, p) => s + Number(p.amount), 0)
   const totalDue = student.installments
     .filter((i) => i.status !== "PAID")
     .reduce((s, i) => s + Math.round(i.amount.toNumber()), 0)
@@ -284,15 +285,29 @@ export default async function StudentDetailPage({
             {/* Tab header */}
             <div className="px-5 py-4 border-b border-slate-100 flex items-center gap-1">
               <Link
-                href={`/students/${id}?tab=installments`}
+                href={`/students/${id}?tab=payments`}
                 className={cn(
                   "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all",
-                  tab === "installments" || tab === undefined
+                  tab === "payments"
                     ? "bg-indigo-50 text-indigo-700 border border-indigo-200"
                     : "text-slate-500 hover:text-slate-700"
                 )}
               >
-                Payment Schedule
+                <Wallet className="h-3 w-3" />
+                Payments
+              </Link>
+              <Link
+                href={`/students/${id}?tab=installments`}
+                className={cn(
+                  "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all",
+                  tab === "installments" || tab === "payments" || tab === undefined // default and payments handled
+                    ? (tab === "installments" || (tab === undefined && student.payments.length === 0)) 
+                      ? "bg-indigo-50 text-indigo-700 border border-indigo-200" 
+                      : "text-slate-500 hover:text-slate-700"
+                    : "text-slate-500 hover:text-slate-700"
+                )}
+              >
+                Schedule
               </Link>
               <Link
                 href={`/students/${id}?tab=reminders`}
@@ -336,6 +351,17 @@ export default async function StudentDetailPage({
                 History
               </Link>
             </div>
+
+            {/* Payments tab */}
+            {tab === "payments" && (
+              <PaymentsTab 
+                studentId={student.id} 
+                studentName={student.firstName || student.name}
+                payments={student.payments} 
+                netFee={Number(fin?.netFee ?? 0)}
+                canRecord={canRecord}
+              />
+            )}
 
             {/* Installments tab */}
             {(tab === "installments" || tab === undefined) && (
@@ -394,7 +420,7 @@ export default async function StudentDetailPage({
                           </Link>
                         )}
                         {!isPaid && canRecord && (
-                          <RecordPaymentDialog studentId={student.id} installment={inst} />
+                          <RecordPaymentDialog studentId={student.id} studentName={student.firstName || student.name} installment={inst} />
                         )}
                       </div>
                     </div>
