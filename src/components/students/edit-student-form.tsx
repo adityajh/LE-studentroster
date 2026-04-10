@@ -3,6 +3,7 @@
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { Loader2, ChevronDown } from "lucide-react"
+import { cn } from "@/lib/utils"
 
 type Student = {
   id: string
