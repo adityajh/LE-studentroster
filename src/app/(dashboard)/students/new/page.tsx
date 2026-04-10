@@ -16,6 +16,9 @@ export default async function NewStudentPage() {
   }
 
   const batches = await getEnrollmentFormData()
+  const defaultTerms = await prisma.systemSetting.findUnique({
+    where: { key: "PROPOSAL_TERMS" }
+  }).then(s => s?.value || "1. All fees laid out in the structure above must be paid on or before the due date.")
 
   return (
     <div className="max-w-[800px] space-y-8">
@@ -29,11 +32,11 @@ export default async function NewStudentPage() {
         </div>
         <h1 className="text-2xl font-extrabold text-slate-900">Enroll Student</h1>
         <p className="text-sm font-medium text-slate-500 mt-1">
-          Fill in the student's details and fee structure to generate their installment schedule.
+          Complete the guided onboarding to enroll a new student and generate their proposal.
         </p>
       </div>
 
-      <EnrollForm batches={batches} />
+      <EnrollForm batches={batches} defaultTerms={defaultTerms} />
     </div>
   )
 }

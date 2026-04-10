@@ -7,10 +7,11 @@ import { RecordPaymentDialog } from "@/components/students/record-payment-dialog
 import { DocumentUpload } from "@/components/students/document-upload"
 import { RemindersTab } from "@/components/students/reminders-tab"
 import { ProposalTab } from "@/components/students/proposal-tab"
+import { HistoryTab } from "@/components/students/history-tab"
 import { cn } from "@/lib/utils"
 import { auth } from "@/auth"
 import { prisma } from "@/lib/prisma"
-import { Phone, Mail, Calendar, MapPin, Users, Droplets, Pencil, Bell, FileText } from "lucide-react"
+import { Phone, Mail, Calendar, MapPin, Users, Droplets, Pencil, Bell, FileText, History } from "lucide-react"
 
 export default async function StudentDetailPage({
   params,
@@ -322,6 +323,18 @@ export default async function StudentDetailPage({
                 <FileText className="h-3 w-3" />
                 Proposal
               </Link>
+              <Link
+                href={`/students/${id}?tab=history`}
+                className={cn(
+                  "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all",
+                  tab === "history"
+                    ? "bg-indigo-50 text-indigo-700 border border-indigo-200"
+                    : "text-slate-500 hover:text-slate-700"
+                )}
+              >
+                <History className="h-3 w-3" />
+                History
+              </Link>
             </div>
 
             {/* Installments tab */}
@@ -398,6 +411,11 @@ export default async function StudentDetailPage({
             {/* Proposal tab */}
             {tab === "proposal" && (
               <ProposalTab studentId={student.id} />
+            )}
+
+            {/* History tab */}
+            {tab === "history" && (
+              <HistoryTab logs={student.auditLogs as any} />
             )}
           </div>
         </div>

@@ -30,6 +30,7 @@ export async function POST(req: NextRequest) {
     deductions,         // [{ description, amount }]
     installmentType,    // "ANNUAL" | "ONE_TIME" | "CUSTOM"
     customInstallments, // [{ label, dueDate, amount, year }] — only when CUSTOM
+    customTerms,        // string
   } = body
 
   if (!name || !email || !contact || !batchId || !programId || !installmentType) {
@@ -192,6 +193,9 @@ export async function POST(req: NextRequest) {
         totalDeduction,
         netFee,
         installmentType,
+        customTerms: customTerms ?? null,
+        isLocked: true,
+        lockedAt: new Date(),
       },
     })
 

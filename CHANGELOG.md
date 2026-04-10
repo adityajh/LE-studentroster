@@ -4,6 +4,27 @@ All notable changes to the LE Student Roster system are documented here.
 
 ---
 
+## [0.9.0] — 2026-04-10
+
+### Phase 9: Guided Student Onboarding & Audit Log ✅
+
+#### Added
+- **3-Step Enrollment Wizard** — Refactored `/students/new` into a guided stepper:
+  1. **Details**: Student and guardian contact info.
+  2. **Fee Plan**: Program selection, offers/scholarships, payment plans, and custom T&C overrides.
+  3. **Review**: Full enrollment summary before final submission.
+- **Financial Locking** — All new enrollments are now "locked" by default (`isLocked`); protects core financial commitments from accidental modification.
+- **Full Audit History** — Every change to sensitive fields (Email, Contact, Base Fee, Custom Terms) is tracked in the `StudentAuditLog`.
+- **History Tab** — A new tab on the student detail page showing a chronological, user-attributed log of all record mutations with "Reason for Change" transparency.
+- **Admin Change Reasons** — Mandatory "Reason for Change" input in `EditStudentForm` when an admin modifies a locked record; enforced at the API level.
+- **Student-Specific Terms** — Ability to override global Proposal Terms & Conditions per student during enrollment; these custom terms are automatically prioritized during PDF/DOCX generation.
+
+#### Fixed / Improved
+- **Receipt Logic** — Ensured consistent rounding in payment receipts even for partial payments.
+- **Proposal API** — Optimized term fetching to prioritize `customTerms` fallback chain.
+
+---
+
 ## [0.8.0] — 2026-04-10
 
 ### Phase 8: Polish & Deploy ✅

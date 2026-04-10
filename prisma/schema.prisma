@@ -23,6 +23,7 @@ model User {
   lockedSchedules   FeeSchedule[]     @relation("LockedBy")
   apiKeys           ApiKey[]
   uploadedDocuments StudentDocument[] @relation("UploadedDocuments")
+  auditLogs         StudentAuditLog[] @relation("AuditLogs")
 }
 
 model Account {
@@ -246,6 +247,7 @@ model Student {
   installments Installment[]
   payments     Payment[]
   documents    StudentDocument[]
+  auditLogs    StudentAuditLog[]
 }
 
 model StudentDocument {
@@ -277,6 +279,9 @@ model StudentFinancial {
   depositAmount        Decimal?        @db.Decimal(12, 2)
   depositPaidDate      DateTime?
   installmentType      InstallmentType
+  isLocked             Boolean         @default(false)
+  lockedAt             DateTime?
+  customTerms          String?         @db.Text
   createdAt            DateTime        @default(now())
   updatedAt            DateTime        @updatedAt
 
@@ -401,3 +406,18 @@ model SystemSetting {
   updatedAt DateTime @updatedAt
   updatedBy String?
 }
+
+model StudentAuditLog {
+  id          String   @id @default(cuid())
+  studentId   String
+  changedBy   String
+  field       String
+  oldValue    String?  @db.Text
+  newValue    String?  @db.Text
+  reason      String?  @db.Text
+  createdAt   DateTime @default(now())
+
+  student       Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  changedByUser User    @relation("AuditLogs", fields: [changedBy], references: [id])
+}
+

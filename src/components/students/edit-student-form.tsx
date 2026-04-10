@@ -29,6 +29,8 @@ type Student = {
     netFee: any
     totalWaiver: any
     totalDeduction: any
+    customTerms: string | null
+    isLocked: boolean
   } | null
 }
 
@@ -78,6 +80,13 @@ export function EditStudentForm({
   const [contact, setContact] = useState(student.contact ?? "")
   const [bloodGroup, setBloodGroup] = useState(student.bloodGroup ?? "")
   const [baseFee, setBaseFee] = useState(student.financial?.baseFee?.toString() ?? "0")
+  const [customTerms, setCustomTerms] = useState(student.financial?.customTerms ?? "")
+  const [changeReason, setChangeReason] = useState("")
+
+  const initialBaseFee = student.financial?.baseFee?.toString() ?? "0"
+  const initialCustomTerms = student.financial?.customTerms ?? ""
+  const isFinancialChanged = baseFee !== initialBaseFee || customTerms !== initialCustomTerms
+  const showReasonField = (student.financial?.isLocked && isFinancialChanged)
 
   // Address
   const [city, setCity] = useState(student.city ?? "")
@@ -127,6 +136,8 @@ export function EditStudentForm({
           localGuardianPhone: localGuardianPhone || null,
           localGuardianEmail: localGuardianEmail || null,
           baseFee:            role === "ADMIN" ? baseFee : undefined,
+          customTerms:        role === "ADMIN" ? customTerms : undefined,
+          changeReason:       showReasonField ? changeReason : undefined,
         }),
       })
       const data = await res.json()
@@ -275,10 +286,32 @@ export function EditStudentForm({
                 className="w-full h-11 rounded-xl border-2 border-indigo-200 bg-white px-4 text-sm font-semibold text-slate-800 focus:border-indigo-500 focus:outline-none transition-all shadow-[0_4px_12px_rgba(79,70,229,0.08)]" 
               />
             </Field>
-            <div className="flex flex-col justify-end pb-1 translate-y-1.5">
+            <Field label="Custom Terms & Conditions" span2>
+              <textarea
+                value={customTerms}
+                onChange={(e) => setCustomTerms(e.target.value)}
+                rows={4}
+                className={cn(textareaCls, "border-indigo-100 bg-white/50")}
+                placeholder="Student-specific terms..."
+              />
+            </Field>
+            {showReasonField && (
+              <Field label="Reason for Change (Required)" span2>
+                <input
+                  value={changeReason}
+                  onChange={(e) => setChangeReason(e.target.value)}
+                  required
+                  placeholder="e.g. Scholarship correction, fee restructure authorized by principal"
+                  className={cn(inputCls, "border-amber-300 bg-amber-50 focus:border-amber-500")}
+                />
+              </Field>
+            )}
+            <div className="flex flex-col justify-end pb-1 md:col-span-2">
               <p className="text-[10px] font-bold text-indigo-500/60 uppercase tracking-widest leading-tight">Caution</p>
               <p className="text-[10.5px] font-medium text-indigo-600 leading-tight">
-                Overriding base fee will automatically re-calculate the net fee based on existing discounts.
+                {student.financial?.isLocked 
+                  ? "This record is LOCKED. Any changes to financial fields will be logged with the provided reason."
+                  : "Modifying these fields will automatically re-calculate the net fee based on existing discounts."}
               </p>
             </div>
           </div>

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { auth } from "@/auth"
 import { prisma } from "@/lib/prisma"
+import { recordAuditLog } from "@/lib/audit"
 
 export async function PATCH(
   req: NextRequest,
@@ -21,70 +22,95 @@ export async function PATCH(
   }
 
   const body = await req.json()
-  const {
-    firstName, lastName,
-    email, contact,
-    bloodGroup, city,
-    address, localAddress,
-    parent1Name, parent1Email, parent1Phone,
-    parent2Name, parent2Email, parent2Phone,
+  const { 
+    firstName, lastName, email, contact, bloodGroup, city, address, localAddress,
+    parent1Name, parent1Email, parent1Phone, parent2Name, parent2Email, parent2Phone,
     localGuardianName, localGuardianPhone, localGuardianEmail,
-    baseFee,
+    baseFee, customTerms,
+    changeReason 
   } = body
 
-  // Derive full name from first+last if provided
-  const name =
-    firstName && lastName
-      ? `${firstName} ${lastName}`.trim()
-      : firstName || lastName || student.name
-
-  const updated = await prisma.student.update({
-    where: { id },
-    data: {
-      firstName:          firstName          ?? null,
-      lastName:           lastName           ?? null,
-      name,
-      email:              email              ?? student.email,
-      contact:            contact            ?? student.contact,
-      bloodGroup:         bloodGroup         ?? null,
-      city:               city               ?? null,
-      address:            address            ?? null,
-      localAddress:       localAddress       ?? null,
-      parent1Name:        parent1Name        ?? null,
-      parent1Email:       parent1Email       ?? null,
-      parent1Phone:       parent1Phone       ?? null,
-      parent2Name:        parent2Name        ?? null,
-      parent2Email:       parent2Email       ?? null,
-      parent2Phone:       parent2Phone       ?? null,
-      localGuardianName:  localGuardianName  ?? null,
-      localGuardianPhone: localGuardianPhone ?? null,
-      localGuardianEmail: localGuardianEmail ?? null,
-    },
+  // Check locking
+  const isLocked = student.financial?.isLocked ?? false
+  const financialFields = ["baseFee", "customTerms"]
+  const hasFinancialUpdate = baseFee !== undefined || customTerms !== undefined
+  
+  // Get user role for enforcement
+  const dbUser = await prisma.user.findUnique({
+    where: { email: session.user.email! },
+    select: { id: true, role: true },
   })
+  const isAdmin = dbUser?.role === "ADMIN"
 
-  // Admin-only: update base fee if provided
-  if (baseFee !== undefined) {
-    // Re-check role from DB for security
-    const dbUser = await prisma.user.findUnique({
-      where: { email: session.user.email! },
-      select: { role: true },
-    })
-    
-    if (dbUser?.role === "ADMIN") {
-      const bFee = parseFloat(baseFee)
-      if (!isNaN(bFee)) {
-        await prisma.studentFinancial.update({
+  if (isLocked && hasFinancialUpdate && !isAdmin) {
+    return NextResponse.json({ error: "Financial data is locked. Only admins can modify it." }, { status: 403 })
+  }
+
+  if (isLocked && hasFinancialUpdate && !changeReason) {
+    return NextResponse.json({ error: "Reason for change is required for locked records." }, { status: 400 })
+  }
+
+  // Identity logic
+  const newFirstName = firstName ?? student.firstName
+  const newLastName = lastName ?? student.lastName
+  const name = (firstName || lastName) ? `${newFirstName} ${newLastName}`.trim() : student.name
+
+  // Prepare audit tracking
+  const auditLogs = []
+  const userId = dbUser?.id || session.user.id!
+
+  const trackChange = (field: string, oldVal: any, newVal: any) => {
+    if (newVal !== undefined && newVal !== oldVal) {
+      auditLogs.push({ field, oldValue: String(oldVal ?? ""), newValue: String(newVal ?? ""), reason: changeReason })
+    }
+  }
+
+  trackChange("firstName", student.firstName, firstName)
+  trackChange("lastName", student.lastName, lastName)
+  trackChange("email", student.email, email)
+  trackChange("contact", student.contact, contact)
+  trackChange("baseFee", student.financial?.baseFee, baseFee)
+  trackChange("customTerms", student.financial?.customTerms, customTerms)
+
+  // Transaction for consistency
+  try {
+    await prisma.$transaction(async (tx) => {
+      // Update Student
+      await tx.student.update({
+        where: { id },
+        data: {
+          firstName, lastName, name, email, contact, bloodGroup, city, address, localAddress,
+          parent1Name, parent1Email, parent1Phone, parent2Name, parent2Email, parent2Phone,
+          localGuardianName, localGuardianPhone, localGuardianEmail,
+        }
+      })
+
+      // Update Financial
+      if (hasFinancialUpdate) {
+        const bFee = baseFee !== undefined ? parseFloat(baseFee) : Number(student.financial?.baseFee ?? 0)
+        await tx.studentFinancial.update({
           where: { studentId: id },
-          data: { 
+          data: {
             baseFee: bFee,
-            // also update netFee if it's derived or just leave it for manual adjustment
-            // for now, we'll just update baseFee as requested
+            customTerms: customTerms ?? undefined,
             netFee: bFee - Number(student.financial?.totalWaiver || 0) - Number(student.financial?.totalDeduction || 0)
           }
         })
       }
-    }
-  }
 
-  return NextResponse.json({ id: updated.id })
+      // Record Audit Logs
+      for (const log of auditLogs) {
+        await recordAuditLog({
+          studentId: id,
+          userId,
+          ...log
+        })
+      }
+    })
+
+    return NextResponse.json({ success: true })
+  } catch (err) {
+    console.error("Update failed:", err)
+    return NextResponse.json({ error: "Failed to update record" }, { status: 500 })
+  }
 }
