@@ -4,6 +4,33 @@ All notable changes to the LE Student Roster system are documented here.
 
 ---
 
+## [1.0.0] — 2026-04-10
+
+### Phase 10: Offer → Enrol → Onboard Workflow ✅
+
+#### Added
+- **Offer-first admissions flow** — students now enter the system as `OFFERED` before enrolment; `rollNo` is nullable and assigned only after the ₹50K registration payment is confirmed
+- **Create Offer page** (`/students/offer/new`) — 3-step form: candidate details → program/offers/scholarships → review & submit; creates `OFFERED` student with financial totals but no installments
+- **Send Offer Email button** on student detail — sends branded offer email with offer letter PDF attached; optional fee breakdown proposal PDF; stamps `offerSentAt` / `offerExpiresAt` (7 days)
+- **Offer Letter PDF** (`src/lib/offer-letter-generator.tsx`) — LE-branded formal admission letter with fee summary box and expiry notice
+- **Day-3 & Day-6 automated reminders** — cron job (`/api/cron/update-statuses`) now sends configurable reminder emails at 4 days left and 1 day left within the 7-day window
+- **Day-8+ offer revision** — cron auto-revokes the `ACCEPTANCE_7DAY` waiver, recalculates net fee, logs to audit trail, and sends a revised offer letter email
+- **Confirm Enrolment dialog** — records ₹50K registration payment, assigns roll number, creates installment schedule, transitions student to `ACTIVE`, optionally sends onboarding email; all in a single transaction
+- **Onboarding email** — sent after enrolment confirmation; attaches the full proposal PDF (now with roll number and installment schedule); body and resource links are configurable
+- **Offers tab** on students list — shows all `OFFERED` students with expiry countdown badges (violet → amber → rose → "Expires today" → "Expired")
+- **Pending Offers stat card** on dashboard — violet card linking to the Offers tab
+- **Offers settings tab** in Settings — editable templates for all 5 automated emails (offer, letter body, reminder 1 & 2, onboarding), bank details block, and 3 onboarding resource URLs
+
+#### Changed
+- Fee schedule seed updated to match UG-MED 2026 PDF: corrected year due dates (Aug 7 / May 15 / May 15), offer amounts, and all scholarship tiers
+- `REFERRAL` removed from `OfferType`; referral is now a Category B scholarship applied to the **referring** student's record
+- Students list table: `rollNo` column handles null (shows `—`); payments column shows expiry countdown for `OFFERED` students instead of installment counts
+- `students.ts` `generateRollNo()` counts only students with non-null `rollNo`
+- All `renderToBuffer(createElement(...))` calls cast to `any` to satisfy `@react-pdf/renderer` `DocumentProps` constraint
+- `tsconfig.json` excludes `scratch/` and `dump_students.ts` from TypeScript compilation
+
+---
+
 ## [0.9.0] — 2026-04-10
 
 ### Phase 9: Guided Student Onboarding & Audit Log ✅

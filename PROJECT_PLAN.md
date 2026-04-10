@@ -112,7 +112,7 @@
 
 ---
 
-## Phase 10: Offer → Enrolment Workflow
+## Phase 10: Offer → Enrolment Workflow ✅ COMPLETE
 
 > Goal: Replace the "enroll first" model with the real admissions workflow:
 > **Offer → Receive ₹50K Payment → Enrol → Onboard**
