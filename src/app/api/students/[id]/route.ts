@@ -56,7 +56,7 @@ export async function PATCH(
   const name = (firstName || lastName) ? `${newFirstName} ${newLastName}`.trim() : student.name
 
   // Prepare audit tracking
-  const auditLogs = []
+  const auditLogs: { field: string; oldValue: string; newValue: string; reason?: string }[] = []
   const userId = dbUser?.id || session.user.id!
 
   const trackChange = (field: string, oldVal: any, newVal: any) => {

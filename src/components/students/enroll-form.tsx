@@ -208,7 +208,7 @@ export function EnrollForm({ batches, defaultTerms }: { batches: Batch[], defaul
     setLoading(true)
     setError("")
 
-    const scholarships = []
+    const scholarships: { scholarshipId: string; amount: number }[] = []
     if (scholarshipA) scholarships.push({ scholarshipId: scholarshipA.id, amount: scholarshipA.amount })
     if (scholarshipB) scholarships.push({ scholarshipId: scholarshipB.id, amount: scholarshipB.amount })
 
