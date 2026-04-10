@@ -2,8 +2,9 @@
 
 import { useState } from "react"
 import { useRouter } from "next/navigation"
-import { Loader2, ChevronDown, Plus, X, AlertTriangle } from "lucide-react"
+import { Loader2, ChevronDown, Plus, X, AlertTriangle, Settings, ChevronRight } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { DeleteStudentButton } from "./delete-student-button"
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -128,6 +129,8 @@ export function EditStudentForm({
   const [deductions, setDeductions] = useState<{ description: string; amount: number }[]>(
     student.deductions.map(d => ({ description: d.description, amount: Number(d.amount) }))
   )
+
+  const [showFinancialPlan, setShowFinancialPlan] = useState(false)
 
   // ── Fee Preview ──
   const baseFeeNum = parseFloat(baseFee) || 0
@@ -347,11 +350,43 @@ export function EditStudentForm({
 
       {/* Section 3 — Admin Overrides (Admin only) */}
       {isAdmin && (
-        <div className="bg-indigo-50 border border-indigo-200 rounded-2xl p-6 space-y-6 shadow-sm">
-          <div className="flex items-center gap-2">
-            <p className="text-[10px] uppercase tracking-widest font-bold text-indigo-400">Admin — Financial Plan</p>
-            <span className="bg-indigo-600 text-[8px] text-white px-1.5 py-0.5 rounded-full font-black uppercase tracking-tighter">Admin Only</span>
-          </div>
+        <div className="space-y-4">
+          <button
+            type="button"
+            onClick={() => setShowFinancialPlan(!showFinancialPlan)}
+            className={cn(
+              "w-full flex items-center justify-between p-4 rounded-2xl border-2 transition-all font-bold",
+              showFinancialPlan 
+                ? "bg-indigo-600 border-indigo-600 text-white shadow-lg shadow-indigo-100" 
+                : "bg-white border-slate-200 text-slate-600 hover:border-indigo-200 hover:bg-indigo-50/30"
+            )}
+          >
+            <div className="flex items-center gap-3">
+              <div className={cn(
+                "p-2 rounded-xl transition-colors",
+                showFinancialPlan ? "bg-indigo-500 text-white" : "bg-indigo-100 text-indigo-600"
+              )}>
+                <Settings className="h-4 w-4" />
+              </div>
+              <div className="text-left">
+                <p className="text-sm">Manage Financial Plan</p>
+                <p className={cn(
+                  "text-[10px] uppercase tracking-widest font-black opacity-60",
+                  showFinancialPlan ? "text-indigo-100" : "text-indigo-400"
+                )}>
+                  {showFinancialPlan ? "Editing active" : "Admin Overrides & Discounts"}
+                </p>
+              </div>
+            </div>
+            {showFinancialPlan ? <ChevronDown className="h-5 w-5 opacity-60" /> : <ChevronRight className="h-5 w-5 opacity-40" />}
+          </button>
+
+          {showFinancialPlan && (
+            <div className="bg-indigo-50 border border-indigo-200 rounded-2xl p-6 space-y-6 shadow-sm animate-in fade-in slide-in-from-top-2 duration-300">
+              <div className="flex items-center gap-2">
+                <p className="text-[10px] uppercase tracking-widest font-bold text-indigo-400">Admin — Financial Plan</p>
+                <span className="bg-indigo-600 text-[8px] text-white px-1.5 py-0.5 rounded-full font-black uppercase tracking-tighter">Admin Only</span>
+              </div>
 
           {/* Base Fee */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -543,6 +578,8 @@ export function EditStudentForm({
               ? "⚠️ This record is LOCKED. All financial changes require a reason and will be logged to the Changelog."
               : "Changes to financial fields will automatically recalculate the Net Fee and redistribute future installments."}
           </p>
+            </div>
+          )}
         </div>
       )}
 
@@ -568,6 +605,20 @@ export function EditStudentForm({
           Cancel
         </a>
       </div>
+
+      {isAdmin && (
+        <div className="pt-8 border-t border-slate-100 mt-8">
+          <div className="bg-rose-50 border border-rose-100 rounded-2xl p-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div>
+              <p className="text-sm font-bold text-rose-900">Danger Zone</p>
+              <p className="text-xs font-medium text-rose-600 opacity-80 mt-1">
+                Irreversibly delete this student record and all associated payments, documents, and audit logs.
+              </p>
+            </div>
+            <DeleteStudentButton studentId={student.id} studentName={student.name} />
+          </div>
+        </div>
+      )}
     </form>
   )
 }

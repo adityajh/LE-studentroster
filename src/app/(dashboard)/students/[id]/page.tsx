@@ -106,9 +106,6 @@ export default async function StudentDetailPage({
           </div>
 
           <div className="flex items-center gap-2">
-            {dbUser?.role === "ADMIN" && (
-              <DeleteStudentButton studentId={student.id} studentName={student.name} />
-            )}
             <RecordPaymentDialog
               studentId={student.id}
               studentName={student.name}
