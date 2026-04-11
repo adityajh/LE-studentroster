@@ -4,6 +4,28 @@ All notable changes to the LE Student Roster system are documented here.
 
 ---
 
+## [1.1.0] — 2026-04-11
+
+### Fee Override & Spread Waiver Improvements
+
+#### Added
+- **Per-year fee overrides** in Create Offer form and Edit Student → Manage Financial Plan — separate inputs for Registration, Year 1, Year 2, Year 3 fees; amber total badge appears when any override is active
+- **`spreadAcrossYears` checkbox on offers** in Fee Schedule editor — unchecked means the waiver is deducted in full from Year 1 only; stored in `Offer.conditions` JSON; label updates in real-time
+- **Registration Fee row** in student Schedule tab — always visible at the top; uses the actual year=0 installment if it exists, otherwise synthesises from `financial.registrationPaid` + `registrationFeeOverride ?? program.registrationFee`
+- **Registration fee override** — admin can set a per-student registration fee in the financial plan; stored as `StudentFinancial.registrationFeeOverride`; used by confirm-enrolment when creating the year=0 installment; updates year=0 installment if unpaid
+- **Admin fee overrides panel** in Create Offer form — Registration + Y1/Y2/Y3 inputs wrapped in a styled "Admin Only" section consistent with the edit form
+
+#### Fixed
+- **Spread vs one-time waiver logic** in `enroll`, `confirm-enrolment`, and PATCH routes — replaced the blanket `totalWaiver / 3` with correct split: one-time offers deduct fully from Year 1, spread offers divide across 3 years; scholarships always spread
+- **Fee overrides not sent to API** — Create Offer form was applying Y1/Y2/Y3 overrides only locally (preview); now correctly sends them to `create-offer` API which uses them in `baseFee` calculation
+- **Waiver breakdown text** on Schedule tab — now shows implied waiver per installment (`programYearFee − instalmentAmount`) instead of hardcoded `totalWaiver / 3`, so it is accurate for mixed spread/one-time configurations
+- **Hardcoded ₹50,000 registration note** in offer form fee summary replaced with the actual registration fee (override if set, else programme default)
+
+#### Refactored
+- `depositAmount` / `depositPaid` / `depositPaidDate` (dead fields from Phase 1) removed from `StudentFinancial`; replaced by `registrationFeeOverride Decimal?` with a clear, accurate name
+
+---
+
 ## [1.0.0] — 2026-04-10
 
 ### Phase 10: Offer → Enrol → Onboard Workflow ✅
