@@ -55,6 +55,7 @@ export function CreateOfferForm({ batches }: { batches: Batch[] }) {
   const [city, setCity] = useState("")
 
   // Per-year fee overrides
+  const [feeOverrideReg, setFeeOverrideReg] = useState("")
   const [feeOverrideY1, setFeeOverrideY1] = useState("")
   const [feeOverrideY2, setFeeOverrideY2] = useState("")
   const [feeOverrideY3, setFeeOverrideY3] = useState("")
@@ -97,8 +98,9 @@ export function CreateOfferForm({ batches }: { batches: Batch[] }) {
     const schWaiver = (scholarshipA?.amount ?? 0) + (scholarshipB?.amount ?? 0)
     const totalWaiver = spreadWaiver + onetimeWaiver + schWaiver
     const netFee = Math.round(baseFee - totalWaiver)
-    return { baseFee, y1, y2, y3, hasOverride: feeOverrideY1 !== "" || feeOverrideY2 !== "" || feeOverrideY3 !== "", totalWaiver, netFee }
-  }, [selectedProgram, selectedOfferIds, scholarshipA, scholarshipB, offers, feeOverrideY1, feeOverrideY2, feeOverrideY3])
+    const hasOverride = feeOverrideReg !== "" || feeOverrideY1 !== "" || feeOverrideY2 !== "" || feeOverrideY3 !== ""
+    return { baseFee, y1, y2, y3, hasOverride, totalWaiver, netFee }
+  }, [selectedProgram, selectedOfferIds, scholarshipA, scholarshipB, offers, feeOverrideReg, feeOverrideY1, feeOverrideY2, feeOverrideY3])
 
   const toggleOffer = (id: string) =>
     setSelectedOfferIds((prev) => prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id])
@@ -124,6 +126,10 @@ export function CreateOfferForm({ batches }: { batches: Batch[] }) {
             ...(scholarshipB ? [{ scholarshipId: scholarshipB.id, amount: scholarshipB.amount }] : []),
           ],
           installmentType,
+          feeY1: feeOverrideY1 !== "" ? parseFloat(feeOverrideY1) : undefined,
+          feeY2: feeOverrideY2 !== "" ? parseFloat(feeOverrideY2) : undefined,
+          feeY3: feeOverrideY3 !== "" ? parseFloat(feeOverrideY3) : undefined,
+          registrationFee: feeOverrideReg !== "" ? parseFloat(feeOverrideReg) : undefined,
         }),
       })
       if (!res.ok) { const d = await res.json(); throw new Error(d.error ?? "Failed") }
@@ -230,33 +236,35 @@ export function CreateOfferForm({ batches }: { batches: Batch[] }) {
 
           {selectedProgram && (
             <>
-              {/* Fee Override */}
-              <div className="space-y-3">
-                <div>
-                  <label className="block text-xs font-semibold text-slate-600 mb-0.5">Fee Override</label>
-                  <p className="text-xs text-slate-400">Leave blank to use programme defaults. Overrides the base fee before waivers are applied.</p>
+              {/* Admin — Fee Overrides */}
+              <div className="bg-indigo-50 border border-indigo-200 rounded-xl p-4 space-y-3">
+                <div className="flex items-center gap-2 mb-1">
+                  <p className="text-[10px] uppercase tracking-widest font-bold text-indigo-400">Admin — Fee Overrides</p>
+                  <span className="bg-indigo-600 text-[8px] text-white px-1.5 py-0.5 rounded-full font-black uppercase tracking-tighter">Admin Only</span>
                 </div>
-                <div className="grid grid-cols-3 gap-3">
+                <p className="text-xs text-indigo-400">Leave blank to use programme defaults.</p>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                   {[
+                    { label: "Registration (₹)", placeholder: selectedProgram.registrationFee.toString(), value: feeOverrideReg, set: setFeeOverrideReg },
                     { label: "Year 1 (₹)", placeholder: selectedProgram.year1Fee.toString(), value: feeOverrideY1, set: setFeeOverrideY1 },
                     { label: "Year 2 (₹)", placeholder: selectedProgram.year2Fee.toString(), value: feeOverrideY2, set: setFeeOverrideY2 },
                     { label: "Year 3 (₹)", placeholder: selectedProgram.year3Fee.toString(), value: feeOverrideY3, set: setFeeOverrideY3 },
                   ].map(({ label, placeholder, value, set }) => (
                     <div key={label}>
-                      <label className="block text-[10px] font-semibold text-slate-500 mb-1">{label}</label>
+                      <label className="block text-[10px] font-semibold text-indigo-500 mb-1">{label}</label>
                       <input
                         type="number"
                         value={value}
                         onChange={(e) => set(e.target.value)}
                         placeholder={placeholder}
-                        className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500 placeholder:text-slate-300"
+                        className="w-full border border-indigo-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-400 placeholder:text-slate-300"
                       />
                     </div>
                   ))}
                 </div>
                 {fees?.hasOverride && (
                   <div className="flex items-center justify-between bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
-                    <span className="text-xs font-semibold text-amber-700">Overridden total</span>
+                    <span className="text-xs font-semibold text-amber-700">Overridden programme total (excl. registration)</span>
                     <span className="text-sm font-bold text-amber-800">{formatINR(fees.baseFee)}</span>
                   </div>
                 )}

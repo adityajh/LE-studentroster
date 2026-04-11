@@ -48,6 +48,7 @@ type FeeSchedule = {
 } | null
 
 type Program = {
+  registrationFee: { toString(): string }
   year1Fee: { toString(): string }
   year2Fee: { toString(): string }
   year3Fee: { toString(): string }
@@ -103,15 +104,18 @@ export function EditStudentForm({
   const [email, setEmail] = useState(student.email ?? "")
   const [contact, setContact] = useState(student.contact ?? "")
   const [bloodGroup, setBloodGroup] = useState(student.bloodGroup ?? "")
+  const [feeReg, setFeeReg] = useState("")
   const [feeY1, setFeeY1] = useState("")
   const [feeY2, setFeeY2] = useState("")
   const [feeY3, setFeeY3] = useState("")
   const [customTerms, setCustomTerms] = useState(student.financial?.customTerms ?? "")
   const [changeReason, setChangeReason] = useState("")
 
+  const programReg = parseFloat(program?.registrationFee?.toString() ?? "0") || 0
   const programY1 = parseFloat(program?.year1Fee?.toString() ?? "0") || 0
   const programY2 = parseFloat(program?.year2Fee?.toString() ?? "0") || 0
   const programY3 = parseFloat(program?.year3Fee?.toString() ?? "0") || 0
+  const computedReg = feeReg !== "" ? Math.max(0, parseFloat(feeReg)) : programReg
   const computedY1 = feeY1 !== "" ? Math.max(0, parseFloat(feeY1)) : programY1
   const computedY2 = feeY2 !== "" ? Math.max(0, parseFloat(feeY2)) : programY2
   const computedY3 = feeY3 !== "" ? Math.max(0, parseFloat(feeY3)) : programY3
@@ -161,6 +165,7 @@ export function EditStudentForm({
 
   const isFinancialChanged =
     baseFee !== initialBaseFee ||
+    feeReg !== "" ||
     customTerms !== initialCustomTerms ||
     JSON.stringify(selectedOfferIds.sort()) !== JSON.stringify(student.offers.map(o => o.offerId).sort()) ||
     JSON.stringify(selectedScholarships) !== JSON.stringify(student.scholarships.map(ss => ({ scholarshipId: ss.scholarshipId, amount: Number(ss.amount) }))) ||
@@ -231,6 +236,7 @@ export function EditStudentForm({
           localGuardianPhone: localGuardianPhone || null,
           localGuardianEmail: localGuardianEmail || null,
           baseFee:            isAdmin ? baseFee : undefined,
+          registrationFee:    isAdmin && feeReg !== "" ? computedReg : undefined,
           customTerms:        isAdmin ? customTerms : undefined,
           offers:             isAdmin && isFinancialChanged ? selectedOfferIds : undefined,
           scholarships:       isAdmin && isFinancialChanged ? selectedScholarships : undefined,
@@ -407,8 +413,17 @@ export function EditStudentForm({
               </div>
 
           {/* Per-year fee overrides */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <Field label={`Year 1 Fee (₹)`}>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <Field label="Registration Fee (₹)">
+              <input
+                type="number"
+                value={feeReg}
+                onChange={(e) => setFeeReg(e.target.value)}
+                placeholder={String(programReg || "0")}
+                className="w-full h-11 rounded-xl border-2 border-indigo-200 bg-white px-4 text-sm font-semibold text-slate-800 focus:border-indigo-500 focus:outline-none transition-all"
+              />
+            </Field>
+            <Field label="Year 1 Fee (₹)">
               <input
                 type="number"
                 value={feeY1}
@@ -417,7 +432,7 @@ export function EditStudentForm({
                 className="w-full h-11 rounded-xl border-2 border-indigo-200 bg-white px-4 text-sm font-semibold text-slate-800 focus:border-indigo-500 focus:outline-none transition-all"
               />
             </Field>
-            <Field label={`Year 2 Fee (₹)`}>
+            <Field label="Year 2 Fee (₹)">
               <input
                 type="number"
                 value={feeY2}
@@ -426,7 +441,7 @@ export function EditStudentForm({
                 className="w-full h-11 rounded-xl border-2 border-indigo-200 bg-white px-4 text-sm font-semibold text-slate-800 focus:border-indigo-500 focus:outline-none transition-all"
               />
             </Field>
-            <Field label={`Year 3 Fee (₹)`}>
+            <Field label="Year 3 Fee (₹)">
               <input
                 type="number"
                 value={feeY3}
@@ -435,13 +450,13 @@ export function EditStudentForm({
                 className="w-full h-11 rounded-xl border-2 border-indigo-200 bg-white px-4 text-sm font-semibold text-slate-800 focus:border-indigo-500 focus:outline-none transition-all"
               />
             </Field>
-            {(feeY1 !== "" || feeY2 !== "" || feeY3 !== "") && (
-              <div className="flex flex-col justify-end pb-0.5">
-                <p className="text-[10px] uppercase tracking-widest font-bold text-amber-500 mb-1">Total Override</p>
-                <p className="text-lg font-black text-amber-600">{formatINR(computedY1 + computedY2 + computedY3)}</p>
-              </div>
-            )}
           </div>
+          {(feeReg !== "" || feeY1 !== "" || feeY2 !== "" || feeY3 !== "") && (
+            <div className="flex items-center justify-between bg-amber-50 border border-amber-200 rounded-xl px-4 py-2.5">
+              <p className="text-xs font-bold text-amber-600">Programme total override (excl. registration)</p>
+              <p className="text-sm font-black text-amber-700">{formatINR(computedY1 + computedY2 + computedY3)}</p>
+            </div>
+          )}
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {/* spacer */}

@@ -20,6 +20,10 @@ export async function POST(req: NextRequest) {
     scholarships,   // [{ scholarshipId, amount }]
     installmentType, // "ANNUAL" | "ONE_TIME" | "CUSTOM"
     customTerms,
+    feeY1,          // optional per-year overrides
+    feeY2,
+    feeY3,
+    registrationFee, // optional registration fee override
   } = body
 
   if (!name || !email || !contact || !batchId || !programId || !installmentType) {
@@ -38,8 +42,11 @@ export async function POST(req: NextRequest) {
 
   const selectedScholarships: { scholarshipId: string; amount: number }[] = scholarships ?? []
 
-  // Fee calculation
-  const baseFee = Number(program.totalFee)
+  // Fee calculation — use per-year overrides if provided, else programme defaults
+  const y1 = feeY1 != null ? Number(feeY1) : Number(program.year1Fee)
+  const y2 = feeY2 != null ? Number(feeY2) : Number(program.year2Fee)
+  const y3 = feeY3 != null ? Number(feeY3) : Number(program.year3Fee)
+  const baseFee = y1 + y2 + y3
   const offerWaiver = selectedOffers.reduce((s, o) => s + Number(o.waiverAmount), 0)
   const scholarshipWaiver = selectedScholarships.reduce((s, sc) => s + sc.amount, 0)
   const totalWaiver = offerWaiver + scholarshipWaiver
@@ -71,6 +78,7 @@ export async function POST(req: NextRequest) {
         netFee,
         installmentType,
         customTerms: customTerms ?? null,
+        depositAmount: registrationFee != null ? Number(registrationFee) : null,
         isLocked: false,        // locked when enrolment is confirmed
       },
     })
