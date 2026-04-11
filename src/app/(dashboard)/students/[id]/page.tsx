@@ -59,6 +59,18 @@ export default async function StudentDetailPage({
     3: student.program.year3Fee.toNumber(),
   }
 
+  // Synthetic registration row — shown when no year=0 installment exists
+  const hasRegInstallment = student.installments.some(i => i.year === 0)
+  const regFeeAmount = fin?.depositAmount != null
+    ? Number(fin.depositAmount)
+    : student.program.registrationFee.toNumber()
+  const syntheticReg = !hasRegInstallment && fin ? {
+    label: "Registration Fee",
+    amount: regFeeAmount,
+    isPaid: fin.registrationPaid,
+    paidDate: fin.registrationPaidDate,
+  } : null
+
   const photo = student.documents.find((d) => d.type === "STUDENT_PHOTO")
   const hasAddress = student.city || student.address || student.localAddress
   const hasParents = student.parent1Name || student.parent2Name || student.localGuardianName
@@ -439,6 +451,32 @@ export default async function StudentDetailPage({
             {/* Installments tab */}
             {(tab === "installments" || tab === undefined) && (
               <div className="divide-y divide-slate-50">
+                {/* Synthetic registration row (when no year=0 installment in DB) */}
+                {syntheticReg && (
+                  <div className="px-5 py-4 flex items-center justify-between gap-4">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <p className="text-sm font-bold text-slate-800">{syntheticReg.label}</p>
+                        <span className={cn(
+                          "inline-flex items-center text-[10px] uppercase tracking-wider font-bold px-2 py-0.5 rounded border",
+                          syntheticReg.isPaid
+                            ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                            : "bg-amber-50 text-amber-700 border-amber-200"
+                        )}>
+                          {syntheticReg.isPaid ? "PAID" : "PENDING"}
+                        </span>
+                      </div>
+                      {syntheticReg.isPaid && syntheticReg.paidDate && (
+                        <p className="text-[10px] uppercase tracking-wider font-bold text-emerald-500 mt-0.5">
+                          Paid: {new Date(syntheticReg.paidDate).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
+                        </p>
+                      )}
+                    </div>
+                    <p className={cn("text-sm font-extrabold shrink-0", syntheticReg.isPaid ? "text-emerald-600" : "text-slate-800")}>
+                      {formatINR(syntheticReg.amount)}
+                    </p>
+                  </div>
+                )}
                 {student.installments.map((inst) => {
                   const style = formatInstallmentStatus(inst.status)
                   const isPaid = inst.status === "PAID" || inst.status === "PARTIAL"

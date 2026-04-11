@@ -369,7 +369,9 @@ export function CreateOfferForm({ batches }: { batches: Batch[] }) {
                   <div className="flex justify-between text-sm"><span className="text-slate-500">Programme Fee</span><span>{formatINR(fees.baseFee)}</span></div>
                   {fees.totalWaiver > 0 && <div className="flex justify-between text-sm text-emerald-700"><span>Total Waiver</span><span>- {formatINR(fees.totalWaiver)}</span></div>}
                   <div className="flex justify-between text-sm font-bold border-t border-slate-200 pt-2"><span>Net Fee</span><span>{formatINR(fees.netFee)}</span></div>
-                  <p className="text-xs text-slate-400 pt-1">+ ₹50,000 registration (paid on enrolment confirmation)</p>
+                  <p className="text-xs text-slate-400 pt-1">
+                    + {formatINR(feeOverrideReg !== "" ? parseFloat(feeOverrideReg) : parseFloat(selectedProgram.registrationFee.toString()))} registration (paid on enrolment confirmation)
+                  </p>
                 </div>
               )}
             </>
