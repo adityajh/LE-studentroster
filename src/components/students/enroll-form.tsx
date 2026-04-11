@@ -35,6 +35,7 @@ type Offer = {
   type: string
   waiverAmount: { toString(): string }
   deadline: Date | null
+  conditions: unknown
 }
 
 type Scholarship = {
@@ -97,6 +98,11 @@ export function EnrollForm({ batches, defaultTerms }: { batches: Batch[], defaul
   const [scholarshipB, setScholarshipB] = useState<{ id: string; amount: number } | null>(null)
   const [installmentType, setInstallmentType] = useState<"ANNUAL" | "ONE_TIME" | "CUSTOM">("ANNUAL")
 
+  // Per-year fee overrides
+  const [feeOverrideY1, setFeeOverrideY1] = useState("")
+  const [feeOverrideY2, setFeeOverrideY2] = useState("")
+  const [feeOverrideY3, setFeeOverrideY3] = useState("")
+
   // Custom schedule state
   const [customInstallments, setCustomInstallments] = useState<CustomInstallment[]>([])
   const [customTerms, setCustomTerms] = useState(defaultTerms)
@@ -113,30 +119,43 @@ export function EnrollForm({ batches, defaultTerms }: { batches: Batch[], defaul
   // Fee calculation
   const fees = useMemo(() => {
     if (!selectedProgram) return null
-    const baseFee = parseFloat(selectedProgram.totalFee.toString())
     const reg = parseFloat(selectedProgram.registrationFee.toString())
-    const y1 = parseFloat(selectedProgram.year1Fee.toString())
-    const y2 = parseFloat(selectedProgram.year2Fee.toString())
-    const y3 = parseFloat(selectedProgram.year3Fee.toString())
+    const baseY1 = parseFloat(selectedProgram.year1Fee.toString())
+    const baseY2 = parseFloat(selectedProgram.year2Fee.toString())
+    const baseY3 = parseFloat(selectedProgram.year3Fee.toString())
 
-    const offerWaiver = offers
-      .filter((o) => selectedOfferIds.includes(o.id))
-      .reduce((sum, o) => sum + parseFloat(o.waiverAmount.toString()), 0)
+    // Apply per-year overrides
+    const y1 = feeOverrideY1 !== "" ? Math.max(0, parseFloat(feeOverrideY1)) : baseY1
+    const y2 = feeOverrideY2 !== "" ? Math.max(0, parseFloat(feeOverrideY2)) : baseY2
+    const y3 = feeOverrideY3 !== "" ? Math.max(0, parseFloat(feeOverrideY3)) : baseY3
+    const baseFee = y1 + y2 + y3
+
+    // Split offers into spread vs one-time
+    const isSpread = (c: unknown) =>
+      c == null || typeof c !== "object" || (c as Record<string, unknown>).spreadAcrossYears !== false
+    const selectedOffers = offers.filter((o) => selectedOfferIds.includes(o.id))
+    const spreadWaiver = selectedOffers
+      .filter((o) => isSpread(o.conditions))
+      .reduce((s, o) => s + parseFloat(o.waiverAmount.toString()), 0)
+    const onetimeWaiver = selectedOffers
+      .filter((o) => !isSpread(o.conditions))
+      .reduce((s, o) => s + parseFloat(o.waiverAmount.toString()), 0)
 
     const schWaiver = (scholarshipA?.amount ?? 0) + (scholarshipB?.amount ?? 0)
-    const totalWaiver = offerWaiver + schWaiver
+    const totalWaiver = spreadWaiver + onetimeWaiver + schWaiver
     const netFee = Math.round(baseFee - totalWaiver)
-    const waiverPerYear = Math.round(totalWaiver / 3)
+
+    // Per-year waiver: spread offers ÷3, scholarships ÷3, one-time fully in Y1
+    const spreadPerYear = Math.round((spreadWaiver + schWaiver) / 3)
+    const y1Net = Math.max(0, Math.round(y1 - spreadPerYear - onetimeWaiver))
+    const y2Net = Math.max(0, Math.round(y2 - spreadPerYear))
+    const y3Net = Math.max(0, Math.round(y3 - spreadPerYear))
 
     const bYear = selectedBatch!.year
     const today = new Date().toISOString().split("T")[0]
     const y1Due = `${bYear}-07-01`
     const y2Due = `${bYear + 1}-07-01`
     const y3Due = `${bYear + 2}-07-01`
-
-    const y1Net = Math.max(0, Math.round(y1 - waiverPerYear))
-    const y2Net = Math.max(0, Math.round(y2 - waiverPerYear))
-    const y3Net = Math.max(0, Math.round(y3 - waiverPerYear))
 
     const annualSchedule = [
       { label: "Registration Fee", amount: Math.round(reg), due: "Today", year: 0 },
@@ -145,10 +164,9 @@ export function EnrollForm({ batches, defaultTerms }: { batches: Batch[], defaul
       { label: "Year 3 — Work", amount: y3Net, due: `Jul 1, ${bYear + 2}`, year: 3 },
     ]
 
-    const oneTimeNet = Math.max(0, Math.round(y1 + y2 + y3 - totalWaiver))
     const oneTimeSchedule = [
       { label: "Registration Fee", amount: Math.round(reg), due: "Today", year: 0 },
-      { label: "Full Programme Fee (3 Years)", amount: oneTimeNet, due: "Within 30 days", year: 1 },
+      { label: "Full Programme Fee (3 Years)", amount: Math.max(0, Math.round(baseFee - totalWaiver)), due: "Within 30 days", year: 1 },
     ]
 
     const defaultCustom: CustomInstallment[] = [
@@ -160,13 +178,15 @@ export function EnrollForm({ batches, defaultTerms }: { batches: Batch[], defaul
 
     return {
       baseFee,
+      baseY1, baseY2, baseY3,
+      y1, y2, y3,
+      hasOverride: feeOverrideY1 !== "" || feeOverrideY2 !== "" || feeOverrideY3 !== "",
       totalWaiver,
       netFee,
-      waiverPerYear,
       schedule: installmentType === "ANNUAL" ? annualSchedule : oneTimeSchedule,
       defaultCustom,
     }
-  }, [selectedProgram, selectedOfferIds, scholarshipA, scholarshipB, installmentType, offers, selectedBatch])
+  }, [selectedProgram, selectedOfferIds, scholarshipA, scholarshipB, installmentType, offers, selectedBatch, feeOverrideY1, feeOverrideY2, feeOverrideY3])
 
   const toggleOffer = (id: string) => {
     setSelectedOfferIds((prev) =>
@@ -378,6 +398,39 @@ export function EnrollForm({ batches, defaultTerms }: { batches: Batch[], defaul
                 </div>
               </div>
             </div>
+
+            {selectedProgram && (
+              <div className="bg-white border border-slate-200/50 rounded-2xl shadow-sm p-6 space-y-4">
+                <div>
+                  <p className="text-[10px] uppercase tracking-widest font-bold text-slate-400">Fee Override</p>
+                  <p className="text-xs text-slate-400 mt-0.5">Leave blank to use the programme defaults. Overrides affect the base fee before waivers.</p>
+                </div>
+                <div className="grid grid-cols-3 gap-3">
+                  {[
+                    { label: "Year 1 Fee (₹)", placeholder: selectedProgram.year1Fee.toString(), value: feeOverrideY1, set: setFeeOverrideY1 },
+                    { label: "Year 2 Fee (₹)", placeholder: selectedProgram.year2Fee.toString(), value: feeOverrideY2, set: setFeeOverrideY2 },
+                    { label: "Year 3 Fee (₹)", placeholder: selectedProgram.year3Fee.toString(), value: feeOverrideY3, set: setFeeOverrideY3 },
+                  ].map(({ label, placeholder, value, set }) => (
+                    <div key={label} className="space-y-1">
+                      <label className="text-[10px] uppercase tracking-widest font-bold text-slate-400">{label}</label>
+                      <input
+                        type="number"
+                        value={value}
+                        onChange={(e) => set(e.target.value)}
+                        placeholder={placeholder}
+                        className="w-full h-10 rounded-xl border-2 border-slate-200 bg-white px-3 text-sm font-semibold text-slate-800 placeholder:text-slate-300 focus:border-indigo-500 focus:outline-none transition-all"
+                      />
+                    </div>
+                  ))}
+                </div>
+                {fees?.hasOverride && (
+                  <div className="flex items-center justify-between bg-amber-50 border border-amber-200 rounded-xl px-4 py-2">
+                    <span className="text-xs font-semibold text-amber-700">Overridden total</span>
+                    <span className="text-sm font-bold text-amber-800">{formatINR(fees.baseFee)}</span>
+                  </div>
+                )}
+              </div>
+            )}
 
             {selectedProgram && (
               <div className="bg-white border border-slate-200/50 rounded-2xl shadow-sm p-6 space-y-5">

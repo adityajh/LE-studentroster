@@ -60,6 +60,7 @@ export async function POST(req: NextRequest) {
 
     // Upsert offers
     for (const o of offers) {
+      const offerConditions = { spreadAcrossYears: o.spreadAcrossYears ?? true }
       if (o.id.startsWith("new-")) {
         await tx.offer.create({
           data: {
@@ -68,6 +69,7 @@ export async function POST(req: NextRequest) {
             name: o.name,
             waiverAmount: parseFloat(o.waiverAmount || "0"),
             deadline: o.deadline ? new Date(o.deadline) : null,
+            conditions: offerConditions,
           },
         })
       } else {
@@ -77,6 +79,7 @@ export async function POST(req: NextRequest) {
             name: o.name,
             waiverAmount: parseFloat(o.waiverAmount || "0"),
             deadline: o.deadline ? new Date(o.deadline) : null,
+            conditions: offerConditions,
           },
         })
       }

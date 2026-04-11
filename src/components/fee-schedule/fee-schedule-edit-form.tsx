@@ -73,6 +73,7 @@ export function FeeScheduleEditForm({ batch }: { batch: Batch }) {
       type: o.type,
       waiverAmount: o.waiverAmount.toString(),
       deadline: o.deadline ? new Date(o.deadline).toISOString().split("T")[0] : "",
+      spreadAcrossYears: (o.conditions as { spreadAcrossYears?: boolean } | null)?.spreadAcrossYears ?? true,
     }))
   )
 
@@ -93,7 +94,7 @@ export function FeeScheduleEditForm({ batch }: { batch: Batch }) {
     setPrograms((prev) => prev.map((p) => (p.id === id ? { ...p, [field]: value } : p)))
   }
 
-  const updateOffer = (id: string, field: string, value: string) => {
+  const updateOffer = (id: string, field: string, value: string | boolean) => {
     setOffers((prev) => prev.map((o) => (o.id === id ? { ...o, [field]: value } : o)))
   }
 
@@ -108,9 +109,10 @@ export function FeeScheduleEditForm({ batch }: { batch: Batch }) {
       {
         id: `new-${Date.now()}`,
         name: "",
-        type: "FULL_PAYMENT", // default enum
+        type: "FULL_PAYMENT",
         waiverAmount: "0",
         deadline: "",
+        spreadAcrossYears: true,
       },
     ])
   }
@@ -260,7 +262,22 @@ export function FeeScheduleEditForm({ batch }: { batch: Batch }) {
                     onChange={(e) => updateOffer(offer.id, "deadline", e.target.value)}
                   />
                 </div>
-                <div className="md:col-span-3 flex justify-end">
+                <div className="md:col-span-2 flex items-center gap-2 pt-1">
+                  <input
+                    type="checkbox"
+                    id={`spread-${offer.id}`}
+                    checked={offer.spreadAcrossYears}
+                    onChange={(e) => updateOffer(offer.id, "spreadAcrossYears", e.target.checked)}
+                    className="w-4 h-4 accent-blue-600"
+                  />
+                  <label htmlFor={`spread-${offer.id}`} className="text-xs font-medium text-slate-600 cursor-pointer select-none">
+                    Spread across 3 years (÷3 per year)
+                    {!offer.spreadAcrossYears && (
+                      <span className="ml-2 text-amber-600 font-semibold">— deducted in full, Year 1 only</span>
+                    )}
+                  </label>
+                </div>
+                <div className="flex justify-end items-center">
                   <Button variant="ghost" size="sm" className="text-red-500 hover:text-red-700 hover:bg-red-50" onClick={() => removeOffer(offer.id)}>
                     Remove Offer
                   </Button>
