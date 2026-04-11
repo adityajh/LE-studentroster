@@ -81,7 +81,7 @@ export async function POST(
   const year1 = Number(program.year1Fee)
   const year2 = Number(program.year2Fee)
   const year3 = Number(program.year3Fee)
-  const regFee = financial.depositAmount != null ? Number(financial.depositAmount) : Number(program.registrationFee)
+  const regFee = financial.registrationFeeOverride != null ? Number(financial.registrationFeeOverride) : Number(program.registrationFee)
   const totalWaiver = Number(financial.totalWaiver)
   const waiverPerYear = totalWaiver / 3
   const installmentType = financial.installmentType

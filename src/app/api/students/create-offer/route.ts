@@ -78,7 +78,7 @@ export async function POST(req: NextRequest) {
         netFee,
         installmentType,
         customTerms: customTerms ?? null,
-        depositAmount: registrationFee != null ? Number(registrationFee) : null,
+        registrationFeeOverride: registrationFee != null ? Number(registrationFee) : null,
         isLocked: false,        // locked when enrolment is confirmed
       },
     })

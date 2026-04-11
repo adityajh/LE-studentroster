@@ -86,7 +86,7 @@ export async function PATCH(
   trackChange("email", student.email, email)
   trackChange("contact", student.contact, contact)
   trackChange("baseFee", student.financial?.baseFee, baseFee)
-  trackChange("registrationFee", student.financial?.depositAmount, registrationFee)
+  trackChange("registrationFee", student.financial?.registrationFeeOverride, registrationFee)
   trackChange("customTerms", student.financial?.customTerms, customTerms)
 
   // ── Financial recalculation ───────────────────────────────────────────────

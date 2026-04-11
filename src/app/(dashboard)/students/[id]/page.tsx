@@ -61,8 +61,8 @@ export default async function StudentDetailPage({
 
   // Synthetic registration row — shown when no year=0 installment exists
   const hasRegInstallment = student.installments.some(i => i.year === 0)
-  const regFeeAmount = fin?.depositAmount != null
-    ? Number(fin.depositAmount)
+  const regFeeAmount = fin?.registrationFeeOverride != null
+    ? Number(fin.registrationFeeOverride)
     : student.program.registrationFee.toNumber()
   const syntheticReg = !hasRegInstallment && fin ? {
     label: "Registration Fee",
