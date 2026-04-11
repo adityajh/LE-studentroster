@@ -76,6 +76,7 @@ export default async function EditStudentPage({
         role={role}
         feeSchedule={feeSchedule as any}
         totalPaid={totalPaid}
+        program={student.program as any}
       />
     </div>
   )

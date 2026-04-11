@@ -47,6 +47,12 @@ type FeeSchedule = {
   scholarships: { id: string; name: string; category: string; minAmount: any; maxAmount: any }[]
 } | null
 
+type Program = {
+  year1Fee: { toString(): string }
+  year2Fee: { toString(): string }
+  year3Fee: { toString(): string }
+} | null
+
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 const BLOOD_GROUPS = ["A+", "A−", "B+", "B−", "AB+", "AB−", "O+", "O−"]
@@ -77,11 +83,13 @@ export function EditStudentForm({
   role,
   feeSchedule,
   totalPaid = 0,
+  program = null,
 }: {
   student: Student
   role?: string
   feeSchedule?: FeeSchedule
   totalPaid?: number
+  program?: Program
 }) {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
@@ -95,9 +103,19 @@ export function EditStudentForm({
   const [email, setEmail] = useState(student.email ?? "")
   const [contact, setContact] = useState(student.contact ?? "")
   const [bloodGroup, setBloodGroup] = useState(student.bloodGroup ?? "")
-  const [baseFee, setBaseFee] = useState(student.financial?.baseFee?.toString() ?? "0")
+  const [feeY1, setFeeY1] = useState("")
+  const [feeY2, setFeeY2] = useState("")
+  const [feeY3, setFeeY3] = useState("")
   const [customTerms, setCustomTerms] = useState(student.financial?.customTerms ?? "")
   const [changeReason, setChangeReason] = useState("")
+
+  const programY1 = parseFloat(program?.year1Fee?.toString() ?? "0") || 0
+  const programY2 = parseFloat(program?.year2Fee?.toString() ?? "0") || 0
+  const programY3 = parseFloat(program?.year3Fee?.toString() ?? "0") || 0
+  const computedY1 = feeY1 !== "" ? Math.max(0, parseFloat(feeY1)) : programY1
+  const computedY2 = feeY2 !== "" ? Math.max(0, parseFloat(feeY2)) : programY2
+  const computedY3 = feeY3 !== "" ? Math.max(0, parseFloat(feeY3)) : programY3
+  const baseFee = String(computedY1 + computedY2 + computedY3)
 
   const initialBaseFee = student.financial?.baseFee?.toString() ?? "0"
   const initialCustomTerms = student.financial?.customTerms ?? ""
@@ -388,17 +406,46 @@ export function EditStudentForm({
                 <span className="bg-indigo-600 text-[8px] text-white px-1.5 py-0.5 rounded-full font-black uppercase tracking-tighter">Admin Only</span>
               </div>
 
-          {/* Base Fee */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <Field label="Base Fee Override">
+          {/* Per-year fee overrides */}
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <Field label={`Year 1 Fee (₹)`}>
               <input
                 type="number"
-                value={baseFee}
-                onChange={(e) => setBaseFee(e.target.value)}
-                placeholder="0"
+                value={feeY1}
+                onChange={(e) => setFeeY1(e.target.value)}
+                placeholder={String(programY1 || "0")}
                 className="w-full h-11 rounded-xl border-2 border-indigo-200 bg-white px-4 text-sm font-semibold text-slate-800 focus:border-indigo-500 focus:outline-none transition-all"
               />
             </Field>
+            <Field label={`Year 2 Fee (₹)`}>
+              <input
+                type="number"
+                value={feeY2}
+                onChange={(e) => setFeeY2(e.target.value)}
+                placeholder={String(programY2 || "0")}
+                className="w-full h-11 rounded-xl border-2 border-indigo-200 bg-white px-4 text-sm font-semibold text-slate-800 focus:border-indigo-500 focus:outline-none transition-all"
+              />
+            </Field>
+            <Field label={`Year 3 Fee (₹)`}>
+              <input
+                type="number"
+                value={feeY3}
+                onChange={(e) => setFeeY3(e.target.value)}
+                placeholder={String(programY3 || "0")}
+                className="w-full h-11 rounded-xl border-2 border-indigo-200 bg-white px-4 text-sm font-semibold text-slate-800 focus:border-indigo-500 focus:outline-none transition-all"
+              />
+            </Field>
+            {(feeY1 !== "" || feeY2 !== "" || feeY3 !== "") && (
+              <div className="flex flex-col justify-end pb-0.5">
+                <p className="text-[10px] uppercase tracking-widest font-bold text-amber-500 mb-1">Total Override</p>
+                <p className="text-lg font-black text-amber-600">{formatINR(computedY1 + computedY2 + computedY3)}</p>
+              </div>
+            )}
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* spacer */}
+            <div />
 
             {/* Net Fee Preview */}
             <div className="flex flex-col justify-end">
