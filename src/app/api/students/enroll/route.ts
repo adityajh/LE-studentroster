@@ -76,7 +76,13 @@ export async function POST(req: NextRequest) {
   const year2 = program.year2Fee.toNumber()
   const year3 = program.year3Fee.toNumber()
   const regFee = program.registrationFee.toNumber()
-  const waiverPerYear = totalWaiver / 3
+
+  // Split offers into spread (÷3/yr) vs one-time (full deduction Year 1 only)
+  const isSpread = (c: unknown) =>
+    c == null || typeof c !== "object" || (c as Record<string, unknown>).spreadAcrossYears !== false
+  const spreadOfferWaiver = selectedOffers.filter(o => isSpread(o.conditions)).reduce((s, o) => s + Number(o.waiverAmount), 0)
+  const onetimeOfferWaiver = selectedOffers.filter(o => !isSpread(o.conditions)).reduce((s, o) => s + Number(o.waiverAmount), 0)
+  const spreadPerYear = Math.round((spreadOfferWaiver + totalScholarshipWaiver) / 3)
 
   // Generate roll number
   const rollNo = await generateRollNo(program.batch.year)
@@ -124,21 +130,21 @@ export async function POST(req: NextRequest) {
           year: 1,
           label: "Year 1 — Growth",
           dueDate: year1Due,
-          amount: Math.max(0, year1 - waiverPerYear),
+          amount: Math.max(0, Math.round(year1 - spreadPerYear - onetimeOfferWaiver)),
           status: year1Due <= today ? "DUE" : "UPCOMING",
         },
         {
           year: 2,
           label: "Year 2 — Projects",
           dueDate: year2Due,
-          amount: Math.max(0, year2 - waiverPerYear),
+          amount: Math.max(0, Math.round(year2 - spreadPerYear)),
           status: "UPCOMING",
         },
         {
           year: 3,
           label: "Year 3 — Work",
           dueDate: year3Due,
-          amount: Math.max(0, year3 - waiverPerYear),
+          amount: Math.max(0, Math.round(year3 - spreadPerYear)),
           status: "UPCOMING",
         }
       )

@@ -503,15 +503,19 @@ export default async function StudentDetailPage({
                             </p>
                           )}
                         </div>
-                        {fin?.installmentType === "ANNUAL" && inst.year > 0 && waiverPerYear > 0 && yearFees[inst.year] && (
-                          <p className="text-[10px] font-medium text-slate-400 mt-1">
-                            {formatINR(yearFees[inst.year])}
-                            {" − "}
-                            <span className="text-emerald-600 font-semibold">{formatINR(waiverPerYear)} waiver</span>
-                            {" = "}
-                            <span className="font-bold text-slate-600">{formatINR(Math.round(inst.amount.toNumber()))}</span>
-                          </p>
-                        )}
+                        {fin?.installmentType === "ANNUAL" && inst.year > 0 && yearFees[inst.year] && (() => {
+                          const impliedWaiver = Math.round(yearFees[inst.year] - inst.amount.toNumber())
+                          if (impliedWaiver <= 0) return null
+                          return (
+                            <p className="text-[10px] font-medium text-slate-400 mt-1">
+                              {formatINR(yearFees[inst.year])}
+                              {" − "}
+                              <span className="text-emerald-600 font-semibold">{formatINR(impliedWaiver)} waiver</span>
+                              {" = "}
+                              <span className="font-bold text-slate-600">{formatINR(Math.round(inst.amount.toNumber()))}</span>
+                            </p>
+                          )
+                        })()}
                       </div>
                       <div className="text-right shrink-0">
                         <p className={cn("text-sm font-extrabold", isPaid ? "text-emerald-600" : "text-slate-800")}>

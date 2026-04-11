@@ -17,10 +17,11 @@ export async function PATCH(
     where: { id },
     include: {
       financial: true,
-      offers: true,
+      offers: { include: { offer: { select: { id: true, conditions: true, waiverAmount: true } } } },
       scholarships: true,
       deductions: true,
       installments: { orderBy: { dueDate: "asc" } },
+      program: true,
     },
   })
   if (!student) {
@@ -234,33 +235,49 @@ export async function PATCH(
         // Only for ANNUAL and ONE_TIME plans (not CUSTOM)
         const installmentType = student.financial?.installmentType
         if (installmentType !== "CUSTOM") {
-          // Find non-registration, non-fully-paid installments
           const remainingInstallments = student.installments.filter(
             inst => inst.year > 0 && inst.status !== "PAID"
           )
 
           if (remainingInstallments.length > 0) {
-            // Compute total already settled (from paid installments only)
-            const paidInstallments = student.installments.filter(i => i.status === "PAID")
-            const totalSettled = paidInstallments.reduce((s, i) => s + Number(i.amount), 0)
-            const regFeeInstallment = student.installments.find(i => i.year === 0)
-            const regFeeAmount = regFeeInstallment ? Number(regFeeInstallment.amount) : 0
+            if (installmentType === "ANNUAL") {
+              // Fetch the current offer records (post-update) for their conditions
+              const currentOfferIds = offers !== undefined
+                ? (offers as string[])
+                : student.offers.map(o => o.offerId)
+              const currentOffers = currentOfferIds.length > 0
+                ? await tx.offer.findMany({ where: { id: { in: currentOfferIds } } })
+                : []
 
-            // Net fee minus registration fee = distributable fee
-            const distributableFee = newNetFee - regFeeAmount
-            const remainingFee = Math.max(0, distributableFee - totalSettled)
-            const perInstallment = Math.round(remainingFee / remainingInstallments.length)
+              const isSpreadOffer = (c: unknown) =>
+                c == null || typeof c !== "object" || (c as Record<string, unknown>).spreadAcrossYears !== false
+              const spreadWaiver = currentOffers.filter(o => isSpreadOffer(o.conditions)).reduce((s, o) => s + Number(o.waiverAmount), 0)
+              const onetimeWaiver = currentOffers.filter(o => !isSpreadOffer(o.conditions)).reduce((s, o) => s + Number(o.waiverAmount), 0)
+              const schWaiver = scholarships !== undefined
+                ? (scholarships as { scholarshipId: string; amount: number }[]).reduce((s, sc) => s + sc.amount, 0)
+                : student.scholarships.reduce((s, sc) => s + Number(sc.amount), 0)
+              const spreadPerYear = Math.round((spreadWaiver + schWaiver) / 3)
 
-            for (let i = 0; i < remainingInstallments.length; i++) {
-              const inst = remainingInstallments[i]
-              // Last installment gets any rounding remainder
-              const amt = i === remainingInstallments.length - 1
-                ? remainingFee - perInstallment * (remainingInstallments.length - 1)
-                : perInstallment
-              await tx.installment.update({
-                where: { id: inst.id },
-                data: { amount: Math.max(0, amt) },
-              })
+              // Use program year fees as the base for each year
+              const programYearFees: Record<number, number> = {
+                1: Number(student.program!.year1Fee),
+                2: Number(student.program!.year2Fee),
+                3: Number(student.program!.year3Fee),
+              }
+
+              for (const inst of remainingInstallments) {
+                const yearFee = programYearFees[inst.year] ?? 0
+                const amt = Math.max(0, Math.round(yearFee - spreadPerYear - (inst.year === 1 ? onetimeWaiver : 0)))
+                await tx.installment.update({ where: { id: inst.id }, data: { amount: amt } })
+              }
+            } else {
+              // ONE_TIME: single installment = full net fee minus registration
+              const regFeeInstallment = student.installments.find(i => i.year === 0)
+              const regFeeAmount = regFeeInstallment ? Number(regFeeInstallment.amount) : 0
+              const amt = Math.max(0, newNetFee - regFeeAmount)
+              for (const inst of remainingInstallments) {
+                await tx.installment.update({ where: { id: inst.id }, data: { amount: amt } })
+              }
             }
           }
         }
