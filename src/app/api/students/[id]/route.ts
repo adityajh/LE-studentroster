@@ -270,10 +270,10 @@ export async function PATCH(
                   .reduce((s, sc) => s + sc.amount, 0)
               } else {
                 spreadSchWaiver = student.scholarships
-                  .filter(sc => sc.scholarship.spreadAcrossYears !== false)
+                  .filter(sc => (sc.scholarship as { spreadAcrossYears?: boolean }).spreadAcrossYears !== false)
                   .reduce((s, sc) => s + Number(sc.amount), 0)
                 onetimeSchWaiver = student.scholarships
-                  .filter(sc => sc.scholarship.spreadAcrossYears === false)
+                  .filter(sc => (sc.scholarship as { spreadAcrossYears?: boolean }).spreadAcrossYears === false)
                   .reduce((s, sc) => s + Number(sc.amount), 0)
               }
               const spreadPerYear = Math.round((spreadWaiver + spreadSchWaiver) / 3)

@@ -91,10 +91,10 @@ export async function POST(
   const spreadOfferWaiver = student.offers.filter(o => isSpread(o.offer.conditions)).reduce((s, o) => s + Number(o.waiverAmount), 0)
   const onetimeOfferWaiver = student.offers.filter(o => !isSpread(o.offer.conditions)).reduce((s, o) => s + Number(o.waiverAmount), 0)
   const spreadScholarshipWaiver = student.scholarships
-    .filter(sc => sc.scholarship.spreadAcrossYears !== false)
+    .filter(sc => (sc.scholarship as { spreadAcrossYears?: boolean }).spreadAcrossYears !== false)
     .reduce((s, sc) => s + Number(sc.amount), 0)
   const onetimeScholarshipWaiver = student.scholarships
-    .filter(sc => sc.scholarship.spreadAcrossYears === false)
+    .filter(sc => (sc.scholarship as { spreadAcrossYears?: boolean }).spreadAcrossYears === false)
     .reduce((s, sc) => s + Number(sc.amount), 0)
   const spreadPerYear = Math.round((spreadOfferWaiver + spreadScholarshipWaiver) / 3)
   const onetimeWaiver = onetimeOfferWaiver + onetimeScholarshipWaiver
