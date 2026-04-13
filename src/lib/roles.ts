@@ -6,12 +6,12 @@ export const ROLES = {
   ADMIN: {
     value: "ADMIN" as const,
     label: "Admin",
-    description: "Full access — can manage team, settings, enrol students, and record payments.",
+    description: "Full access — manage team, settings, batches & programs, delete students, override financials, modify installments, make offers, enrol students, do onboarding, record payments, and upload documents.",
   },
   STAFF: {
     value: "STAFF" as const,
     label: "Staff",
-    description: "Can view students, record payments, and upload documents. Cannot manage team or settings.",
+    description: "Can make offers, enrol students, do onboarding, record payments, and upload documents. Cannot manage team, settings, batches/programs, delete students, or modify financial overrides.",
   },
 } satisfies Record<string, { value: string; label: string; description: string }>
 

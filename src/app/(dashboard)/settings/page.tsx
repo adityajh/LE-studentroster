@@ -11,22 +11,24 @@ import { ApiKeysTab } from "@/components/settings/api-keys-tab"
 import { EmailTab } from "@/components/settings/email-tab"
 import { OfferSettings } from "@/components/settings/offer-settings"
 import { RemindersTab } from "@/components/settings/reminders-tab"
+import { AttachmentsTab } from "@/components/settings/attachments-tab"
 import { getReminderSettings } from "@/app/actions/reminder-settings"
 import { Eyebrow } from "@/components/ui/brand"
 import { cn } from "@/lib/utils"
-import { Users, Key, Mail, FileText, Send, Bell } from "lucide-react"
+import { Users, Key, Mail, FileText, Send, Bell, Paperclip } from "lucide-react"
 
 const DEFAULT_TERMS = `1. All fees laid out in the structure above must be paid on or before the due date.
 2. In the event of withdrawal, the registration fee and deposit are strictly non-refundable.
 3. The scholarship and waiver discounts have already been deducted from your base fee computation.`
 
 const TABS = [
-  { id: "team",      label: "Team",      icon: Users },
-  { id: "api-keys",  label: "API Keys",  icon: Key },
-  { id: "email",     label: "Email",     icon: Mail },
-  { id: "tcs",       label: "T&C's",     icon: FileText },
-  { id: "emails",    label: "Emails",    icon: Send },
-  { id: "reminders", label: "Reminders", icon: Bell },
+  { id: "team",        label: "Team",        icon: Users },
+  { id: "api-keys",    label: "API Keys",    icon: Key },
+  { id: "email",       label: "Email",       icon: Mail },
+  { id: "tcs",         label: "T&C's",       icon: FileText },
+  { id: "emails",      label: "Emails",      icon: Send },
+  { id: "attachments", label: "Attachments", icon: Paperclip },
+  { id: "reminders",   label: "Reminders",   icon: Bell },
 ] as const
 
 type Tab = typeof TABS[number]["id"]
@@ -141,6 +143,10 @@ export default async function SettingsPage({
               year1Url:                          offerSettings["ONBOARDING_YEAR1_URL"] || "",
             }}
           />
+        )}
+
+        {activeTab === "attachments" && (
+          <AttachmentsTab />
         )}
 
         {activeTab === "reminders" && (
