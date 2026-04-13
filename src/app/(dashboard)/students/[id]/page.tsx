@@ -291,7 +291,7 @@ export default async function StudentDetailPage({
                 )}
               >
                 <GraduationCap className="h-4 w-4" />
-                {student.onboardingEmailSentAt ? "Onboarding" : "Onboard Student"}
+                Complete Onboarding
               </Link>
             )}
             {/* Self-onboarding link button — only while ONBOARDING */}
@@ -301,18 +301,6 @@ export default async function StudentDetailPage({
                 currentStatus={student.selfOnboardingStatus}
                 isAdmin={dbUser?.role === "ADMIN"}
               />
-            )}
-            {/* Approve profile button — shown to admins when submitted */}
-            {canRecord && student.selfOnboardingStatus === "SUBMITTED" && (
-              <form action={`/api/students/${student.id}/approve-onboarding`} method="POST">
-                <button
-                  type="submit"
-                  className="flex items-center gap-1.5 h-9 px-4 rounded-xl bg-emerald-600 text-white text-sm font-bold hover:bg-emerald-700 transition-all shrink-0"
-                >
-                  <CheckCircle2 className="h-4 w-4" />
-                  Approve Profile
-                </button>
-              </form>
             )}
             {canRecord && (
               <Link
