@@ -206,8 +206,8 @@ export default async function StudentsPage({
                           {daysLeft === null ? (
                             <span className="text-xs font-medium text-slate-400">No email sent</span>
                           ) : daysLeft < 0 ? (
-                            <span className="inline-flex items-center gap-1 bg-slate-500/10 text-slate-600 border border-slate-500/20 text-[10px] uppercase tracking-wider font-bold px-2 py-0.5 rounded">
-                              Expired
+                            <span className={`inline-flex items-center gap-1 ${s.offerRevised ? "bg-orange-500/10 text-orange-700 border-orange-500/20" : "bg-slate-500/10 text-slate-600 border-slate-500/20"} border text-[10px] uppercase tracking-wider font-bold px-2 py-0.5 rounded`}>
+                              {s.offerRevised ? "Lapsed" : "Expired"}
                             </span>
                           ) : daysLeft <= 1 ? (
                             <span className="inline-flex items-center gap-1 bg-rose-500/10 text-rose-700 border border-rose-500/20 text-[10px] uppercase tracking-wider font-bold px-2 py-0.5 rounded">

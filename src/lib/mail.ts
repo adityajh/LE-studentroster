@@ -324,7 +324,7 @@ export async function sendOfferEmail(payload: OfferEmailPayload): Promise<SendRe
 }
 
 export type OfferReminderPayload = {
-  to: string
+  to: string | string[]
   studentName: string
   programName: string
   offerExpiryDate: Date
@@ -356,7 +356,8 @@ function offerReminderHtml(payload: OfferReminderPayload) {
 }
 
 export async function sendOfferReminderEmail(payload: OfferReminderPayload): Promise<SendResult> {
-  if (!payload.to) return { ok: false, skipped: true, reason: "No recipient email" }
+  const recipients = Array.isArray(payload.to) ? payload.to.filter(Boolean) : [payload.to].filter(Boolean)
+  if (!recipients.length) return { ok: false, skipped: true, reason: "No recipient email" }
   const config = await getSmtpConfig()
   if (!config) return { ok: false, skipped: true, reason: "SMTP not configured" }
 
@@ -368,7 +369,7 @@ export async function sendOfferReminderEmail(payload: OfferReminderPayload): Pro
   try {
     const info = await transporter.sendMail({
       from: `${config.fromName} <${config.fromEmail}>`,
-      to: payload.to,
+      to: recipients,
       subject: `Reminder: Confirm your ${payload.programName} offer by ${expiry} (${payload.daysLeft} days left)`,
       html: offerReminderHtml(payload),
     })

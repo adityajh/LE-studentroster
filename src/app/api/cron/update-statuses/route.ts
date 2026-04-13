@@ -102,14 +102,16 @@ The Let's Enterprise Admissions Team`
     const offerExpiry = new Date(student.offerExpiresAt)
     const daysLeft = Math.ceil((offerExpiry.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
 
-    // Day 3 reminder (4 days left)
-    if (daysLeft === 4 && !student.offerReminder1SentAt) {
+    const recipients = [student.email, student.parent1Email].filter((e): e is string => !!e)
+
+    // Reminder 1: 3–5 days before expiry (target = 4 days)
+    if (daysLeft >= 3 && daysLeft <= 5 && !student.offerReminder1SentAt) {
       const result = await sendOfferReminderEmail({
-        to: student.email,
+        to: recipients,
         studentName: student.name,
         programName: student.program.name,
         offerExpiryDate: offerExpiry,
-        daysLeft: 4,
+        daysLeft,
         reminderNumber: 1,
         bodyText: settings["OFFER_REMINDER_1_BODY"] || DEFAULT_REMINDER_1,
       })
@@ -119,14 +121,14 @@ The Let's Enterprise Admissions Team`
       }
     }
 
-    // Day 6 reminder (1 day left)
-    if (daysLeft === 1 && !student.offerReminder2SentAt) {
+    // Reminder 2: 0–2 days before expiry (target = 1 day)
+    if (daysLeft >= 0 && daysLeft <= 2 && !student.offerReminder2SentAt) {
       const result = await sendOfferReminderEmail({
-        to: student.email,
+        to: recipients,
         studentName: student.name,
         programName: student.program.name,
         offerExpiryDate: offerExpiry,
-        daysLeft: 1,
+        daysLeft,
         reminderNumber: 2,
         bodyText: settings["OFFER_REMINDER_2_BODY"] || DEFAULT_REMINDER_2,
       })
@@ -219,13 +221,20 @@ The Let's Enterprise Admissions Team`
     }
   }
 
-  return NextResponse.json({
-    ok: true,
+  const result = {
     markedDue,
     markedOverdue: markedOverdue + markedPartialOverdue,
     offerReminder1Sent: reminder1Sent,
     offerReminder2Sent: reminder2Sent,
     offerWindowRevoked: offerRevoked,
     runAt: now.toISOString(),
+  }
+
+  await prisma.systemSetting.upsert({
+    where: { key: "CRON_LAST_RUN_UPDATE_STATUSES" },
+    update: { value: JSON.stringify(result) },
+    create: { key: "CRON_LAST_RUN_UPDATE_STATUSES", value: JSON.stringify(result), updatedBy: "system" },
   })
+
+  return NextResponse.json({ ok: true, ...result })
 }
