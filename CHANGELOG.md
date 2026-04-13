@@ -4,6 +4,28 @@ All notable changes to the LE Student Roster system are documented here.
 
 ---
 
+## [1.4.0] — 2026-04-13
+
+### Full FIFO Payment Engine, Installment Schedule Editor & UX Fixes
+
+#### Added
+- **Full FIFO engine** (`src/lib/fifo.ts`) — `computeFifo`, `computePaymentAllocation`, `syncFifoToDb`; PAID/PARTIAL status is now exclusively FIFO-derived; cron only owns time transitions (UPCOMING→DUE→OVERDUE)
+- **Installment schedule editor** — collapsible panel on the Edit Student page (visible to all, editable by admin); inline rows with PAID amount locked, PARTIAL warning, add/delete; footer shows total vs netFee
+- **PATCH `/api/students/[id]/installments`** — admin-only schedule editor API; guards: cannot delete PAID installments, `changeReason` required on locked records; runs `syncFifoToDb` + audit log after every save
+- **Per-payment receipt page** (`/students/[id]/receipts/payments/[paymentId]`) — shows FIFO allocation table for each payment (what it contributed to which installments), payment metadata, and print button
+- **Receipt links in Payments tab** — "Receipt →" stub replaced with real links to the per-payment receipt page
+
+#### Changed
+- **Pay route** — removed per-installment status update block; transaction now runs `syncFifoToDb` after creating each payment
+- **Schedule tab** — removed installment-scoped "Receipt →" links; receipts now live in the Payments tab
+- **Header "Record Payment" button removed** — button was redundant; payment recording is available in the Schedule tab (per-installment) and the Payments tab (general)
+
+#### Fixed
+- **`SendOfferButton` browser form validation error** — all three buttons lacked `type="button"`, defaulting to `type="submit"` and triggering Safari's native patternMismatch validation on nearby forms; all buttons now explicitly `type="button"`
+- **`send-offer` route unhandled exceptions** — added top-level try-catch so unexpected errors (e.g. PDF render failures) always return a JSON error body instead of an HTML 500 page
+
+---
+
 ## [1.3.0] — 2026-04-13
 
 ### Fee Calculation Correctness, Schedule Tab Redesign & Form Persistence

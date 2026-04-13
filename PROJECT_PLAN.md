@@ -329,6 +329,23 @@ New entries in **Settings → Email** tab:
 
 ---
 
+## Phase 13: Full FIFO Engine, Installment Editor & UX Fixes ✅ COMPLETE
+
+> Goal: Payment allocation is fully FIFO-based; admins can edit the installment schedule; receipts are per-payment
+
+- [x] **13.1** `src/lib/fifo.ts` — `computeFifo`, `computePaymentAllocation`, `syncFifoToDb`; PAID/PARTIAL status exclusively FIFO-derived
+- [x] **13.2** Pay route updated — `syncFifoToDb` runs in transaction after every payment; per-installment status update block removed
+- [x] **13.3** Cron `update-statuses` — added clarifying comments; logic unchanged (WHERE clauses already exclude PAID)
+- [x] **13.4** `PATCH /api/students/[id]/installments` — admin-only schedule editor; PAID-delete guard; `changeReason` required on locked records; runs FIFO + audit log
+- [x] **13.5** `InstallmentEditor` component — collapsible panel on Edit Student; staff read-only, admin inline-editable; PAID rows locked
+- [x] **13.6** Per-payment receipt page (`/students/[id]/receipts/payments/[paymentId]`) — FIFO allocation breakdown table per payment
+- [x] **13.7** PaymentsTab — "View Receipt" stub replaced with real link to per-payment receipt
+- [x] **13.8** Schedule tab — installment-scoped Receipt links removed; receipts live in Payments tab
+- [x] **13.9** Header "Record Payment" button removed — redundant; recording available in Schedule tab (per-installment) and Payments tab
+- [x] **13.10** `SendOfferButton` — all buttons given `type="button"`; route wrapped in try-catch; fixes Safari form validation error
+
+---
+
 ## Pending (owner: Aditya)
 
 - [ ] Upload LE Logo / Letterhead for Proposal PDF (currently placeholder)

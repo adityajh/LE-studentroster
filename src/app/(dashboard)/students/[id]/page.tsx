@@ -212,7 +212,7 @@ export default async function StudentDetailPage({
           </div>
 
           <div className="flex items-center gap-2">
-            {isOffered ? (
+            {isOffered && (
               <>
                 <SendOfferButton
                   studentId={student.id}
@@ -223,11 +223,6 @@ export default async function StudentDetailPage({
                   studentName={student.name}
                 />
               </>
-            ) : (
-              <RecordPaymentDialog
-                studentId={student.id}
-                studentName={student.name}
-              />
             )}
             {canRecord && (
               <Link

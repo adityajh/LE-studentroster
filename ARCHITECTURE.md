@@ -1,6 +1,6 @@
 # Architecture — LE Student Roster
 
-> Last updated: 2026-04-13 (v1.3.0)
+> Last updated: 2026-04-13 (v1.4.0)
 
 ---
 
@@ -58,6 +58,7 @@ src/
     mail.ts               — All email send functions (SMTP via SystemSetting or env)
     fee-schedule.ts       — formatINR, fee calculation helpers
     fee-calc.ts           — Shared fee helpers: isSpreadCondition, splitWaivers
+    fifo.ts               — Payment FIFO engine: computeFifo, computePaymentAllocation, syncFifoToDb
     pdf-generator.tsx     — Proposal PDF (react-pdf)
     receipt-pdf.tsx       — Payment receipt PDF (react-pdf)
     offer-letter-generator.tsx — Offer letter PDF (react-pdf)
@@ -67,7 +68,7 @@ src/
   components/
     students/             — RecordPaymentDialog, EnrollmentForm, CreateOfferForm,
                             SendOfferButton, ConfirmEnrolmentDialog, EditStudentForm,
-                            HistoryTab, PaymentsTab, RemindersTab, ProposalTab
+                            InstallmentEditor, HistoryTab, PaymentsTab, RemindersTab, ProposalTab
     fee-schedule/         — FeeScheduleEditForm, NewFeeScheduleForm
     settings/             — TeamTab, ApiKeysTab, EmailTab, ProposalSettings, OfferSettings
     ui/                   — shadcn/ui components + brand components (Eyebrow, SoftCard, AdminCard)
@@ -171,9 +172,23 @@ Year 3                = max(0, program.year3Fee − spreadPerYear)
 
 `netFee = baseFee − totalWaiver − totalDeduction` (computed and stored at save time).
 
+### FIFO Payment Engine (`src/lib/fifo.ts`)
+
+All payment allocation is FIFO (first-in, first-out) over installments sorted by `dueDate ASC`.
+
+- **`computeFifo(totalPaid, installments)`** — returns a Map of `installmentId → { allocated, status }`. Status is `PAID` / `PARTIAL` / `UNPAID`.
+- **`computePaymentAllocation(paymentId, allPayments, installments)`** — computes what a single payment contributed to each installment (delta between FIFO state before and after the payment). Used for per-payment receipts.
+- **`syncFifoToDb(tx, studentId)`** — runs inside a Prisma transaction after every payment change; writes `PAID` / `PARTIAL` back to installment rows. Time-based statuses (`UPCOMING`, `DUE`, `OVERDUE`) are preserved on unpaid installments and remain the cron's responsibility.
+
+**Authority split:**
+| Status | Set by |
+|---|---|
+| `PAID`, `PARTIAL` | `syncFifoToDb` (pay route + installment editor) |
+| `UPCOMING`, `DUE`, `OVERDUE` | Cron `update-statuses` |
+
 ### Schedule tab (display-only)
 
-Fees are recomputed from the live scheme on every page render via `expectedInstFee()` — this ensures the display is always correct even if DB installment amounts are stale. FIFO allocation walks installments in year order (0→1→2→3), allocating `min(remaining, fee)` to each row.
+Fees are recomputed from the live scheme on every page render via `expectedInstFee()` — this ensures the display is always correct even if DB installment amounts are stale. Received/pending amounts come from FIFO-derived `inst.paidAmount` written by `syncFifoToDb`.
 
 ---
 
@@ -221,7 +236,8 @@ Direct enrolment path (`/students/new`) still exists for retroactive entries —
 | POST | `/api/students/[id]/confirm-enrolment` | Record ₹50K payment, assign roll no, activate |
 | POST | `/api/students/enroll` | Direct enrolment (legacy path) |
 | PATCH/DELETE | `/api/students/[id]` | Update or delete student |
-| POST | `/api/students/[id]/pay` | Record installment payment |
+| POST | `/api/students/[id]/pay` | Record payment (runs FIFO write-back) |
+| PATCH | `/api/students/[id]/installments` | Admin: edit installment schedule |
 | GET | `/api/students/[id]/pay/[paymentId]/receipt` | Generate receipt PDF |
 | GET | `/api/students/[id]/proposal` | Generate proposal PDF or DOCX |
 | POST | `/api/students/[id]/documents` | Upload document to Vercel Blob |
@@ -333,3 +349,6 @@ Email body templates support merge fields: `{{studentName}}`, `{{programName}}`,
 - **Fee calculation** — all waiver-split logic lives in `src/lib/fee-calc.ts` (`isSpreadCondition`, `splitWaivers`). Never inline the spread/one-time formula in routes or components.
 - **Outstanding** — always compute as `max(0, netFee − totalPaid)`. Never sum installment amounts for this — they may not match `netFee` (deductions are not distributed to all installments).
 - **Schedule display** — always recompute per-installment fees from the live scheme via `expectedInstFee()` on the detail page; don't trust `inst.amount` for display (it may be stale from before a financial plan edit).
+- **FIFO is the sole source of PAID/PARTIAL** — never set `inst.status = PAID` or `PARTIAL` directly. Always call `syncFifoToDb(tx, studentId)` inside the transaction after any payment change.
+- **Payment recording entry points** — the "Record Payment" header button has been removed; payments are recorded via the Schedule tab (per-installment) and the Payments tab (general/advance).
+- **`type="button"` on all non-submit buttons** — all `<button>` elements that are not form submits must have `type="button"` to prevent accidental browser form validation (Safari treats omitted type as `type="submit"`).
