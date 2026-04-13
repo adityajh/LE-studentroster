@@ -54,6 +54,12 @@ export async function POST(req: NextRequest) {
   // Load selected scholarships
   const selectedScholarships: { scholarshipId: string; amount: number }[] = scholarships ?? []
 
+  // Load scholarship records to check spreadAcrossYears
+  const scholarshipIds = selectedScholarships.map(s => s.scholarshipId)
+  const scholarshipRecords = scholarshipIds.length
+    ? await prisma.scholarship.findMany({ where: { id: { in: scholarshipIds } } })
+    : []
+
   // Fee calculation
   const baseFee = program.totalFee.toNumber()
   const totalOfferWaiver = selectedOffers.reduce(
@@ -82,7 +88,17 @@ export async function POST(req: NextRequest) {
     c == null || typeof c !== "object" || (c as Record<string, unknown>).spreadAcrossYears !== false
   const spreadOfferWaiver = selectedOffers.filter(o => isSpread(o.conditions)).reduce((s, o) => s + Number(o.waiverAmount), 0)
   const onetimeOfferWaiver = selectedOffers.filter(o => !isSpread(o.conditions)).reduce((s, o) => s + Number(o.waiverAmount), 0)
-  const spreadPerYear = Math.round((spreadOfferWaiver + totalScholarshipWaiver) / 3)
+
+  // Split scholarships into spread vs one-time
+  const spreadScholarshipWaiver = selectedScholarships
+    .filter(s => scholarshipRecords.find(r => r.id === s.scholarshipId)?.spreadAcrossYears !== false)
+    .reduce((sum, s) => sum + s.amount, 0)
+  const onetimeScholarshipWaiver = selectedScholarships
+    .filter(s => scholarshipRecords.find(r => r.id === s.scholarshipId)?.spreadAcrossYears === false)
+    .reduce((sum, s) => sum + s.amount, 0)
+
+  const spreadPerYear = Math.round((spreadOfferWaiver + spreadScholarshipWaiver) / 3)
+  const onetimeWaiver = onetimeOfferWaiver + onetimeScholarshipWaiver
 
   // Generate roll number
   const rollNo = await generateRollNo(program.batch.year)
@@ -130,7 +146,7 @@ export async function POST(req: NextRequest) {
           year: 1,
           label: "Year 1 — Growth",
           dueDate: year1Due,
-          amount: Math.max(0, Math.round(year1 - spreadPerYear - onetimeOfferWaiver)),
+          amount: Math.max(0, Math.round(year1 - spreadPerYear - onetimeWaiver)),
           status: year1Due <= today ? "DUE" : "UPCOMING",
         },
         {

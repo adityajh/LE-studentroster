@@ -91,6 +91,7 @@ export async function POST(req: NextRequest) {
           name: s.name,
           minAmount: parseFloat(s.minAmount || "0"),
           maxAmount: parseFloat(s.maxAmount || "0"),
+          spreadAcrossYears: s.spreadAcrossYears ?? true,
         },
       })
     }

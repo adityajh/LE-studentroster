@@ -83,6 +83,7 @@ export function FeeScheduleEditForm({ batch }: { batch: Batch }) {
       category: s.category,
       minAmount: s.minAmount.toString(),
       maxAmount: s.maxAmount.toString(),
+      spreadAcrossYears: (s as { spreadAcrossYears?: boolean }).spreadAcrossYears ?? true,
     }))
   )
 
@@ -129,7 +130,7 @@ export function FeeScheduleEditForm({ batch }: { batch: Batch }) {
     ])
 
   // ── Scholarship handlers ──────────────────────────────────────────────────
-  const updateScholarship = (id: string, field: string, value: string) =>
+  const updateScholarship = (id: string, field: string, value: string | boolean) =>
     setScholarships((prev) => prev.map((s) => (s.id === id ? { ...s, [field]: value } : s)))
 
   const removeScholarship = (id: string) => {
@@ -140,7 +141,7 @@ export function FeeScheduleEditForm({ batch }: { batch: Batch }) {
   const addScholarship = (category: string) =>
     setScholarships((prev) => [
       ...prev,
-      { id: `new-${Date.now()}-${category}`, name: "", category, minAmount: "0", maxAmount: "0" },
+      { id: `new-${Date.now()}-${category}`, name: "", category, minAmount: "0", maxAmount: "0", spreadAcrossYears: true },
     ])
 
   // ── Save ──────────────────────────────────────────────────────────────────
@@ -358,7 +359,22 @@ export function FeeScheduleEditForm({ batch }: { batch: Batch }) {
                           onChange={(e) => updateScholarship(s.id, "maxAmount", e.target.value)}
                         />
                       </div>
-                      <div className="md:col-span-3 flex justify-end">
+                      <div className="md:col-span-2 flex items-center gap-2 pt-1">
+                        <input
+                          type="checkbox"
+                          id={`spread-sch-${s.id}`}
+                          checked={s.spreadAcrossYears}
+                          onChange={(e) => updateScholarship(s.id, "spreadAcrossYears", e.target.checked)}
+                          className="w-4 h-4 accent-blue-600"
+                        />
+                        <label htmlFor={`spread-sch-${s.id}`} className="text-xs font-medium text-slate-600 cursor-pointer select-none">
+                          Spread across 3 years (÷3 per year)
+                          {!s.spreadAcrossYears && (
+                            <span className="ml-2 text-amber-600 font-semibold">— deducted in full, Year 1 only</span>
+                          )}
+                        </label>
+                      </div>
+                      <div className="flex justify-end items-center">
                         <Button variant="ghost" size="sm" className="text-red-500 hover:text-red-700 hover:bg-red-50" onClick={() => removeScholarship(s.id)}>
                           Remove Scholarship
                         </Button>

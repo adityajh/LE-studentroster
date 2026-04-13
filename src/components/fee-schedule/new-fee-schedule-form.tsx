@@ -35,6 +35,7 @@ interface ScholarshipDraft {
   category: string
   minAmount: string
   maxAmount: string
+  spreadAcrossYears: boolean
 }
 
 const OFFER_TYPES = [
@@ -83,12 +84,12 @@ export function NewFeeScheduleForm() {
   const addScholarship = (category: string) =>
     setScholarships((prev) => [
       ...prev,
-      { _key: `s-${Date.now()}-${category}`, name: "", category, minAmount: "0", maxAmount: "0" },
+      { _key: `s-${Date.now()}-${category}`, name: "", category, minAmount: "0", maxAmount: "0", spreadAcrossYears: true },
     ])
 
   const removeScholarship = (key: string) => setScholarships((prev) => prev.filter((s) => s._key !== key))
 
-  const updateScholarship = (key: string, field: keyof ScholarshipDraft, value: string) =>
+  const updateScholarship = (key: string, field: keyof ScholarshipDraft, value: string | boolean) =>
     setScholarships((prev) => prev.map((s) => (s._key === key ? { ...s, [field]: value } : s)))
 
   const handleCreate = async () => {
@@ -352,7 +353,22 @@ export function NewFeeScheduleForm() {
                           onChange={(e) => updateScholarship(s._key, "maxAmount", e.target.value)}
                         />
                       </div>
-                      <div className="md:col-span-3 flex justify-end">
+                      <div className="md:col-span-2 flex items-center gap-2 pt-1">
+                        <input
+                          type="checkbox"
+                          id={`spread-sch-${s._key}`}
+                          checked={s.spreadAcrossYears}
+                          onChange={(e) => updateScholarship(s._key, "spreadAcrossYears", e.target.checked)}
+                          className="w-4 h-4 accent-blue-600"
+                        />
+                        <label htmlFor={`spread-sch-${s._key}`} className="text-xs font-medium text-slate-600 cursor-pointer select-none">
+                          Spread across 3 years (÷3 per year)
+                          {!s.spreadAcrossYears && (
+                            <span className="ml-2 text-amber-600 font-semibold">— Year 1 only</span>
+                          )}
+                        </label>
+                      </div>
+                      <div className="flex justify-end items-center">
                         <Button
                           variant="ghost"
                           size="sm"

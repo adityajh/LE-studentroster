@@ -193,9 +193,16 @@ export default async function FeeScheduleYearPage({
                   </p>
                   <div className="space-y-2">
                     {items.map((s) => (
-                      <div key={s.id} className="flex items-center justify-between">
-                        <span className="text-sm font-medium text-slate-600">{s.name}</span>
-                        <span className="text-sm font-bold text-indigo-600">
+                      <div key={s.id} className="flex items-center justify-between gap-3">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <span className="text-sm font-medium text-slate-600 truncate">{s.name}</span>
+                          {!(s as { spreadAcrossYears?: boolean }).spreadAcrossYears && (
+                            <span className="shrink-0 bg-amber-500/10 text-amber-700 border border-amber-500/20 text-[10px] uppercase tracking-wider font-bold px-1.5 py-0.5 rounded">
+                              Year 1
+                            </span>
+                          )}
+                        </div>
+                        <span className="text-sm font-bold text-indigo-600 shrink-0">
                           {s.minAmount.toString() === s.maxAmount.toString()
                             ? formatINR(s.minAmount)
                             : `${formatINR(s.minAmount)} – ${formatINR(s.maxAmount)}`}

@@ -90,8 +90,14 @@ export async function POST(
     c == null || typeof c !== "object" || (c as Record<string, unknown>).spreadAcrossYears !== false
   const spreadOfferWaiver = student.offers.filter(o => isSpread(o.offer.conditions)).reduce((s, o) => s + Number(o.waiverAmount), 0)
   const onetimeOfferWaiver = student.offers.filter(o => !isSpread(o.offer.conditions)).reduce((s, o) => s + Number(o.waiverAmount), 0)
-  const scholarshipWaiver = student.scholarships.reduce((s, sc) => s + Number(sc.amount), 0)
-  const spreadPerYear = Math.round((spreadOfferWaiver + scholarshipWaiver) / 3)
+  const spreadScholarshipWaiver = student.scholarships
+    .filter(sc => sc.scholarship.spreadAcrossYears !== false)
+    .reduce((s, sc) => s + Number(sc.amount), 0)
+  const onetimeScholarshipWaiver = student.scholarships
+    .filter(sc => sc.scholarship.spreadAcrossYears === false)
+    .reduce((s, sc) => s + Number(sc.amount), 0)
+  const spreadPerYear = Math.round((spreadOfferWaiver + spreadScholarshipWaiver) / 3)
+  const onetimeWaiver = onetimeOfferWaiver + onetimeScholarshipWaiver
 
   const installments: {
     year: number; label: string; dueDate: Date; amount: number; status: "DUE" | "UPCOMING"
@@ -112,7 +118,7 @@ export async function POST(
 
   if (installmentType === "ANNUAL") {
     installments.push(
-      { year: 1, label: "Year 1 — Growth", dueDate: year1Due, amount: Math.max(0, Math.round(year1 - spreadPerYear - onetimeOfferWaiver)), status: year1Due <= today ? "DUE" : "UPCOMING" },
+      { year: 1, label: "Year 1 — Growth", dueDate: year1Due, amount: Math.max(0, Math.round(year1 - spreadPerYear - onetimeWaiver)), status: year1Due <= today ? "DUE" : "UPCOMING" },
       { year: 2, label: "Year 2 — Projects", dueDate: year2Due, amount: Math.max(0, Math.round(year2 - spreadPerYear)), status: "UPCOMING" },
       { year: 3, label: "Year 3 — Work", dueDate: year3Due, amount: Math.max(0, Math.round(year3 - spreadPerYear)), status: "UPCOMING" },
     )

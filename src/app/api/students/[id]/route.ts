@@ -18,7 +18,7 @@ export async function PATCH(
     include: {
       financial: true,
       offers: { include: { offer: { select: { id: true, conditions: true, waiverAmount: true } } } },
-      scholarships: true,
+      scholarships: { include: { scholarship: true } },
       deductions: true,
       installments: { orderBy: { dueDate: "asc" } },
       program: true,
@@ -216,7 +216,7 @@ export async function PATCH(
             totalDeduction: newTotalDeduction,
             netFee: newNetFee,
             customTerms: customTerms ?? undefined,
-            depositAmount: registrationFee !== undefined ? Number(registrationFee) : undefined,
+            registrationFeeOverride: registrationFee !== undefined ? Number(registrationFee) : undefined,
           },
         })
 
@@ -253,10 +253,31 @@ export async function PATCH(
                 c == null || typeof c !== "object" || (c as Record<string, unknown>).spreadAcrossYears !== false
               const spreadWaiver = currentOffers.filter(o => isSpreadOffer(o.conditions)).reduce((s, o) => s + Number(o.waiverAmount), 0)
               const onetimeWaiver = currentOffers.filter(o => !isSpreadOffer(o.conditions)).reduce((s, o) => s + Number(o.waiverAmount), 0)
-              const schWaiver = scholarships !== undefined
-                ? (scholarships as { scholarshipId: string; amount: number }[]).reduce((s, sc) => s + sc.amount, 0)
-                : student.scholarships.reduce((s, sc) => s + Number(sc.amount), 0)
-              const spreadPerYear = Math.round((spreadWaiver + schWaiver) / 3)
+              // Determine scholarship spread/one-time split
+              let spreadSchWaiver: number
+              let onetimeSchWaiver: number
+              if (scholarships !== undefined) {
+                const newScholarships = scholarships as { scholarshipId: string; amount: number }[]
+                const schIds = newScholarships.map(s => s.scholarshipId)
+                const schRecords = schIds.length
+                  ? await tx.scholarship.findMany({ where: { id: { in: schIds } } })
+                  : []
+                spreadSchWaiver = newScholarships
+                  .filter(s => schRecords.find(r => r.id === s.scholarshipId)?.spreadAcrossYears !== false)
+                  .reduce((s, sc) => s + sc.amount, 0)
+                onetimeSchWaiver = newScholarships
+                  .filter(s => schRecords.find(r => r.id === s.scholarshipId)?.spreadAcrossYears === false)
+                  .reduce((s, sc) => s + sc.amount, 0)
+              } else {
+                spreadSchWaiver = student.scholarships
+                  .filter(sc => sc.scholarship.spreadAcrossYears !== false)
+                  .reduce((s, sc) => s + Number(sc.amount), 0)
+                onetimeSchWaiver = student.scholarships
+                  .filter(sc => sc.scholarship.spreadAcrossYears === false)
+                  .reduce((s, sc) => s + Number(sc.amount), 0)
+              }
+              const spreadPerYear = Math.round((spreadWaiver + spreadSchWaiver) / 3)
+              const onetimeTotal = onetimeWaiver + onetimeSchWaiver
 
               // Use program year fees as the base for each year
               const programYearFees: Record<number, number> = {
@@ -267,7 +288,7 @@ export async function PATCH(
 
               for (const inst of remainingInstallments) {
                 const yearFee = programYearFees[inst.year] ?? 0
-                const amt = Math.max(0, Math.round(yearFee - spreadPerYear - (inst.year === 1 ? onetimeWaiver : 0)))
+                const amt = Math.max(0, Math.round(yearFee - spreadPerYear - (inst.year === 1 ? onetimeTotal : 0)))
                 await tx.installment.update({ where: { id: inst.id }, data: { amount: amt } })
               }
             } else {
