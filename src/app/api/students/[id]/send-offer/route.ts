@@ -35,6 +35,7 @@ export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  try {
   const session = await auth()
   if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
 
@@ -125,4 +126,11 @@ export async function POST(
   })
 
   return NextResponse.json({ ok: true, messageId: result.messageId, sentTo: recipients })
+  } catch (err) {
+    console.error("send-offer unhandled error:", err)
+    return NextResponse.json(
+      { error: err instanceof Error ? err.message : "Unexpected error sending offer" },
+      { status: 500 }
+    )
+  }
 }

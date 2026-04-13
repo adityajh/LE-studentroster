@@ -59,11 +59,11 @@ export function SendOfferButton({
           </label>
           {error && <p className="text-xs text-rose-600">{error}</p>}
           <div className="flex gap-2">
-            <button onClick={() => setShowOptions(false)}
+            <button type="button" onClick={() => setShowOptions(false)}
               className="flex-1 py-1.5 border border-slate-200 text-sm text-slate-600 rounded-lg hover:bg-slate-50">
               Cancel
             </button>
-            <button onClick={handleSend} disabled={loading}
+            <button type="button" onClick={handleSend} disabled={loading}
               className="flex-1 py-1.5 bg-violet-600 text-white text-sm font-semibold rounded-lg hover:bg-violet-700 disabled:opacity-60 flex items-center justify-center gap-1">
               {loading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
               Send
@@ -73,6 +73,7 @@ export function SendOfferButton({
       )}
 
       <button
+        type="button"
         onClick={() => setShowOptions(!showOptions)}
         className="flex items-center gap-1.5 h-9 px-4 rounded-xl border-2 border-violet-200 text-violet-700 text-sm font-bold hover:bg-violet-50 transition-all shrink-0"
       >
