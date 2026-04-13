@@ -411,7 +411,7 @@ export function OnboardWizard({
               className="w-full flex items-center justify-center gap-2 py-2.5 bg-indigo-600 text-white text-sm font-bold rounded-xl hover:bg-indigo-700 disabled:opacity-60">
               {sending
                 ? <><Loader2 className="w-4 h-4 animate-spin" /> Sending…</>
-                : <><Send className="w-4 h-4" />{emailSent ? "Resend Onboarding Email" : "Send Onboarding Email"}</>
+                : <><Send className="w-4 h-4" />{emailSent ? "Complete Onboarding" : "Send Onboarding Email"}</>
               }
             </button>
           </div>

@@ -37,7 +37,7 @@ export async function POST(
 
   await prisma.student.update({
     where: { id },
-    data: { selfOnboardingStatus: "APPROVED" },
+    data: { selfOnboardingStatus: "APPROVED", status: "ACTIVE" },
   })
 
   return NextResponse.json({ ok: true })

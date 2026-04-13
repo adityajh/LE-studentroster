@@ -18,7 +18,7 @@ const YEAR_OPTIONS = [
 
 type OfferedOffer = { id: string; offerId: string; name: string; waiverAmount: number }
 type OfferedScholarship = { id: string; scholarshipId: string; name: string; category: string; amount: number; spreadAcrossYears: boolean }
-type BatchOffer = { id: string; name: string; waiverAmount: number; deadline: string | null; conditions: unknown }
+type BatchOffer = { id: string; name: string; type?: string; waiverAmount: number; deadline: string | null; conditions: unknown }
 type BatchScholarship = { id: string; name: string; category: string; minAmount: number; maxAmount: number; spreadAcrossYears: boolean }
 type CustomInstallment = { label: string; dueDate: string; amount: number; year: number; yearOption: string }
 type Deduction = { description: string; amount: number }
@@ -71,13 +71,16 @@ export function ConfirmEnrolmentDialog({
   todayDate.setHours(0, 0, 0, 0)
   const isOfferValid = (o: BatchOffer) => o.deadline === null || new Date(o.deadline) >= todayDate
 
-  // Default checked = all valid (deadline not passed) offers from the fee schedule.
-  // Enrolment date is when offer validity is determined; expired offers are shown but disabled.
+  // Default checked = only EARLY_BIRD and ACCEPTANCE_7DAY offers (if valid / deadline not passed).
+  // All other offer types (FULL_PAYMENT, FIRST_N_REGISTRATIONS, REFERRAL) start unchecked.
+  const AUTO_CHECK_TYPES = new Set(["EARLY_BIRD", "ACCEPTANCE_7DAY"])
   const defaultCheckedOfferIds = (): string[] => {
     if (allBatchOffers.length > 0) {
-      return allBatchOffers.filter(isOfferValid).map((o) => o.id)
+      return allBatchOffers
+        .filter((o) => isOfferValid(o) && (!o.type || AUTO_CHECK_TYPES.has(o.type)))
+        .map((o) => o.id)
     }
-    return offeredOffers.map((o) => o.offerId)
+    return []
   }
 
   // Step 1 — confirmed benefits
@@ -498,6 +501,12 @@ export function ConfirmEnrolmentDialog({
                               <span className="font-medium">{formatINR(row.amount)}</span>
                             </div>
                           ))}
+                          {installmentType === "ANNUAL" && (
+                            <div className="flex justify-between px-3 py-2 text-sm font-bold bg-slate-100">
+                              <span className="text-slate-700">Total</span>
+                              <span>{formatINR(schedule.reduce((s, r) => s + r.amount, 0))}</span>
+                            </div>
+                          )}
                         </div>
                       )}
                     </div>

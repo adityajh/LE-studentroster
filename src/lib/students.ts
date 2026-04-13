@@ -41,6 +41,7 @@ export async function getStudents(opts?: {
       program: { select: { id: true, name: true } },
       financial: { select: { netFee: true, installmentType: true, registrationPaid: true } },
       installments: { select: { status: true } },
+      payments: { select: { amount: true } },
     },
     orderBy: [{ batch: { year: "desc" } }, { rollNo: "asc" }],
   })

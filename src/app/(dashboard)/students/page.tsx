@@ -179,7 +179,9 @@ export default async function StudentsPage({
                 <th className="text-left px-5 py-3 text-[10px] uppercase tracking-widest font-bold text-slate-400">Student</th>
                 <th className="text-left px-5 py-3 text-[10px] uppercase tracking-widest font-bold text-slate-400">Program</th>
                 <th className="text-left px-5 py-3 text-[10px] uppercase tracking-widest font-bold text-slate-400">Net Fee</th>
-                <th className="text-left px-5 py-3 text-[10px] uppercase tracking-widest font-bold text-slate-400">Payments</th>
+                <th className="text-left px-5 py-3 text-[10px] uppercase tracking-widest font-bold text-slate-400">Received</th>
+                <th className="text-left px-5 py-3 text-[10px] uppercase tracking-widest font-bold text-slate-400">Pending</th>
+                <th className="text-left px-5 py-3 text-[10px] uppercase tracking-widest font-bold text-slate-400">Installments</th>
                 <th className="text-left px-5 py-3 text-[10px] uppercase tracking-widest font-bold text-slate-400">Status</th>
                 <th className="px-5 py-3" />
               </tr>
@@ -187,6 +189,9 @@ export default async function StudentsPage({
             <tbody>
               {students.map((s) => {
                 const isOffered = s.status === "OFFERED"
+                const totalReceived = (s.payments || []).reduce((sum, p) => sum + Number(p.amount), 0)
+                const netFeeNum = s.financial ? Number(s.financial.netFee) : 0
+                const totalPending = Math.max(0, netFeeNum - totalReceived)
                 const overdueCount = s.installments.filter((i) => i.status === "OVERDUE").length
                 const partialCount = s.installments.filter((i) => i.status === "PARTIAL").length
                 const paidCount = s.installments.filter((i) => i.status === "PAID" || i.status === "PARTIAL").length
@@ -221,6 +226,16 @@ export default async function StudentsPage({
                     <td className="px-5 py-3.5">
                       <span className="text-sm font-bold text-slate-800 whitespace-nowrap">
                         {s.financial ? formatINR(s.financial.netFee) : "—"}
+                      </span>
+                    </td>
+                    <td className="px-5 py-3.5">
+                      <span className="text-sm font-semibold text-emerald-700 whitespace-nowrap">
+                        {s.financial ? formatINR(totalReceived) : "—"}
+                      </span>
+                    </td>
+                    <td className="px-5 py-3.5">
+                      <span className={`text-sm font-semibold whitespace-nowrap ${totalPending > 0 ? "text-rose-600" : "text-slate-400"}`}>
+                        {s.financial ? formatINR(totalPending) : "—"}
                       </span>
                     </td>
                     <td className="px-5 py-3.5">

@@ -230,7 +230,7 @@ export default async function StudentDetailPage({
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             {isOffered && (
               <>
                 <SendOfferButton
@@ -263,6 +263,7 @@ export default async function StudentDetailPage({
                   allBatchOffers={student.batch.feeSchedule?.offers.map((o) => ({
                     id: o.id,
                     name: o.name,
+                    type: o.type,
                     waiverAmount: Number(o.waiverAmount),
                     deadline: o.deadline ? o.deadline.toISOString() : null,
                     conditions: o.conditions,
@@ -278,7 +279,8 @@ export default async function StudentDetailPage({
                 />
               </>
             )}
-            {student.status === "ACTIVE" && canRecord && (
+            {/* Onboard button — hidden once profile is approved */}
+            {student.status === "ACTIVE" && canRecord && student.selfOnboardingStatus !== "APPROVED" && (
               <Link
                 href={`/students/${student.id}/onboard`}
                 className={cn(
@@ -293,12 +295,24 @@ export default async function StudentDetailPage({
               </Link>
             )}
             {/* Self-onboarding link button */}
-            {student.status === "ACTIVE" && canRecord && (
+            {student.status === "ACTIVE" && canRecord && student.selfOnboardingStatus !== "APPROVED" && (
               <SendOnboardingLinkButton
                 studentId={student.id}
                 currentStatus={student.selfOnboardingStatus}
                 isAdmin={dbUser?.role === "ADMIN"}
               />
+            )}
+            {/* Approve profile button — shown to admins when submitted */}
+            {canRecord && student.selfOnboardingStatus === "SUBMITTED" && (
+              <form action={`/api/students/${student.id}/approve-onboarding`} method="POST">
+                <button
+                  type="submit"
+                  className="flex items-center gap-1.5 h-9 px-4 rounded-xl bg-emerald-600 text-white text-sm font-bold hover:bg-emerald-700 transition-all shrink-0"
+                >
+                  <CheckCircle2 className="h-4 w-4" />
+                  Approve Profile
+                </button>
+              </form>
             )}
             {canRecord && (
               <Link
