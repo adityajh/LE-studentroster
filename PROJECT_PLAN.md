@@ -392,6 +392,23 @@ New entries in **Settings → Email** tab:
 
 ---
 
+## Phase 17: Staff Roles, Settings Redesign & Email Templates ✅ COMPLETE
+
+> Goal: Staff team members can use the full admissions + onboarding workflow; all system emails are visible and configurable in one place; admins can preview PDFs without leaving settings
+
+- [x] **17.1** Staff can now access Create Offer and Enroll Directly (removed Admin-only guard on student list buttons and `/students/offer/new`, `/students/new` pages)
+- [x] **17.2** `roles.ts` descriptions updated to reflect actual permission sets for Admin and Staff
+- [x] **17.3** Settings tabs renamed: "Proposal" → "T&C's" (`?tab=tcs`), "Offers" → "Emails" (`?tab=emails`)
+- [x] **17.4** T&C changelog — saving T&Cs appends a dated + noted entry to `PROPOSAL_TERMS_CHANGELOG`; last 8 entries shown below the editor
+- [x] **17.5** Emails tab redesigned — all system emails in 4 sections (Admissions, Enrolment, Onboarding, Payments); Payments section removed (Fee Reminders in Reminders tab)
+- [x] **17.6** Email cards are 3-state: collapsed → read-only preview (effective body with built-in default fallback) → editable textarea with merge-field chips; "Custom" badge, Reset to default, Cancel
+- [x] **17.7** `ENROLMENT_CONFIRMATION_EMAIL_BODY` — new SystemSetting key; wired into `confirm-enrolment` route; `mail.ts` payload updated
+- [x] **17.8** `SELF_ONBOARDING_LINK_EMAIL_BODY` — new SystemSetting key; wired into `onboarding-link` route; `mail.ts` payload updated
+- [x] **17.9** Attachments tab (new) — lists all 3 system PDFs with "attached to" + "configurable sections" info
+- [x] **17.10** PDF preview routes (`/api/preview/pdf/*`) — render each PDF with mock student data; embedded inline via `<iframe>` on click
+
+---
+
 ## Pending (owner: Aditya)
 
 - [ ] Upload LE Logo / Letterhead for Proposal PDF (currently placeholder)

@@ -4,6 +4,25 @@ All notable changes to the LE Student Roster system are documented here.
 
 ---
 
+## [1.7.0] — 2026-04-13
+
+### Staff Roles, Settings Redesign, Email Templates & PDF Attachment Library
+
+#### Added
+- **Attachments tab** (new Settings tab between Emails and Reminders) — lists all 3 system PDFs (Offer Letter, Fee Structure, Payment Receipt); each card shows which emails it's attached to and which sections are configurable; "Preview PDF" button renders the actual PDF with placeholder student data (Ananya Sharma, Batch 2025) and embeds it inline at 700px using a browser `<iframe>` — no new tab needed
+- **PDF preview routes** — `GET /api/preview/pdf/offer-letter`, `/fee-structure`, `/receipt`; render each PDF with mock data and return `Content-Type: application/pdf` for inline embedding; session-authenticated
+- **T&C changelog** — saving T&Cs now appends a dated entry to `PROPOSAL_TERMS_CHANGELOG` (JSON array stored in SystemSetting, capped at 20 entries); an optional "note" field next to the Save button lets admins describe what changed; change history card shows last 8 entries below the editor
+- **Enrolment Confirmation email now configurable** — new `ENROLMENT_CONFIRMATION_EMAIL_BODY` SystemSetting key; wired into `confirm-enrolment` route; `EnrolmentConfirmationEmailPayload` in `mail.ts` gains optional `bodyText`; merge fields: `{{studentName}}`, `{{programName}}`, `{{rollNo}}`, `{{onboardingExpiryDate}}`
+- **Self-Onboarding Link email now configurable** — new `SELF_ONBOARDING_LINK_EMAIL_BODY` SystemSetting key; wired into `onboarding-link` route; `OnboardingLinkEmailPayload` in `mail.ts` gains optional `bodyText`; merge fields: `{{studentName}}`, `{{programName}}`, `{{onboardingExpiryDate}}`
+
+#### Changed
+- **Settings tabs renamed** — "Proposal" → "T&C's" (`?tab=tcs`); "Offers" → "Emails" (`?tab=emails`); "Attachments" inserted between Emails and Reminders
+- **Emails tab redesigned** — all system emails grouped into sections (Admissions, Enrolment, Onboarding); Payments group removed (Fee Reminders managed in Reminders tab; Payment Receipt body is hardcoded); each email card is now **3-state**: collapsed (header only, showing trigger + recipients + attachment/link badges) → click to expand read-only preview of current effective body (DB override shown normally; built-in default shown in grey italic) → click Edit for editable textarea with merge-field chips, Reset to default, and Cancel; "Custom" badge appears on any card with a DB override active
+- **Staff can now create offers and enrol directly** — "Create Offer" and "Enroll Directly" buttons on the Students list are now visible to all authenticated users (not just Admins); the `/students/offer/new` and `/students/new` pages were already unguarded
+- **`roles.ts` descriptions updated** — Admin: manage team, settings, batches/programs, delete students, override financials, modify installments, plus all staff actions; Staff: make offers, enrol students, do onboarding, record payments, upload documents; cannot manage team/settings/batches/programs/delete/override financials
+
+---
+
 ## [1.6.0] — 2026-04-13
 
 ### Student Self-Onboarding, Document Management & Onboarding Status Gate

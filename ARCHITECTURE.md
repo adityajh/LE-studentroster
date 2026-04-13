@@ -1,6 +1,6 @@
 # Architecture — LE Student Roster
 
-> Last updated: 2026-04-13 (v1.6.0)
+> Last updated: 2026-04-13 (v1.7.0)
 
 ---
 
@@ -41,12 +41,13 @@ src/
       fee-schedule/       — Fee schedule CRUD
       reminders/          — Reminder pipeline view
       audit-logs/         — Global audit log
-      settings/           — Team / API keys / Email / Proposal / Offers
+      settings/           — Team / API Keys / Email / T&C's / Emails / Attachments / Reminders
     actions/              — Server actions (settings, team, api-keys, reminders)
     api/
       auth/               — NextAuth handler
       cron/               — Scheduled jobs
       fee-schedule/       — Admin fee schedule mutation endpoints
+      preview/pdf/        — Sample PDF preview routes (offer-letter, fee-structure, receipt)
       students/           — Student mutation endpoints
       reminders/          — Email tracking pixel endpoint
       v1/                 — External API (API key auth)
@@ -73,7 +74,7 @@ src/
                             SendOnboardingLinkButton
     onboarding/           — SelfOnboardForm (student-facing self-onboard form)
     fee-schedule/         — FeeScheduleEditForm, NewFeeScheduleForm
-    settings/             — TeamTab, ApiKeysTab, EmailTab, ProposalSettings, OfferSettings
+    settings/             — TeamTab, ApiKeysTab, EmailTab, ProposalSettings, OfferSettings, AttachmentsTab, RemindersTab
     ui/                   — shadcn/ui components + brand components (Eyebrow, SoftCard, AdminCard)
 prisma/
   schema.prisma
@@ -276,6 +277,9 @@ Direct enrolment path (`/students/new`) still exists for retroactive entries —
 | POST | `/api/fee-schedule/lock` | Lock/unlock fee schedule |
 | POST | `/api/fee-schedule/update` | Update programs, offers, scholarships for a batch |
 | GET | `/api/audit-logs` | Global audit log (admin) |
+| GET | `/api/preview/pdf/offer-letter` | Render Offer Letter PDF with sample data (admin preview) |
+| GET | `/api/preview/pdf/fee-structure` | Render Fee Structure PDF with sample data (admin preview) |
+| GET | `/api/preview/pdf/receipt` | Render Payment Receipt PDF with sample data (admin preview) |
 
 ### Cron (Bearer token)
 
@@ -316,17 +320,20 @@ Sends fee payment reminders at 30 days, 7 days, and 0 days before installment du
 
 ## Email Functions (`src/lib/mail.ts`)
 
-| Function | Trigger | Attachments |
-|---|---|---|
-| `sendMagicLinkEmail` | Auth sign-in | — |
-| `sendPaymentReminderEmail` | Cron reminders | — |
-| `sendReceiptEmail` | After payment recorded | Receipt PDF |
-| `sendOfferEmail` | "Send Offer Email" button | Offer Letter PDF + optional Proposal PDF |
-| `sendOfferReminderEmail` | Cron Day 3 / Day 6 | — |
-| `sendRevisedOfferEmail` | Cron Day 8+ | Offer Letter PDF |
-| `sendOnboardingEmail` | After enrolment confirmed | Proposal PDF |
+| Function | Trigger | Recipients | Attachments / Links |
+|---|---|---|---|
+| `sendMagicLinkEmail` | Auth sign-in | User | — |
+| `sendFeeReminder` | Cron reminders | Student | — |
+| `sendReceiptEmail` | After payment recorded | Student | Receipt PDF |
+| `sendOfferEmail` | "Send Offer Email" button | Student + parent | Offer Letter PDF (with fee appendix) |
+| `sendOfferReminderEmail` | Cron Day 3–5 / Day 0–2 | Student + parent | — |
+| `sendRevisedOfferEmail` | Cron Day 8+ (waiver lapsed) | Student | Revised Offer Letter PDF |
+| `sendEnrolmentConfirmationEmail` | Auto on registration payment confirmed | Student (CC parent) | Fee Structure PDF, Onboarding link |
+| `sendOnboardingLinkEmail` | "Send Onboarding Link" button | Student | Onboarding link |
+| `sendOnboardingEmail` | Complete Onboarding wizard | Student (CC parent) | Fee Structure PDF, Resource links |
+| `sendOnboardingSubmittedAlert` | Student submits self-onboard form | All admins | Student profile link |
 
-SMTP credentials are read from `SystemSetting` at send time (`SMTP_USER`, `SMTP_PASSWORD`, `SMTP_FROM_NAME`, `SMTP_FROM_EMAIL`), falling back to environment variables.
+All body text (except receipts and alert emails) is configurable via `SystemSetting` keys. SMTP credentials are read from `SystemSetting` at send time (`SMTP_USER`, `SMTP_PASSWORD`, `SMTP_FROM_NAME`, `SMTP_FROM_EMAIL`), falling back to environment variables.
 
 ---
 
@@ -352,18 +359,21 @@ Key groups:
 | Group | Keys |
 |---|---|
 | SMTP | `SMTP_USER`, `SMTP_PASSWORD`, `SMTP_FROM_NAME`, `SMTP_FROM_EMAIL`, `REMINDER_PAYMENT_URL` |
-| Offer emails | `OFFER_EMAIL_BODY`, `OFFER_LETTER_BODY`, `OFFER_REMINDER_1_BODY`, `OFFER_REMINDER_2_BODY` |
-| Onboarding | `ONBOARDING_EMAIL_BODY`, `BANK_DETAILS`, `ONBOARDING_HANDBOOK_URL`, `ONBOARDING_WELCOME_KIT_URL`, `ONBOARDING_YEAR1_URL` |
-| Proposal | `PROPOSAL_TERMS` |
+| Admissions emails | `OFFER_EMAIL_BODY`, `OFFER_LETTER_BODY`, `OFFER_REMINDER_1_BODY`, `OFFER_REMINDER_2_BODY` |
+| Enrolment emails | `ENROLMENT_CONFIRMATION_EMAIL_BODY` |
+| Onboarding emails | `ONBOARDING_EMAIL_BODY`, `SELF_ONBOARDING_LINK_EMAIL_BODY` |
+| Onboarding resources | `BANK_DETAILS`, `ONBOARDING_HANDBOOK_URL`, `ONBOARDING_WELCOME_KIT_URL`, `ONBOARDING_YEAR1_URL` |
+| T&Cs | `PROPOSAL_TERMS`, `PROPOSAL_TERMS_CHANGELOG` (JSON array of `{date, note}` entries) |
+| System state | `CRON_LAST_RUN_UPDATE_STATUSES`, `CRON_LAST_RUN_FEE_REMINDERS` |
 
-Email body templates support merge fields: `{{studentName}}`, `{{programName}}`, `{{batchYear}}`, `{{rollNo}}`, `{{daysLeft}}`, `{{offerExpiryDate}}`.
+Email body templates support merge fields (varies by email type): `{{studentName}}`, `{{programName}}`, `{{batchYear}}`, `{{rollNo}}`, `{{daysLeft}}`, `{{offerExpiryDate}}`, `{{onboardingExpiryDate}}`. Available merge fields are shown per-email in Settings → Emails.
 
 ---
 
 ## Auth & Access Control
 
 - **Authentication**: NextAuth v5 magic link. Users must already exist in the `User` table; no self-registration.
-- **Roles**: `ADMIN` — full access including settings, lock/unlock, delete, role management. `STAFF` — can manage students and record payments, but cannot access settings or destructive actions.
+- **Roles**: `ADMIN` — full access: manage team, settings, batches/programs, delete students, override financials, modify installments, plus all staff actions. `STAFF` — can make offers, enrol students, do onboarding, record payments, and upload documents; cannot manage team, settings, batches/programs, delete students, or modify financial overrides.
 - **Route protection**: `proxy.ts` (Next.js 16 middleware) redirects unauthenticated requests to `/login`.
 - **API key auth**: External `/api/v1/*` routes require `x-api-key` header. Keys are stored as SHA-256 hashes; raw key shown once at creation.
 - **Cron auth**: Cron routes check `Authorization: Bearer ${CRON_SECRET}` header.
