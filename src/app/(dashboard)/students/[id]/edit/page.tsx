@@ -10,9 +10,9 @@ export default async function EditStudentPage({
 }: {
   params: Promise<{ id: string }>
 }) {
-  const session = (await auth()) as any
+  const session = await auth()
   if (!session?.user) redirect("/login")
-  const role = session.user.role
+  const role = (session.user as { role?: string }).role
 
   const { id } = await params
   const student = await getStudentById(id)

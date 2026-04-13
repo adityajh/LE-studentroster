@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { auth } from "@/auth"
 import { prisma } from "@/lib/prisma"
 import { recordAuditLog } from "@/lib/audit"
+import { splitWaivers } from "@/lib/fee-calc"
 
 export async function PATCH(
   req: NextRequest,
@@ -35,7 +36,7 @@ export async function PATCH(
     localGuardianName, localGuardianPhone, localGuardianEmail,
     linkedinHandle, instagramHandle, universityChoice, universityStatus,
     baseFee, customTerms,
-    registrationFee, // optional registration fee override → updates depositAmount + year=0 installment
+    registrationFee, // optional override → updates registrationFeeOverride + year=0 installment
     // Financial plan updates (Admin only)
     offers,       // string[] — offerId list
     scholarships, // { scholarshipId: string; amount: number }[]
@@ -254,35 +255,27 @@ export async function PATCH(
                 ? await tx.offer.findMany({ where: { id: { in: currentOfferIds } } })
                 : []
 
-              const isSpreadOffer = (c: unknown) =>
-                c == null || typeof c !== "object" || (c as Record<string, unknown>).spreadAcrossYears !== false
-              const spreadWaiver = currentOffers.filter(o => isSpreadOffer(o.conditions)).reduce((s, o) => s + Number(o.waiverAmount), 0)
-              const onetimeWaiver = currentOffers.filter(o => !isSpreadOffer(o.conditions)).reduce((s, o) => s + Number(o.waiverAmount), 0)
-              // Determine scholarship spread/one-time split
-              let spreadSchWaiver: number
-              let onetimeSchWaiver: number
+              let schsForCalc: { amount: number; spreadAcrossYears: boolean }[]
               if (scholarships !== undefined) {
                 const newScholarships = scholarships as { scholarshipId: string; amount: number }[]
                 const schIds = newScholarships.map(s => s.scholarshipId)
                 const schRecords = schIds.length
                   ? await tx.scholarship.findMany({ where: { id: { in: schIds } } })
                   : []
-                spreadSchWaiver = newScholarships
-                  .filter(s => (schRecords.find(r => r.id === s.scholarshipId) as { spreadAcrossYears?: boolean } | undefined)?.spreadAcrossYears !== false)
-                  .reduce((s, sc) => s + sc.amount, 0)
-                onetimeSchWaiver = newScholarships
-                  .filter(s => (schRecords.find(r => r.id === s.scholarshipId) as { spreadAcrossYears?: boolean } | undefined)?.spreadAcrossYears === false)
-                  .reduce((s, sc) => s + sc.amount, 0)
+                schsForCalc = newScholarships.map(s => ({
+                  amount: s.amount,
+                  spreadAcrossYears: schRecords.find(r => r.id === s.scholarshipId)?.spreadAcrossYears ?? true,
+                }))
               } else {
-                spreadSchWaiver = student.scholarships
-                  .filter(sc => (sc.scholarship as { spreadAcrossYears?: boolean }).spreadAcrossYears !== false)
-                  .reduce((s, sc) => s + Number(sc.amount), 0)
-                onetimeSchWaiver = student.scholarships
-                  .filter(sc => (sc.scholarship as { spreadAcrossYears?: boolean }).spreadAcrossYears === false)
-                  .reduce((s, sc) => s + Number(sc.amount), 0)
+                schsForCalc = student.scholarships.map(sc => ({
+                  amount: Number(sc.amount),
+                  spreadAcrossYears: (sc.scholarship as { spreadAcrossYears?: boolean }).spreadAcrossYears ?? true,
+                }))
               }
-              const spreadPerYear = Math.round((spreadWaiver + spreadSchWaiver) / 3)
-              const onetimeTotal = onetimeWaiver + onetimeSchWaiver
+              const { spreadPerYear, onetimeTotal } = splitWaivers(
+                currentOffers.map(o => ({ conditions: o.conditions, waiverAmount: Number(o.waiverAmount) })),
+                schsForCalc
+              )
 
               // Use program year fees as the base for each year
               const programYearFees: Record<number, number> = {
@@ -307,17 +300,6 @@ export async function PATCH(
             }
           }
         }
-      } else if (baseFee !== undefined && newNetFee === undefined) {
-        // Simple base fee change only (no offer/scholarship changes)
-        const bFee = parseFloat(baseFee)
-        await tx.studentFinancial.update({
-          where: { studentId: id },
-          data: {
-            baseFee: bFee,
-            customTerms: customTerms ?? undefined,
-            netFee: bFee - Number(student.financial?.totalWaiver || 0) - Number(student.financial?.totalDeduction || 0),
-          },
-        })
       }
 
       // Write Audit Logs

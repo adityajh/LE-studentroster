@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { Loader2, ChevronDown, Check, ChevronRight, ChevronLeft, FileText, User as UserIcon, Wallet } from "lucide-react"
 import { formatINR } from "@/lib/fee-schedule"
+import { isSpreadCondition } from "@/lib/fee-calc"
 import { cn } from "@/lib/utils"
 
 type Batch = {
@@ -131,14 +132,12 @@ export function EnrollForm({ batches, defaultTerms }: { batches: Batch[], defaul
     const baseFee = y1 + y2 + y3
 
     // Split offers into spread vs one-time
-    const isSpread = (c: unknown) =>
-      c == null || typeof c !== "object" || (c as Record<string, unknown>).spreadAcrossYears !== false
     const selectedOffers = offers.filter((o) => selectedOfferIds.includes(o.id))
     const spreadWaiver = selectedOffers
-      .filter((o) => isSpread(o.conditions))
+      .filter((o) => isSpreadCondition(o.conditions))
       .reduce((s, o) => s + parseFloat(o.waiverAmount.toString()), 0)
     const onetimeWaiver = selectedOffers
-      .filter((o) => !isSpread(o.conditions))
+      .filter((o) => !isSpreadCondition(o.conditions))
       .reduce((s, o) => s + parseFloat(o.waiverAmount.toString()), 0)
 
     const schWaiver = (scholarshipA?.amount ?? 0) + (scholarshipB?.amount ?? 0)

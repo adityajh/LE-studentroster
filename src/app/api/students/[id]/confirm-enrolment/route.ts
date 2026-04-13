@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { auth } from "@/auth"
 import { prisma } from "@/lib/prisma"
 import { generateRollNo } from "@/lib/students"
+import { splitWaivers } from "@/lib/fee-calc"
 import { renderToBuffer } from "@react-pdf/renderer"
 import { createElement } from "react"
 import { sendOnboardingEmail } from "@/lib/mail"
@@ -85,19 +86,13 @@ export async function POST(
   const totalWaiver = Number(financial.totalWaiver)
   const installmentType = financial.installmentType
 
-  // Split offers into spread (÷3/yr) vs one-time (full deduction Year 1 only)
-  const isSpread = (c: unknown) =>
-    c == null || typeof c !== "object" || (c as Record<string, unknown>).spreadAcrossYears !== false
-  const spreadOfferWaiver = student.offers.filter(o => isSpread(o.offer.conditions)).reduce((s, o) => s + Number(o.waiverAmount), 0)
-  const onetimeOfferWaiver = student.offers.filter(o => !isSpread(o.offer.conditions)).reduce((s, o) => s + Number(o.waiverAmount), 0)
-  const spreadScholarshipWaiver = student.scholarships
-    .filter(sc => (sc.scholarship as { spreadAcrossYears?: boolean }).spreadAcrossYears !== false)
-    .reduce((s, sc) => s + Number(sc.amount), 0)
-  const onetimeScholarshipWaiver = student.scholarships
-    .filter(sc => (sc.scholarship as { spreadAcrossYears?: boolean }).spreadAcrossYears === false)
-    .reduce((s, sc) => s + Number(sc.amount), 0)
-  const spreadPerYear = Math.round((spreadOfferWaiver + spreadScholarshipWaiver) / 3)
-  const onetimeWaiver = onetimeOfferWaiver + onetimeScholarshipWaiver
+  const { spreadPerYear, onetimeTotal: onetimeWaiver } = splitWaivers(
+    student.offers.map(o => ({ conditions: o.offer.conditions, waiverAmount: Number(o.waiverAmount) })),
+    student.scholarships.map(sc => ({
+      amount: Number(sc.amount),
+      spreadAcrossYears: (sc.scholarship as { spreadAcrossYears?: boolean }).spreadAcrossYears ?? true,
+    }))
+  )
 
   const installments: {
     year: number; label: string; dueDate: Date; amount: number; status: "DUE" | "UPCOMING"

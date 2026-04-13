@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { auth } from "@/auth"
 import { prisma } from "@/lib/prisma"
 import { generateRollNo } from "@/lib/students"
+import { splitWaivers } from "@/lib/fee-calc"
 
 export async function POST(req: NextRequest) {
   const session = await auth()
@@ -70,12 +71,11 @@ export async function POST(req: NextRequest) {
     (sum, s) => sum + s.amount,
     0
   )
-  const totalDeductionAmount = (deductions ?? []).reduce(
+  const totalDeduction = (deductions ?? []).reduce(
     (sum: number, d: { amount: number }) => sum + d.amount,
     0
   )
   const totalWaiver = totalOfferWaiver + totalScholarshipWaiver
-  const totalDeduction = totalDeductionAmount
   const netFee = baseFee - totalWaiver - totalDeduction
 
   const year1 = program.year1Fee.toNumber()
@@ -83,22 +83,13 @@ export async function POST(req: NextRequest) {
   const year3 = program.year3Fee.toNumber()
   const regFee = program.registrationFee.toNumber()
 
-  // Split offers into spread (÷3/yr) vs one-time (full deduction Year 1 only)
-  const isSpread = (c: unknown) =>
-    c == null || typeof c !== "object" || (c as Record<string, unknown>).spreadAcrossYears !== false
-  const spreadOfferWaiver = selectedOffers.filter(o => isSpread(o.conditions)).reduce((s, o) => s + Number(o.waiverAmount), 0)
-  const onetimeOfferWaiver = selectedOffers.filter(o => !isSpread(o.conditions)).reduce((s, o) => s + Number(o.waiverAmount), 0)
-
-  // Split scholarships into spread vs one-time
-  const spreadScholarshipWaiver = selectedScholarships
-    .filter(s => (scholarshipRecords.find(r => r.id === s.scholarshipId) as { spreadAcrossYears?: boolean } | undefined)?.spreadAcrossYears !== false)
-    .reduce((sum, s) => sum + s.amount, 0)
-  const onetimeScholarshipWaiver = selectedScholarships
-    .filter(s => (scholarshipRecords.find(r => r.id === s.scholarshipId) as { spreadAcrossYears?: boolean } | undefined)?.spreadAcrossYears === false)
-    .reduce((sum, s) => sum + s.amount, 0)
-
-  const spreadPerYear = Math.round((spreadOfferWaiver + spreadScholarshipWaiver) / 3)
-  const onetimeWaiver = onetimeOfferWaiver + onetimeScholarshipWaiver
+  const { spreadPerYear, onetimeTotal: onetimeWaiver } = splitWaivers(
+    selectedOffers.map(o => ({ conditions: o.conditions, waiverAmount: Number(o.waiverAmount) })),
+    selectedScholarships.map(s => ({
+      amount: s.amount,
+      spreadAcrossYears: scholarshipRecords.find(r => r.id === s.scholarshipId)?.spreadAcrossYears ?? true,
+    }))
+  )
 
   // Generate roll number
   const rollNo = await generateRollNo(program.batch.year)
@@ -114,6 +105,18 @@ export async function POST(req: NextRequest) {
     amount: number
     status: "DUE" | "UPCOMING"
   }[] = []
+
+  // Use per-program due dates from yearWiseDetails if set, else batch-year defaults
+  const yearWise = program.yearWiseDetails as Record<string, { dueDate?: string }> | null
+  const year1Due = yearWise?.year1?.dueDate
+    ? new Date(yearWise.year1.dueDate)
+    : new Date(`${batchYear}-08-07`)
+  const year2Due = yearWise?.year2?.dueDate
+    ? new Date(yearWise.year2.dueDate)
+    : new Date(`${batchYear + 1}-05-15`)
+  const year3Due = yearWise?.year3?.dueDate
+    ? new Date(yearWise.year3.dueDate)
+    : new Date(`${batchYear + 2}-05-15`)
 
   if (installmentType === "CUSTOM") {
     // Use client-supplied schedule directly
@@ -138,9 +141,6 @@ export async function POST(req: NextRequest) {
     })
 
     if (installmentType === "ANNUAL") {
-      const year1Due = new Date(`${batchYear}-07-01`)
-      const year2Due = new Date(`${batchYear + 1}-07-01`)
-      const year3Due = new Date(`${batchYear + 2}-07-01`)
       installments.push(
         {
           year: 1,

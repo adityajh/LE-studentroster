@@ -2,6 +2,7 @@
 
 import { History, User as UserIcon, ShieldAlert, Calendar } from "lucide-react"
 import { cn } from "@/lib/utils"
+import type { Role } from "@prisma/client"
 
 type AuditLog = {
   id: string
@@ -13,7 +14,7 @@ type AuditLog = {
   changedByUser: {
     name: string | null
     email: string
-    role: "ADMIN" | "STAFF"
+    role: Role
   }
 }
 

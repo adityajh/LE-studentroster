@@ -3,6 +3,7 @@ import Link from "next/link"
 import { getStudentById } from "@/lib/students"
 import { formatInstallmentStatus, formatStudentStatus } from "@/lib/students"
 import { formatINR } from "@/lib/fee-schedule"
+import { splitWaivers } from "@/lib/fee-calc"
 import { RecordPaymentDialog } from "@/components/students/record-payment-dialog"
 import { DocumentUpload } from "@/components/students/document-upload"
 import { RemindersTab } from "@/components/students/reminders-tab"
@@ -14,8 +15,7 @@ import { SendOfferButton } from "@/components/students/send-offer-button"
 import { cn } from "@/lib/utils"
 import { auth } from "@/auth"
 import { prisma } from "@/lib/prisma"
-import { Phone, Mail, Calendar, MapPin, Users, Droplets, Pencil, Bell, FileText, History, Trash2, AlertTriangle, Wallet, Clock, GraduationCap } from "lucide-react"
-import { DeleteStudentButton } from "@/components/students/delete-student-button"
+import { Phone, Mail, Calendar, MapPin, Users, Droplets, Pencil, Bell, FileText, History, Wallet, Clock, GraduationCap } from "lucide-react"
 
 export default async function StudentDetailPage({
   params,
@@ -83,22 +83,16 @@ export default async function StudentDetailPage({
   const offerExpired = daysLeft !== null && daysLeft < 0
 
   // Compute per-installment fees from current fee scheme (not stale inst.amount)
-  const isSpreadOffer = (c: unknown) =>
-    c == null || typeof c !== "object" || (c as Record<string, unknown>).spreadAcrossYears !== false
-  const spreadOfferWaiver = student.offers
-    .filter(o => isSpreadOffer((o.offer as { conditions: unknown }).conditions))
-    .reduce((s, o) => s + Number(o.waiverAmount), 0)
-  const onetimeOfferWaiver = student.offers
-    .filter(o => !isSpreadOffer((o.offer as { conditions: unknown }).conditions))
-    .reduce((s, o) => s + Number(o.waiverAmount), 0)
-  const spreadSchWaiver = student.scholarships
-    .filter(sc => (sc.scholarship as { spreadAcrossYears: boolean }).spreadAcrossYears !== false)
-    .reduce((s, sc) => s + Number(sc.amount), 0)
-  const onetimeSchWaiver = student.scholarships
-    .filter(sc => (sc.scholarship as { spreadAcrossYears: boolean }).spreadAcrossYears === false)
-    .reduce((s, sc) => s + Number(sc.amount), 0)
-  const schemeSpreadPerYear = Math.round((spreadOfferWaiver + spreadSchWaiver) / 3)
-  const schemeOnetimeTotal = onetimeOfferWaiver + onetimeSchWaiver
+  const { spreadPerYear: schemeSpreadPerYear, onetimeTotal: schemeOnetimeTotal } = splitWaivers(
+    student.offers.map(o => ({
+      conditions: (o.offer as { conditions: unknown }).conditions,
+      waiverAmount: Number(o.waiverAmount),
+    })),
+    student.scholarships.map(sc => ({
+      amount: Number(sc.amount),
+      spreadAcrossYears: (sc.scholarship as { spreadAcrossYears: boolean }).spreadAcrossYears,
+    }))
+  )
 
   // Expected fee for a given installment year under the current scheme
   const expectedInstFee = (year: number, instAmount: number): number => {
@@ -634,7 +628,7 @@ export default async function StudentDetailPage({
 
             {/* History tab */}
             {tab === "history" && (
-              <HistoryTab logs={student.auditLogs as any} />
+              <HistoryTab logs={student.auditLogs} />
             )}
           </div>
         </div>
