@@ -450,6 +450,74 @@ function onboardingEmailHtml(payload: OnboardingEmailPayload) {
 </html>`
 }
 
+// ── Enrolment confirmation email ──────────────────────────────────────────────
+
+export type EnrolmentConfirmationEmailPayload = {
+  to: string[]
+  cc?: string[]
+  studentName: string
+  programName: string
+  rollNo: string
+  onboardingUrl: string
+  onboardingExpiresAt: Date
+  feeLetterPdf: Buffer
+}
+
+export async function sendEnrolmentConfirmationEmail(payload: EnrolmentConfirmationEmailPayload): Promise<SendResult> {
+  if (!payload.to.length) return { ok: false, skipped: true, reason: "No recipient email" }
+  const config = await getSmtpConfig()
+  if (!config) return { ok: false, skipped: true, reason: "SMTP not configured" }
+
+  const transporter = createTransporter(config)
+  const expiry = payload.onboardingExpiresAt.toLocaleDateString("en-IN", {
+    day: "numeric", month: "long", year: "numeric",
+  })
+
+  const html = `<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1.0" /></head>
+<body style="margin:0;padding:24px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:#333;font-size:15px;line-height:1.6;background:#fff;">
+  ${EMAIL_HEADER}
+  <p>Dear ${payload.studentName},</p>
+  <p>Congratulations! Your enrolment in <strong>${payload.programName}</strong> at Let's Enterprise is now confirmed.</p>
+  <p><strong>Your Roll Number:</strong> ${payload.rollNo}</p>
+  <p>Your personalised fee structure is attached to this email. Please review it carefully.</p>
+  <p>As the next step, please complete your profile using the link below. This link is valid until <strong>${expiry}</strong>.</p>
+  <div style="margin:28px 0;text-align:center;">
+    <a href="${payload.onboardingUrl}" style="display:inline-block;background:#3663AD;color:#ffffff;font-weight:700;font-size:14px;padding:14px 32px;border-radius:8px;text-decoration:none;letter-spacing:0.02em;">
+      Complete Your Profile →
+    </a>
+  </div>
+  <p style="font-size:13px;color:#64748b;">Or copy this link:<br/><a href="${payload.onboardingUrl}" style="color:#3663AD;word-break:break-all;">${payload.onboardingUrl}</a></p>
+  <p>If you have any questions, please reach out to your programme coordinator.</p>
+  ${EMAIL_FOOTER}
+</body>
+</html>`
+
+  const programSlug = payload.programName.split(/\s*[-–]\s*/)[0].trim().replace(/\s+/g, "")
+  const studentSlug = payload.studentName.replace(/\s+/g, "")
+
+  try {
+    const info = await transporter.sendMail({
+      from: `${config.fromName} <${config.fromEmail}>`,
+      to: payload.to,
+      cc: payload.cc,
+      subject: `Welcome to ${payload.programName} — Enrolment Confirmed`,
+      html,
+      attachments: [
+        {
+          filename: `LE-${programSlug}-${studentSlug}-FeeDetails.pdf`,
+          content: payload.feeLetterPdf,
+          contentType: "application/pdf",
+        },
+      ],
+    })
+    return { ok: true, messageId: info.messageId }
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message : String(err) }
+  }
+}
+
 // ── Self-onboarding link email ────────────────────────────────────────────────
 
 export type OnboardingLinkEmailPayload = {

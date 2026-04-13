@@ -567,7 +567,7 @@ export default async function StudentDetailPage({
                 )}
               >
                 <FileText className="h-3 w-3" />
-                Proposal
+                Fee Letter
               </Link>
               <Link
                 href={`/students/${id}?tab=history`}

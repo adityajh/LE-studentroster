@@ -463,21 +463,29 @@ export function ConfirmEnrolmentDialog({
                         <div className="space-y-2">
                           <p className="text-xs font-semibold text-slate-600 mb-2">Custom Schedule</p>
                           {customInstallments.map((inst, i) => (
-                            <div key={i} className="flex gap-2 items-center">
-                              <select className="border border-slate-200 rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-emerald-400 w-36"
-                                value={inst.yearOption}
-                                onChange={(e) => updateCustom(i, "yearOption", e.target.value)}>
-                                {YEAR_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
-                              </select>
-                              <input type="date" className="border border-slate-200 rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-emerald-400 flex-1"
-                                value={inst.dueDate} onChange={(e) => updateCustom(i, "dueDate", e.target.value)} />
-                              <input type="number" className="border border-slate-200 rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-emerald-400 w-28"
-                                placeholder="Amount" value={inst.amount || ""}
-                                onChange={(e) => updateCustom(i, "amount", Number(e.target.value))} />
-                              <button type="button" onClick={() => removeCustomRow(i)} disabled={i === 0}
-                                className="text-slate-300 hover:text-rose-500 disabled:cursor-not-allowed">
-                                <Trash2 className="w-4 h-4" />
-                              </button>
+                            <div key={i} className="border border-slate-200 rounded-lg p-2.5 space-y-2">
+                              <div className="flex gap-2 items-center">
+                                <input className="flex-1 border border-slate-200 rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-emerald-400"
+                                  placeholder="Label"
+                                  value={inst.label}
+                                  onChange={(e) => updateCustom(i, "label", e.target.value)} />
+                                <select className="border border-slate-200 rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-emerald-400 w-32"
+                                  value={inst.yearOption}
+                                  onChange={(e) => updateCustom(i, "yearOption", e.target.value)}>
+                                  {YEAR_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+                                </select>
+                                <button type="button" onClick={() => removeCustomRow(i)} disabled={i === 0}
+                                  className="text-slate-300 hover:text-rose-500 disabled:cursor-not-allowed shrink-0">
+                                  <Trash2 className="w-4 h-4" />
+                                </button>
+                              </div>
+                              <div className="flex gap-2 items-center">
+                                <input type="date" className="border border-slate-200 rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-emerald-400 flex-1"
+                                  value={inst.dueDate} onChange={(e) => updateCustom(i, "dueDate", e.target.value)} />
+                                <input type="number" className="border border-slate-200 rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-emerald-400 w-32"
+                                  placeholder="Amount (₹)" value={inst.amount || ""}
+                                  onChange={(e) => updateCustom(i, "amount", Number(e.target.value))} />
+                              </div>
                             </div>
                           ))}
                           <button type="button" onClick={addCustomRow}
@@ -486,7 +494,7 @@ export function ConfirmEnrolmentDialog({
                           </button>
                           <div className="flex justify-between text-xs font-bold text-slate-700 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 mt-2">
                             <span>Total</span>
-                            <span className={cn(customTotal !== baseFee - totalWaiver - confirmedDeductionTotal ? "text-amber-600" : "text-emerald-700")}>
+                            <span className={cn(customTotal !== netFee + registrationFee ? "text-amber-600" : "text-emerald-700")}>
                               {formatINR(customTotal)}
                             </span>
                           </div>
@@ -501,12 +509,10 @@ export function ConfirmEnrolmentDialog({
                               <span className="font-medium">{formatINR(row.amount)}</span>
                             </div>
                           ))}
-                          {installmentType === "ANNUAL" && (
-                            <div className="flex justify-between px-3 py-2 text-sm font-bold bg-slate-100">
-                              <span className="text-slate-700">Total</span>
-                              <span>{formatINR(schedule.reduce((s, r) => s + r.amount, 0))}</span>
-                            </div>
-                          )}
+                          <div className="flex justify-between px-3 py-2 text-sm font-bold bg-slate-100">
+                            <span className="text-slate-700">Total</span>
+                            <span>{formatINR(schedule.reduce((s, r) => s + r.amount, 0))}</span>
+                          </div>
                         </div>
                       )}
                     </div>

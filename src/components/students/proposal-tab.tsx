@@ -46,9 +46,9 @@ export function ProposalTab({ studentId }: { studentId: string }) {
       <div className="h-16 w-16 bg-slate-100 rounded-full flex items-center justify-center mb-4 border-4 border-slate-50">
         <FileText className="h-8 w-8 text-slate-400" />
       </div>
-      <h3 className="text-lg font-bold text-slate-900 mb-2">Proposal Letters</h3>
+      <h3 className="text-lg font-bold text-slate-900 mb-2">Fee Letter</h3>
       <p className="text-sm font-medium text-slate-500 max-w-sm mb-8">
-        Generate an official letter detailing the student's complete financial breakdown, payment schedule, and terms.
+        Generate the final fee letter detailing the student&apos;s complete financial breakdown, payment schedule, and terms.
       </p>
 
       <div className="flex items-center gap-4">

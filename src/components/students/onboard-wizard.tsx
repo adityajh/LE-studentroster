@@ -422,23 +422,13 @@ export function OnboardWizard({
 
             {error && <p className="text-sm text-rose-600 bg-rose-50 border border-rose-200 rounded-lg px-3 py-2">{error}</p>}
 
-            {emailSent ? (
-              <button type="button" onClick={handleCompleteOnboarding} disabled={completing}
-                className="w-full flex items-center justify-center gap-2 py-2.5 bg-emerald-600 text-white text-sm font-bold rounded-xl hover:bg-emerald-700 disabled:opacity-60">
-                {completing
-                  ? <><Loader2 className="w-4 h-4 animate-spin" /> Completing…</>
-                  : <><CheckCircle2 className="w-4 h-4" /> Complete Onboarding</>
-                }
-              </button>
-            ) : (
-              <button type="button" onClick={handleSendEmail} disabled={sending}
-                className="w-full flex items-center justify-center gap-2 py-2.5 bg-indigo-600 text-white text-sm font-bold rounded-xl hover:bg-indigo-700 disabled:opacity-60">
-                {sending
-                  ? <><Loader2 className="w-4 h-4 animate-spin" /> Sending…</>
-                  : <><Send className="w-4 h-4" /> Send Onboarding Email</>
-                }
-              </button>
-            )}
+            <button type="button" onClick={handleCompleteOnboarding} disabled={completing}
+              className="w-full flex items-center justify-center gap-2 py-2.5 bg-emerald-600 text-white text-sm font-bold rounded-xl hover:bg-emerald-700 disabled:opacity-60">
+              {completing
+                ? <><Loader2 className="w-4 h-4 animate-spin" /> Completing…</>
+                : <><CheckCircle2 className="w-4 h-4" /> Complete Onboarding</>
+              }
+            </button>
           </div>
 
           <div className="flex justify-between">
@@ -446,13 +436,11 @@ export function OnboardWizard({
               className="flex items-center gap-1.5 px-4 py-2.5 border border-slate-200 text-slate-600 text-sm font-medium rounded-xl hover:bg-slate-50">
               <ChevronLeft className="w-4 h-4" /> Back
             </button>
-            {emailSent && (
-              <button type="button" onClick={handleSendEmail} disabled={sending}
-                className="flex items-center gap-1.5 px-4 py-2.5 border border-slate-200 text-slate-500 text-sm font-medium rounded-xl hover:bg-slate-50 disabled:opacity-50">
-                {sending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
-                Resend Email
-              </button>
-            )}
+            <button type="button" onClick={handleSendEmail} disabled={sending}
+              className="flex items-center gap-1.5 px-4 py-2.5 border border-slate-200 text-slate-500 text-sm font-medium rounded-xl hover:bg-slate-50 disabled:opacity-50">
+              {sending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+              {emailSent ? "Resend Email" : "Send Onboarding Email"}
+            </button>
           </div>
         </div>
       )}

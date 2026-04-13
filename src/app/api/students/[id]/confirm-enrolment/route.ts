@@ -3,6 +3,13 @@ import { auth } from "@/auth"
 import { prisma } from "@/lib/prisma"
 import { generateRollNo } from "@/lib/students"
 import { splitWaivers } from "@/lib/fee-calc"
+import { sendEnrolmentConfirmationEmail } from "@/lib/mail"
+import { getSetting } from "@/app/actions/settings"
+import { renderToBuffer } from "@react-pdf/renderer"
+import { createElement } from "react"
+import crypto from "crypto"
+import fs from "fs"
+import path from "path"
 
 export async function POST(
   req: NextRequest,
@@ -237,6 +244,72 @@ export async function POST(
 
     return { payment }
   })
+
+  // ── Post-enrolment: fee letter + welcome email with onboarding link ──────────
+  // Fire-and-forget: don't fail enrollment if email fails
+  try {
+    const studentFull = await prisma.student.findUnique({
+      where: { id },
+      include: {
+        program: true,
+        batch: true,
+        financial: true,
+        installments: { orderBy: { dueDate: "asc" } },
+        offers: { include: { offer: true } },
+        scholarships: { include: { scholarship: true } },
+        deductions: true,
+      },
+    })
+
+    if (studentFull?.email) {
+      // Generate fee letter PDF
+      let logoSrc: string | undefined
+      try {
+        const logoBuf = fs.readFileSync(path.join(process.cwd(), "public", "le-logo-light.png"))
+        logoSrc = `data:image/png;base64,${logoBuf.toString("base64")}`
+      } catch { /* logo missing */ }
+
+      const { ProposalDocument } = await import("@/lib/pdf-generator")
+      const terms = studentFull.financial?.customTerms
+        || await getSetting("PROPOSAL_TERMS", "All fees must be paid on or before the due date.")
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const pdfBuffer = await renderToBuffer(createElement(ProposalDocument, { student: studentFull, terms, logoSrc }) as any)
+
+      // Create onboarding token
+      const rawToken = crypto.randomBytes(32).toString("hex")
+      const tokenHash = crypto.createHash("sha256").update(rawToken).digest("hex")
+      const expiresAt = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000) // 14 days
+      await prisma.onboardingToken.upsert({
+        where: { studentId: id },
+        create: { studentId: id, tokenHash, expiresAt },
+        update: { tokenHash, expiresAt, submittedAt: null },
+      })
+      await prisma.student.update({
+        where: { id },
+        data: { selfOnboardingStatus: "LINK_SENT", onboardingEmailSentAt: new Date() },
+      })
+
+      const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://le-student-roster.vercel.app"
+      const onboardingUrl = `${appUrl}/onboard/${rawToken}`
+
+      const cc: string[] = []
+      if (studentFull.parent1Email) cc.push(studentFull.parent1Email)
+
+      await sendEnrolmentConfirmationEmail({
+        to: [studentFull.email],
+        cc: cc.length ? cc : undefined,
+        studentName: studentFull.name,
+        programName: studentFull.program.name,
+        rollNo,
+        onboardingUrl,
+        onboardingExpiresAt: expiresAt,
+        feeLetterPdf: Buffer.from(pdfBuffer),
+      })
+    }
+  } catch (err) {
+    console.error("[post-enrolment email]", err)
+    // Email failure does not affect enrolment
+  }
 
   return NextResponse.json({
     ok: true,
