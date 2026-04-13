@@ -83,6 +83,23 @@ export default async function StudentDetailPage({
     : null
   const offerExpired = daysLeft !== null && daysLeft < 0
 
+  // FIFO schedule rows
+  const sortedInstsForSchedule = [...student.installments].sort((a, b) => a.year - b.year)
+  let fifoRemaining = totalPaid
+  let syntheticRegFifo: { fee: number; received: number; pending: number } | null = null
+  if (syntheticReg) {
+    const fee = syntheticReg.amount
+    const received = Math.min(fifoRemaining, fee)
+    fifoRemaining -= received
+    syntheticRegFifo = { fee, received, pending: Math.max(0, fee - received) }
+  }
+  const scheduleRows = sortedInstsForSchedule.map(inst => {
+    const fee = Number(inst.amount)
+    const received = Math.min(fifoRemaining, fee)
+    fifoRemaining -= received
+    return { inst, fee, received, pending: Math.max(0, fee - received) }
+  })
+
   return (
     <div className="space-y-8 max-w-[1000px]">
       {/* Offer expiry banner */}
@@ -402,6 +419,17 @@ export default async function StudentDetailPage({
             {/* Tab header */}
             <div className="px-5 py-4 border-b border-slate-100 flex items-center gap-1">
               <Link
+                href={`/students/${id}?tab=installments`}
+                className={cn(
+                  "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all",
+                  tab === "installments"
+                    ? "bg-indigo-50 text-indigo-700 border border-indigo-200"
+                    : "text-slate-500 hover:text-slate-700"
+                )}
+              >
+                Schedule
+              </Link>
+              <Link
                 href={`/students/${id}?tab=payments`}
                 className={cn(
                   "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all",
@@ -412,19 +440,6 @@ export default async function StudentDetailPage({
               >
                 <Wallet className="h-3 w-3" />
                 Payments
-              </Link>
-              <Link
-                href={`/students/${id}?tab=installments`}
-                className={cn(
-                  "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all",
-                  tab === "installments" || tab === "payments" || tab === undefined // default and payments handled
-                    ? (tab === "installments" || (tab === undefined && student.payments.length === 0)) 
-                      ? "bg-indigo-50 text-indigo-700 border border-indigo-200" 
-                      : "text-slate-500 hover:text-slate-700"
-                    : "text-slate-500 hover:text-slate-700"
-                )}
-              >
-                Schedule
               </Link>
               <Link
                 href={`/students/${id}?tab=reminders`}
@@ -480,99 +495,106 @@ export default async function StudentDetailPage({
               />
             )}
 
-            {/* Installments tab */}
-            {(tab === "installments" || tab === undefined) && (
-              <div className="divide-y divide-slate-50">
-                {/* Synthetic registration row (when no year=0 installment in DB) */}
-                {syntheticReg && (
-                  <div className="px-5 py-4 flex items-center justify-between gap-4">
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <p className="text-sm font-bold text-slate-800">{syntheticReg.label}</p>
-                        <span className={cn(
-                          "inline-flex items-center text-[10px] uppercase tracking-wider font-bold px-2 py-0.5 rounded border",
-                          syntheticReg.isPaid
-                            ? "bg-emerald-50 text-emerald-700 border-emerald-200"
-                            : "bg-amber-50 text-amber-700 border-amber-200"
-                        )}>
-                          {syntheticReg.isPaid ? "PAID" : "PENDING"}
-                        </span>
-                      </div>
-                      {syntheticReg.isPaid && syntheticReg.paidDate && (
-                        <p className="text-[10px] uppercase tracking-wider font-bold text-emerald-500 mt-0.5">
-                          Paid: {new Date(syntheticReg.paidDate).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
-                        </p>
-                      )}
-                    </div>
-                    <p className={cn("text-sm font-extrabold shrink-0", syntheticReg.isPaid ? "text-emerald-600" : "text-slate-800")}>
-                      {formatINR(syntheticReg.amount)}
-                    </p>
-                  </div>
-                )}
-                {student.installments.map((inst) => {
-                  const style = formatInstallmentStatus(inst.status)
-                  const isPaid = inst.status === "PAID" || inst.status === "PARTIAL"
-                  return (
-                    <div key={inst.id} className="px-5 py-4 flex items-center justify-between gap-4">
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <p className="text-sm font-bold text-slate-800">{inst.label}</p>
+            {/* Schedule tab */}
+            {tab === "installments" && (
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-slate-100">
+                      <th className="text-left text-[10px] uppercase tracking-widest font-bold text-slate-400 px-5 py-3">Type</th>
+                      <th className="text-right text-[10px] uppercase tracking-widest font-bold text-slate-400 px-4 py-3">Fee</th>
+                      <th className="text-right text-[10px] uppercase tracking-widest font-bold text-slate-400 px-4 py-3">Received</th>
+                      <th className="text-right text-[10px] uppercase tracking-widest font-bold text-slate-400 px-4 py-3">Pending</th>
+                      <th className="px-5 py-3"></th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-50">
+                    {/* Synthetic registration row */}
+                    {syntheticReg && syntheticRegFifo && (
+                      <tr>
+                        <td className="px-5 py-4">
+                          <p className="font-bold text-slate-800">Registration</p>
                           <span className={cn(
-                            "inline-flex items-center text-[10px] uppercase tracking-wider font-bold px-2 py-0.5 rounded border",
-                            style.classes
+                            "inline-flex items-center text-[10px] uppercase tracking-wider font-bold px-2 py-0.5 rounded border mt-1",
+                            syntheticReg.isPaid
+                              ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                              : "bg-amber-50 text-amber-700 border-amber-200"
                           )}>
-                            {style.label}
+                            {syntheticReg.isPaid ? "PAID" : "PENDING"}
                           </span>
-                        </div>
-                        <div className="flex items-center gap-3 mt-0.5 flex-wrap">
-                          <p className="text-[10px] uppercase tracking-wider font-bold text-slate-400">
-                            Due: {new Date(inst.dueDate).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
-                          </p>
-                          {isPaid && inst.paidDate && (
-                            <p className="text-[10px] uppercase tracking-wider font-bold text-emerald-500">
-                              Paid: {new Date(inst.paidDate).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
-                              {inst.paymentMethod && ` · ${inst.paymentMethod}`}
+                        </td>
+                        <td className="px-4 py-4 text-right">
+                          <p className="font-extrabold text-slate-800">{formatINR(syntheticRegFifo.fee)}</p>
+                          {syntheticReg.isPaid && syntheticReg.paidDate && (
+                            <p className="text-[10px] text-emerald-500 font-semibold mt-0.5">
+                              Paid {new Date(syntheticReg.paidDate).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
                             </p>
                           )}
-                        </div>
-                        {fin?.installmentType === "ANNUAL" && inst.year > 0 && yearFees[inst.year] && (() => {
-                          const impliedWaiver = Math.round(yearFees[inst.year] - inst.amount.toNumber())
-                          if (impliedWaiver <= 0) return null
-                          return (
-                            <p className="text-[10px] font-medium text-slate-400 mt-1">
-                              {formatINR(yearFees[inst.year])}
-                              {" − "}
-                              <span className="text-emerald-600 font-semibold">{formatINR(impliedWaiver)} waiver</span>
-                              {" = "}
-                              <span className="font-bold text-slate-600">{formatINR(Math.round(inst.amount.toNumber()))}</span>
+                        </td>
+                        <td className="px-4 py-4 text-right font-extrabold text-emerald-600">
+                          {syntheticRegFifo.received > 0 ? formatINR(syntheticRegFifo.received) : "—"}
+                        </td>
+                        <td className="px-4 py-4 text-right font-extrabold text-slate-800">
+                          {syntheticRegFifo.pending > 0 ? formatINR(syntheticRegFifo.pending) : <span className="text-emerald-500">✓</span>}
+                        </td>
+                        <td className="px-5 py-4"></td>
+                      </tr>
+                    )}
+                    {/* Real installment rows */}
+                    {scheduleRows.map(({ inst, fee, received, pending }) => {
+                      const style = formatInstallmentStatus(inst.status)
+                      const isPaid = inst.status === "PAID" || inst.status === "PARTIAL"
+                      const impliedWaiver = fin?.installmentType === "ANNUAL" && inst.year > 0 && yearFees[inst.year]
+                        ? Math.round(yearFees[inst.year] - fee)
+                        : 0
+                      return (
+                        <tr key={inst.id}>
+                          <td className="px-5 py-4">
+                            <p className="font-bold text-slate-800">{inst.label}</p>
+                            <span className={cn(
+                              "inline-flex items-center text-[10px] uppercase tracking-wider font-bold px-2 py-0.5 rounded border mt-1",
+                              style.classes
+                            )}>
+                              {style.label}
+                            </span>
+                          </td>
+                          <td className="px-4 py-4 text-right">
+                            <p className="font-extrabold text-slate-800">{formatINR(fee)}</p>
+                            {impliedWaiver > 0 && (
+                              <p className="text-[10px] text-slate-400 mt-0.5">
+                                {formatINR(yearFees[inst.year])}
+                                {" − "}
+                                <span className="text-emerald-600">{formatINR(impliedWaiver)} waiver</span>
+                              </p>
+                            )}
+                            <p className="text-[10px] text-slate-400 mt-0.5">
+                              Due {new Date(inst.dueDate).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
                             </p>
-                          )
-                        })()}
-                      </div>
-                      <div className="text-right shrink-0">
-                        <p className={cn("text-sm font-extrabold", isPaid ? "text-emerald-600" : "text-slate-800")}>
-                          {isPaid && inst.paidAmount ? formatINR(inst.paidAmount) : formatINR(inst.amount)}
-                        </p>
-                        {isPaid && inst.paidAmount && inst.paidAmount.toNumber() !== inst.amount.toNumber() && (
-                          <p className="text-[10px] text-slate-400">of {formatINR(inst.amount)}</p>
-                        )}
-                      </div>
-                      <div className="flex flex-col items-end gap-1.5 shrink-0">
-                        {isPaid && (
-                          <Link
-                            href={`/students/${student.id}/receipts/${inst.id}`}
-                            className="text-xs font-semibold text-indigo-600 hover:text-indigo-800 transition-colors"
-                          >
-                            Receipt →
-                          </Link>
-                        )}
-                        {!isPaid && canRecord && (
-                          <RecordPaymentDialog studentId={student.id} studentName={student.firstName || student.name} installment={inst} />
-                        )}
-                      </div>
-                    </div>
-                  )
-                })}
+                          </td>
+                          <td className="px-4 py-4 text-right font-extrabold text-emerald-600">
+                            {received > 0 ? formatINR(received) : "—"}
+                          </td>
+                          <td className="px-4 py-4 text-right font-extrabold text-slate-800">
+                            {pending > 0 ? formatINR(pending) : <span className="text-emerald-500">✓</span>}
+                          </td>
+                          <td className="px-5 py-4 text-right">
+                            {isPaid && (
+                              <Link
+                                href={`/students/${student.id}/receipts/${inst.id}`}
+                                className="text-xs font-semibold text-indigo-600 hover:text-indigo-800 transition-colors"
+                              >
+                                Receipt →
+                              </Link>
+                            )}
+                            {!isPaid && canRecord && (
+                              <RecordPaymentDialog studentId={student.id} studentName={student.firstName || student.name} installment={inst} />
+                            )}
+                          </td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
               </div>
             )}
 
