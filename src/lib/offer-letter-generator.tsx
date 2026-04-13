@@ -5,11 +5,17 @@ export type OfferLetterData = {
   programName: string
   batchYear: number
   offerExpiresAt: Date
-  // Financial summary
-  baseFee: number
-  offers: { name: string; amount: number }[]
+  // Financial summary (page 1 fee box)
+  registrationFee: number
+  baseFee: number    // y1+y2+y3, excludes registration
+  year1Fee: number
+  year2Fee: number
+  year3Fee: number
+  offers: { name: string; amount: number; deadline?: Date | null }[]
   scholarships: { name: string; amount: number }[]
-  netFee: number
+  netFee: number     // baseFee - waivers, excludes registration
+  // Appendix
+  bankDetails: string
   // Configurable body text (from SystemSetting OFFER_LETTER_BODY)
   bodyText?: string
   // Logo (base64 data URI passed from server route)
@@ -182,6 +188,134 @@ const styles = StyleSheet.create({
     color: "#64748b",
     fontFamily: "Helvetica-Oblique",
   },
+  // ── Appendix styles ───────────────────────────────────────────────────────
+  appendixLabel: {
+    fontSize: 8,
+    fontFamily: "Helvetica-Bold",
+    color: "#94a3b8",
+    letterSpacing: 1,
+    textTransform: "uppercase",
+    marginBottom: 4,
+  },
+  appendixTitle: {
+    fontSize: 13,
+    fontFamily: "Helvetica-Bold",
+    color: "#1e293b",
+    marginBottom: 16,
+    borderBottomWidth: 2,
+    borderBottomColor: "#3663AD",
+    paddingBottom: 8,
+  },
+  appSection: {
+    marginBottom: 20,
+  },
+  appSectionTitle: {
+    fontSize: 9,
+    fontFamily: "Helvetica-Bold",
+    color: "#64748b",
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
+    marginBottom: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: "#e2e8f0",
+    paddingBottom: 4,
+  },
+  appRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginBottom: 5,
+  },
+  appLabel: {
+    fontSize: 10,
+    color: "#64748b",
+    width: "55%",
+  },
+  appValue: {
+    fontSize: 10,
+    fontFamily: "Helvetica-Bold",
+    width: "45%",
+    textAlign: "right",
+    letterSpacing: 0,
+  },
+  appDeductValue: {
+    fontSize: 10,
+    fontFamily: "Helvetica-Bold",
+    color: "#475569",
+    width: "45%",
+    textAlign: "right",
+    letterSpacing: 0,
+  },
+  appDivider: {
+    borderBottomWidth: 1,
+    borderBottomColor: "#e2e8f0",
+    marginVertical: 6,
+  },
+  appTotalRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginTop: 2,
+  },
+  appTotalLabel: {
+    fontSize: 11,
+    fontFamily: "Helvetica-Bold",
+    color: "#1e293b",
+  },
+  appTotalValue: {
+    fontSize: 11,
+    fontFamily: "Helvetica-Bold",
+    color: "#3663AD",
+    letterSpacing: 0,
+  },
+  conditionalBox: {
+    marginTop: 12,
+    padding: 10,
+    backgroundColor: "#fffbeb",
+    borderRadius: 4,
+    borderWidth: 1,
+    borderColor: "#fcd34d",
+  },
+  conditionalTitle: {
+    fontSize: 9,
+    fontFamily: "Helvetica-Bold",
+    color: "#92400e",
+    marginBottom: 6,
+  },
+  conditionalRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginBottom: 3,
+  },
+  conditionalLabel: {
+    fontSize: 10,
+    color: "#78350f",
+    width: "55%",
+  },
+  conditionalValue: {
+    fontSize: 10,
+    fontFamily: "Helvetica-Bold",
+    color: "#78350f",
+    width: "45%",
+    textAlign: "right",
+    letterSpacing: 0,
+  },
+  conditionalNote: {
+    fontSize: 8,
+    color: "#92400e",
+    marginTop: 6,
+    lineHeight: 1.5,
+  },
+  bankBox: {
+    backgroundColor: "#f8fafc",
+    borderRadius: 4,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: "#e2e8f0",
+  },
+  bankText: {
+    fontSize: 10,
+    color: "#334155",
+    lineHeight: 1.7,
+  },
 })
 
 // PDF-safe formatter: Helvetica has no ₹ glyph — use "Rs." instead.
@@ -202,12 +336,23 @@ Based on your application, interactions, and assessment process, our admissions 
 
   const bodyText = data.bodyText || defaultBody
 
+  const permanentOffers = data.offers.filter((o) => !o.deadline)
+  const conditionalOffers = data.offers.filter((o) => !!o.deadline)
+
   const totalWaiver =
     data.offers.reduce((s, o) => s + o.amount, 0) +
     data.scholarships.reduce((s, sc) => s + sc.amount, 0)
 
+  const programTotal = data.registrationFee + data.baseFee
+  const netTotal = data.registrationFee + data.netFee
+
+  const permanentWaiver =
+    permanentOffers.reduce((s, o) => s + o.amount, 0) +
+    data.scholarships.reduce((s, sc) => s + sc.amount, 0)
+
   return (
     <Document>
+      {/* ── Page 1: Offer Letter ── */}
       <Page size="A4" style={styles.page}>
         {/* Header */}
         <View style={styles.header}>
@@ -259,10 +404,10 @@ Based on your application, interactions, and assessment process, our admissions 
         <Text style={styles.sectionTitle}>Your Fee Summary</Text>
         <View style={styles.feeBox}>
           <View style={styles.feeRow}>
-            <Text>Programme Fee</Text>
-            <Text style={styles.feeAmount}>{formatINR(data.baseFee)}</Text>
+            <Text>Total Programme Fee (incl. Registration)</Text>
+            <Text style={styles.feeAmount}>{formatINR(programTotal)}</Text>
           </View>
-          {data.offers.map((o, i) => (
+          {permanentOffers.map((o, i) => (
             <View key={i} style={styles.feeRow}>
               <Text style={styles.feeDeductLabel}>Less: {o.name}</Text>
               <Text style={styles.feeDeductAmount}>- {formatINR(o.amount)}</Text>
@@ -274,16 +419,23 @@ Based on your application, interactions, and assessment process, our admissions 
               <Text style={styles.feeDeductAmount}>- {formatINR(sc.amount)}</Text>
             </View>
           ))}
-          {totalWaiver > 0 && (
+          {permanentWaiver > 0 && (
             <View style={styles.feeRow}>
-              <Text style={styles.feeDeductLabel}>Total Benefit</Text>
-              <Text style={styles.feeDeductAmount}>- {formatINR(totalWaiver)}</Text>
+              <Text style={styles.feeDeductLabel}>Total Confirmed Benefit</Text>
+              <Text style={styles.feeDeductAmount}>- {formatINR(permanentWaiver)}</Text>
             </View>
           )}
           <View style={styles.feeRowBold}>
-            <Text style={styles.feeRowBoldLabel}>Net Programme Fee</Text>
-            <Text style={styles.feeRowBoldAmount}>{formatINR(data.netFee)}</Text>
+            <Text style={styles.feeRowBoldLabel}>Net Fee Payable</Text>
+            <Text style={styles.feeRowBoldAmount}>{formatINR(netTotal)}</Text>
           </View>
+          {conditionalOffers.length > 0 && (
+            <View style={{ marginTop: 8 }}>
+              <Text style={{ fontSize: 8, color: "#92400e", fontFamily: "Helvetica-Oblique" }}>
+                * Additional conditional offers apply — see Appendix for details.
+              </Text>
+            </View>
+          )}
         </View>
 
         {/* Expiry notice */}
@@ -323,6 +475,125 @@ Based on your application, interactions, and assessment process, our admissions 
         <Text style={styles.ack}>
           This letter serves as confirmation of your offer of admission to the {data.programName} (Batch of {data.batchYear}).
         </Text>
+      </Page>
+
+      {/* ── Page 2: Appendix — Fee Breakdown & Payment Details ── */}
+      <Page size="A4" style={styles.page}>
+        {/* Header */}
+        <View style={styles.header}>
+          <View style={styles.headerLeft}>
+            {data.logoSrc ? (
+              <Image src={data.logoSrc} style={styles.logo} />
+            ) : (
+              <Text style={styles.logoFallback}>LET'S ENTERPRISE</Text>
+            )}
+            <Text style={styles.tagline}>Work is the Curriculum</Text>
+          </View>
+          <View style={styles.headerRight}>
+            <Text style={styles.contact}>www.letsenterprise.in</Text>
+            <Text style={styles.contact}>+91 84472 84008</Text>
+          </View>
+        </View>
+
+        <Text style={styles.appendixLabel}>Appendix</Text>
+        <Text style={styles.appendixTitle}>Fee Breakdown & Payment Details</Text>
+
+        {/* Year-by-year fee table */}
+        <View style={styles.appSection}>
+          <Text style={styles.appSectionTitle}>Fee Structure</Text>
+
+          <View style={styles.appRow}>
+            <Text style={styles.appLabel}>Registration Fee</Text>
+            <Text style={styles.appValue}>{formatINR(data.registrationFee)}</Text>
+          </View>
+          <View style={styles.appRow}>
+            <Text style={styles.appLabel}>Year 1 — Growth</Text>
+            <Text style={styles.appValue}>{formatINR(data.year1Fee)}</Text>
+          </View>
+          <View style={styles.appRow}>
+            <Text style={styles.appLabel}>Year 2 — Projects</Text>
+            <Text style={styles.appValue}>{formatINR(data.year2Fee)}</Text>
+          </View>
+          <View style={styles.appRow}>
+            <Text style={styles.appLabel}>Year 3 — Work</Text>
+            <Text style={styles.appValue}>{formatINR(data.year3Fee)}</Text>
+          </View>
+
+          <View style={styles.appDivider} />
+
+          <View style={styles.appRow}>
+            <Text style={[styles.appLabel, { fontFamily: "Helvetica-Bold", color: "#1e293b" }]}>Total Programme Fee</Text>
+            <Text style={[styles.appValue, { color: "#1e293b" }]}>{formatINR(programTotal)}</Text>
+          </View>
+        </View>
+
+        {/* Confirmed Benefits */}
+        {(permanentOffers.length > 0 || data.scholarships.length > 0) && (
+          <View style={styles.appSection}>
+            <Text style={styles.appSectionTitle}>Confirmed Benefits</Text>
+
+            {permanentOffers.map((o, i) => (
+              <View key={i} style={styles.appRow}>
+                <Text style={styles.appLabel}>{o.name}</Text>
+                <Text style={styles.appDeductValue}>- {formatINR(o.amount)}</Text>
+              </View>
+            ))}
+            {data.scholarships.map((sc, i) => (
+              <View key={i} style={styles.appRow}>
+                <Text style={styles.appLabel}>{sc.name} Scholarship</Text>
+                <Text style={styles.appDeductValue}>- {formatINR(sc.amount)}</Text>
+              </View>
+            ))}
+          </View>
+        )}
+
+        {/* Net Fee Payable — always shown */}
+        <View style={styles.appDivider} />
+        <View style={styles.appTotalRow}>
+          <Text style={styles.appTotalLabel}>Net Fee Payable</Text>
+          <Text style={styles.appTotalValue}>{formatINR(netTotal)}</Text>
+        </View>
+
+        {/* Conditional / time-gated offers */}
+        {conditionalOffers.length > 0 && (
+          <View style={styles.conditionalBox}>
+            <Text style={styles.conditionalTitle}>
+              Conditional Offers (applied on confirmation before deadline)
+            </Text>
+            {conditionalOffers.map((o, i) => (
+              <View key={i} style={styles.conditionalRow}>
+                <Text style={styles.conditionalLabel}>{o.name}</Text>
+                <Text style={styles.conditionalValue}>
+                  - {formatINR(o.amount)}
+                  {o.deadline
+                    ? `  (by ${new Date(o.deadline).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })})`
+                    : ""}
+                </Text>
+              </View>
+            ))}
+            <Text style={styles.conditionalNote}>
+              Note: The above offer(s) will be applied to your programme fee upon confirmation of admission and payment of the registration fee, provided the deadline has not passed.
+            </Text>
+          </View>
+        )}
+
+        {/* Bank Details */}
+        <View style={[styles.appSection, { marginTop: 24 }]}>
+          <Text style={styles.appSectionTitle}>Payment — Bank Details</Text>
+          <View style={styles.bankBox}>
+            <Text style={styles.bankText}>{data.bankDetails}</Text>
+          </View>
+        </View>
+
+        {/* Footer */}
+        <View style={styles.footer}>
+          <Text style={styles.footerAddress}>
+            Let's Enterprise  ·  6th Floor, Trimurty Honeygold, 44 Range Hill Road, Pune 411016
+          </Text>
+          <Text style={styles.footerAddress}>
+            www.letsenterprise.in  ·  +91 84472 84008
+          </Text>
+        </View>
       </Page>
     </Document>
   )

@@ -192,15 +192,27 @@ The Let's Enterprise Admissions Team`
       })
 
       if (updatedStudent?.financial) {
+        const regFee = updatedStudent.financial.registrationFeeOverride != null
+          ? Number(updatedStudent.financial.registrationFeeOverride)
+          : Number(student.program.registrationFee)
         const offerLetterData: OfferLetterData = {
           studentName: student.name,
           programName: student.program.name,
           batchYear: student.batch.year,
           offerExpiresAt: new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000), // +30 days
+          registrationFee: regFee,
           baseFee: Number(student.financial?.baseFee ?? student.program.totalFee),
-          offers: (updatedStudent.offers ?? []).map((o) => ({ name: o.offer.name, amount: Number(o.waiverAmount) })),
+          year1Fee: Number(student.program.year1Fee),
+          year2Fee: Number(student.program.year2Fee),
+          year3Fee: Number(student.program.year3Fee),
+          offers: (updatedStudent.offers ?? []).map((o) => ({
+            name: o.offer.name,
+            amount: Number(o.waiverAmount),
+            deadline: o.offer.deadline,
+          })),
           scholarships: (updatedStudent.scholarships ?? []).map((sc) => ({ name: sc.scholarship.name, amount: Number(sc.amount) })),
           netFee: Number(updatedStudent.financial.netFee),
+          bankDetails: settings["BANK_DETAILS"] || DEFAULT_BANK_DETAILS,
           bodyText: settings["OFFER_LETTER_BODY"] || undefined,
         }
         // eslint-disable-next-line @typescript-eslint/no-explicit-any

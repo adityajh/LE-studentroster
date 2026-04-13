@@ -15,8 +15,7 @@ export function SendOfferButton({
   const [loading, setLoading] = useState(false)
   const [sent, setSent] = useState(false)
   const [error, setError] = useState("")
-  const [includeProposal, setIncludeProposal] = useState(false)
-  const [showOptions, setShowOptions] = useState(false)
+  const [showConfirm, setShowConfirm] = useState(false)
 
   async function handleSend() {
     setLoading(true)
@@ -25,12 +24,12 @@ export function SendOfferButton({
       const res = await fetch(`/api/students/${studentId}/send-offer`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ includeProposal }),
+        body: JSON.stringify({}),
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error ?? "Failed to send")
       setSent(true)
-      setShowOptions(false)
+      setShowConfirm(false)
       router.refresh()
     } catch (e) {
       setError(e instanceof Error ? e.message : "Something went wrong")
@@ -49,17 +48,15 @@ export function SendOfferButton({
 
   return (
     <div className="relative">
-      {showOptions && (
-        <div className="absolute right-0 top-full mt-1 z-10 bg-white border border-slate-200 rounded-xl shadow-lg p-4 w-72 space-y-3">
+      {showConfirm && (
+        <div className="absolute right-0 top-full mt-1 z-10 bg-white border border-slate-200 rounded-xl shadow-lg p-4 w-64 space-y-3">
           <p className="text-sm font-semibold text-slate-800">Send Offer Email</p>
-          <label className="flex items-start gap-2 text-sm cursor-pointer">
-            <input type="checkbox" checked={includeProposal} onChange={(e) => setIncludeProposal(e.target.checked)}
-              className="mt-0.5 rounded border-slate-300" />
-            <span className="text-slate-600">Attach fee breakdown proposal PDF</span>
-          </label>
+          <p className="text-xs text-slate-500">
+            Sends the offer letter PDF (with fee breakdown appendix) to the student and parent.
+          </p>
           {error && <p className="text-xs text-rose-600">{error}</p>}
           <div className="flex gap-2">
-            <button type="button" onClick={() => setShowOptions(false)}
+            <button type="button" onClick={() => setShowConfirm(false)}
               className="flex-1 py-1.5 border border-slate-200 text-sm text-slate-600 rounded-lg hover:bg-slate-50">
               Cancel
             </button>
@@ -74,7 +71,7 @@ export function SendOfferButton({
 
       <button
         type="button"
-        onClick={() => setShowOptions(!showOptions)}
+        onClick={() => setShowConfirm(!showConfirm)}
         className="flex items-center gap-1.5 h-9 px-4 rounded-xl border-2 border-violet-200 text-violet-700 text-sm font-bold hover:bg-violet-50 transition-all shrink-0"
       >
         <Send className="h-3.5 w-3.5" />

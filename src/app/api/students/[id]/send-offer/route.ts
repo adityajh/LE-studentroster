@@ -42,8 +42,6 @@ export async function POST(
   if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
 
   const { id } = await params
-  const body = await req.json()
-  const { includeProposal = false } = body
 
   const student = await prisma.student.findUnique({
     where: { id },
@@ -66,6 +64,7 @@ export async function POST(
     "OFFER_EMAIL_BODY",
     "OFFER_LETTER_BODY",
     "BANK_DETAILS",
+    "PROPOSAL_TERMS",
   ])
 
   // Load logo as base64
@@ -79,16 +78,30 @@ export async function POST(
 
   const offerExpiresAt = student.offerExpiresAt ?? new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
 
-  // Build offer letter PDF data
+  // Registration fee: use override if set, else programme default
+  const regFee = student.financial?.registrationFeeOverride != null
+    ? Number(student.financial.registrationFeeOverride)
+    : Number(student.program.registrationFee)
+
+  // Build offer letter PDF data (appendix included in same PDF)
   const offerLetterData: OfferLetterData = {
     studentName: student.name,
     programName: student.program.name,
     batchYear: student.batch.year,
     offerExpiresAt,
+    registrationFee: regFee,
     baseFee: Number(student.financial?.baseFee ?? student.program.totalFee),
-    offers: student.offers.map((o) => ({ name: o.offer.name, amount: Number(o.waiverAmount) })),
+    year1Fee: Number(student.program.year1Fee),
+    year2Fee: Number(student.program.year2Fee),
+    year3Fee: Number(student.program.year3Fee),
+    offers: student.offers.map((o) => ({
+      name: o.offer.name,
+      amount: Number(o.waiverAmount),
+      deadline: o.offer.deadline,
+    })),
     scholarships: student.scholarships.map((sc) => ({ name: sc.scholarship.name, amount: Number(sc.amount) })),
-    netFee: Number(student.financial?.netFee ?? student.program.totalFee),
+    netFee: Number(student.financial?.netFee ?? 0),
+    bankDetails: settings["BANK_DETAILS"] || DEFAULT_BANK_DETAILS,
     bodyText: settings["OFFER_LETTER_BODY"]
       ? settings["OFFER_LETTER_BODY"]
           .replace(/\{\{studentName\}\}/g, student.name)
@@ -102,17 +115,6 @@ export async function POST(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const offerLetterPdf = await renderToBuffer(createElement(OfferLetterDocument, { data: offerLetterData }) as any)
 
-  // Optionally include proposal PDF (fee breakdown)
-  let proposalPdf: Buffer | undefined
-  if (includeProposal) {
-    const { ProposalDocument } = await import("@/lib/pdf-generator")
-    const { getSetting } = await import("@/app/actions/settings")
-    const globalTerms = await getSetting("PROPOSAL_TERMS", "All fees must be paid on or before the due date.")
-    const terms = student.financial?.customTerms || globalTerms
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    proposalPdf = await renderToBuffer(createElement(ProposalDocument, { student, terms, logoSrc }) as any)
-  }
-
   const recipients = [student.email]
   if (student.parent1Email) recipients.push(student.parent1Email)
 
@@ -125,7 +127,6 @@ export async function POST(
     bodyText: settings["OFFER_EMAIL_BODY"] || DEFAULT_OFFER_EMAIL_BODY,
     bankDetails: settings["BANK_DETAILS"] || DEFAULT_BANK_DETAILS,
     offerLetterPdf: Buffer.from(offerLetterPdf),
-    proposalPdf: proposalPdf ? Buffer.from(proposalPdf) : undefined,
   })
 
   if (!result.ok) {
