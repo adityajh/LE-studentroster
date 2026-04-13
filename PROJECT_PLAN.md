@@ -346,6 +346,52 @@ New entries in **Settings → Email** tab:
 
 ---
 
+---
+
+## Phase 14: Student Self-Onboarding & Document Management ✅ COMPLETE
+
+> Goal: Students can fill their own profile and upload documents via a secure link; admins can manage documents from the Edit page
+
+- [x] **14.1** `OnboardingToken` model — 32-byte raw token in URL, SHA-256 hash in DB, 7-day TTL
+- [x] **14.2** `SelfOnboardingStatus` enum — `NOT_STARTED` → `LINK_SENT` → `SUBMITTED` → `APPROVED`
+- [x] **14.3** Student self-onboard form at `/onboard/[token]` — profile fields + document uploads
+- [x] **14.4** `POST /api/onboard/[token]/submit` — student submits profile; sets status SUBMITTED
+- [x] **14.5** `POST /api/students/[id]/send-onboarding-link` — generates token, sends link email
+- [x] **14.6** `SendOnboardingLinkButton` component — resend-safe, shows current status
+- [x] **14.7** Self-onboarding status badge on student profile header
+- [x] **14.8** `POST /api/students/[id]/approve-onboarding` — admin approves; sets APPROVED + ACTIVE
+- [x] **14.9** `DocumentUpload` + `DocumentStatusStrip` components — upload/replace/delete per type; photo thumbnail; status indicators; 1 MB client + server limit
+- [x] **14.10** Documents section added to `/students/[id]/edit` — admins can manage files alongside personal details
+- [x] **14.11** Document uploads accept `.pdf`, `.jpg`, `.jpeg`, `.png`, `.tif`, `.tiff`
+- [x] **14.12** Vercel Blob pathname sanitisation — spaces and special chars in filenames replaced with hyphens before calling `put()` to prevent pattern errors
+- [x] **14.13** Vercel Blob store must be **Public** — `access: "public"` in all `put()` calls
+
+---
+
+## Phase 15: Onboarding Status Gate ✅ COMPLETE
+
+> Goal: Status correctly reflects where a student is in the pipeline; ONBOARDING → ACTIVE only via explicit admin action
+
+- [x] **15.1** `ONBOARDING` added to `StudentStatus` enum (sits between OFFERED and ACTIVE)
+- [x] **15.2** Confirm Enrolment sets `status = ONBOARDING` (was ACTIVE)
+- [x] **15.3** `POST /api/students/[id]/complete-onboarding` — sets ACTIVE + audit log; called by wizard
+- [x] **15.4** `send-onboarding` route accepts both ONBOARDING and ACTIVE status
+- [x] **15.5** `OnboardWizard` Complete Onboarding button calls complete-onboarding API + navigates to profile; Resend Email is a secondary action
+- [x] **15.6** Student profile page: Onboard Student + Send Link buttons shown only when `status = ONBOARDING`; hidden once ACTIVE
+- [x] **15.7** Onboarding tab on students list shows all ONBOARDING students
+- [x] **15.8** Received + Pending columns on students list (payments journal source of truth)
+
+---
+
+## Phase 16: ConfirmEnrolment UX Polish ✅ COMPLETE
+
+- [x] **16.1** Offer auto-check: only EARLY_BIRD and ACCEPTANCE_7DAY auto-checked by default; FULL_PAYMENT, FIRST_N_REGISTRATIONS, REFERRAL start unchecked
+- [x] **16.2** Annual plan Total row — bold total row at bottom of Year 1/2/3 breakdown table
+- [x] **16.3** `offer.type` passed from student page to dialog (was missing; needed for auto-check logic)
+- [x] **16.4** Profile page button area changed to `flex-wrap` to prevent overlap on narrow screens
+
+---
+
 ## Pending (owner: Aditya)
 
 - [ ] Upload LE Logo / Letterhead for Proposal PDF (currently placeholder)
@@ -353,6 +399,7 @@ New entries in **Settings → Email** tab:
 - [ ] Draft final proposal letter body text in Settings → Proposal tab
 - [ ] Refine Offers, Scholarships, and T&C wording in Fee Schedule
 - [ ] End-to-end test: enroll student → generate proposal → record payment → confirm reminder
+- [ ] Configure onboarding resource links (Handbook, Welcome Kit, Year 1 flow) in Settings → Email
 
 ---
 

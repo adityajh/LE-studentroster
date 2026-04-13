@@ -1,6 +1,6 @@
 # Architecture — LE Student Roster
 
-> Last updated: 2026-04-13 (v1.4.0)
+> Last updated: 2026-04-13 (v1.6.0)
 
 ---
 
@@ -23,7 +23,7 @@ A Next.js 16 App Router web application for Let's Enterprise (LE) to manage stud
 | Email | Nodemailer (Gmail App Password, configurable via DB settings) |
 | PDF | `@react-pdf/renderer` |
 | Word | `docx` |
-| File storage | Vercel Blob (student documents) |
+| File storage | Vercel Blob (student documents, **Public** store) |
 | Hosting | Vercel (auto-deploy from `main`) |
 | Cron | Vercel Cron (daily 03:00 UTC) |
 
@@ -68,7 +68,10 @@ src/
   components/
     students/             — RecordPaymentDialog, EnrollmentForm, CreateOfferForm,
                             SendOfferButton, ConfirmEnrolmentDialog, EditStudentForm,
-                            InstallmentEditor, HistoryTab, PaymentsTab, RemindersTab, ProposalTab
+                            InstallmentEditor, HistoryTab, PaymentsTab, RemindersTab, ProposalTab,
+                            DocumentUpload, DocumentStatusStrip, OnboardWizard,
+                            SendOnboardingLinkButton
+    onboarding/           — SelfOnboardForm (student-facing self-onboard form)
     fee-schedule/         — FeeScheduleEditForm, NewFeeScheduleForm
     settings/             — TeamTab, ApiKeysTab, EmailTab, ProposalSettings, OfferSettings
     ui/                   — shadcn/ui components + brand components (Eyebrow, SoftCard, AdminCard)
@@ -97,7 +100,8 @@ Batch (year, name)
 
 ### Student Roster
 ```
-Student (rollNo?, name, firstName?, lastName?, email, contact, batchId, programId, status)
+Student (rollNo?, name, firstName?, lastName?, email, contact, batchId, programId, status,
+         selfOnboardingStatus, selfOnboardingSubmittedAt?)
   ├── profile: bloodGroup, city, address, localAddress
   ├── parents: parent1Name/Email/Phone, parent2Name/Email/Phone
   ├── guardian: localGuardianName/Phone/Email
@@ -113,11 +117,12 @@ Student (rollNo?, name, firstName?, lastName?, email, contact, batchId, programI
   ├── Installment[] (year, label, dueDate, amount, status, paidDate, paidAmount)
   │     ├── Payment[] (date, amount, paymentMode, referenceNo)
   │     └── ReminderLog[] (type, sentAt, readAt, emailStatus)
-  ├── StudentDocument[] (type, fileUrl — Vercel Blob)
+  ├── StudentDocument[] (type, fileName, fileUrl, fileSize, uploadedById — Vercel Blob)
+  ├── OnboardingToken[] (tokenHash, expiresAt) ← self-onboarding secure link tokens
   └── StudentAuditLog[] (field, oldValue, newValue, reason, changedBy)
 ```
 
-`Student.rollNo` is **nullable** — assigned only when a student is confirmed enrolled (status transitions from `OFFERED` → `ACTIVE`). Roll number format: `LE{year}{seq}` e.g. `LE2026001`.
+`Student.rollNo` is **nullable** — assigned only when a student is confirmed enrolled (status transitions from `OFFERED` → `ONBOARDING`). Roll number format: `LE{year}{seq}` e.g. `LE2026001`.
 
 `StudentFinancial.registrationFeeOverride` — admin can override the registration fee per-student (null = use `Program.registrationFee`). Stored separately so it can be pre-populated in the edit form and applied to the year=0 installment.
 
@@ -129,10 +134,11 @@ Student (rollNo?, name, firstName?, lastName?, email, contact, batchId, programI
 ### Enums
 | Enum | Values |
 |---|---|
-| `StudentStatus` | `OFFERED` → `ACTIVE` → `ALUMNI` / `WITHDRAWN` |
+| `StudentStatus` | `OFFERED` → `ONBOARDING` → `ACTIVE` → `ALUMNI` / `WITHDRAWN` |
+| `SelfOnboardingStatus` | `NOT_STARTED` → `LINK_SENT` → `SUBMITTED` → `APPROVED` |
 | `InstallmentStatus` | `UPCOMING` → `DUE` → `OVERDUE` / `PARTIAL` / `PAID` |
 | `InstallmentType` | `ONE_TIME`, `ANNUAL`, `CUSTOM` |
-| `OfferType` | `FIRST_N_REGISTRATIONS`, `EARLY_BIRD`, `ACCEPTANCE_7DAY`, `FULL_PAYMENT` |
+| `OfferType` | `FIRST_N_REGISTRATIONS`, `EARLY_BIRD`, `ACCEPTANCE_7DAY`, `FULL_PAYMENT`, `REFERRAL` |
 | `ScholarshipCategory` | `A` (merit, variable amount), `B` (circumstantial, flat ₹25K) |
 | `Role` | `ADMIN`, `STAFF` |
 | `PaymentMode` | `CASH`, `CHEQUE`, `NEFT`, `UPI`, `RTGS`, `OTHER` |
@@ -192,7 +198,7 @@ Fees are recomputed from the live scheme on every page render via `expectedInstF
 
 ---
 
-## Admissions Flow
+## Admissions & Onboarding Flow
 
 ```
 Create Offer (/students/offer/new)
@@ -209,19 +215,36 @@ Send Offer Email (button on student detail)
     │  Day 8+: Revoke ACCEPTANCE_7DAY waiver, send Revised Offer email
     ▼
 Confirm Enrolment (dialog on student detail)
-    │  Records ₹50,000 registration payment
-    │  Assigns rollNo (LE{year}{seq})
+    │  Records registration payment, assigns rollNo (LE{year}{seq})
     │  Creates installment schedule
-    │  status → ACTIVE, isLocked = true
+    │  status → ONBOARDING, isLocked = true
     ▼
-Onboarding Email (optional, prompted at enrolment)
-    │  Attaches: Proposal PDF (now with rollNo + schedule)
-    │  Sets onboardingEmailSentAt
+Admin Onboard Wizard (/students/[id]/onboard) — 3 steps
+    │  Step 1: Fill student profile (blood group, address, parents, guardian)
+    │  Step 2: Upload documents (photo, marksheets, Aadhar, etc.)
+    │  Step 3: Send onboarding email (attaches Proposal PDF)
+    │
+    │  [optional parallel path via Send Self-Onboarding Link]
+    │  Student fills own profile at /onboard/[token]
+    │  selfOnboardingStatus: NOT_STARTED → LINK_SENT → SUBMITTED
+    │  Admin clicks Approve Profile → selfOnboardingStatus = APPROVED
+    ▼
+Complete Onboarding (wizard button OR admin approval)
+    │  POST /api/students/[id]/complete-onboarding  (wizard path)
+    │  POST /api/students/[id]/approve-onboarding   (self-onboard path)
+    │  status → ACTIVE
+    │  Onboard buttons hidden from profile page
     ▼
 Active Student — fee tracking, reminders, payments
 ```
 
 Direct enrolment path (`/students/new`) still exists for retroactive entries — creates `ACTIVE` student with roll number and installments immediately.
+
+### Self-Onboarding Token Security
+- Raw 32-byte token lives only in the URL — never stored in DB
+- DB stores `SHA-256(rawToken)` as `tokenHash` in `OnboardingToken`
+- On each request: hash the URL token, look up by hash, validate expiry
+- Expired or unknown tokens return 404/410; no information leakage
 
 ---
 
@@ -240,7 +263,15 @@ Direct enrolment path (`/students/new`) still exists for retroactive entries —
 | PATCH | `/api/students/[id]/installments` | Admin: edit installment schedule |
 | GET | `/api/students/[id]/pay/[paymentId]/receipt` | Generate receipt PDF |
 | GET | `/api/students/[id]/proposal` | Generate proposal PDF or DOCX |
-| POST | `/api/students/[id]/documents` | Upload document to Vercel Blob |
+| POST | `/api/students/[id]/documents` | Upload document to Vercel Blob (public store) |
+| DELETE | `/api/students/[id]/documents` | Delete document from Vercel Blob + DB |
+| POST | `/api/students/[id]/send-onboarding-link` | Generate OnboardingToken + send self-onboard link email |
+| POST | `/api/students/[id]/send-onboarding` | Send onboarding email with Proposal PDF attached |
+| POST | `/api/students/[id]/complete-onboarding` | Set status ACTIVE (admin completes wizard) + audit log |
+| POST | `/api/students/[id]/approve-onboarding` | Approve student self-submitted profile; set selfOnboardingStatus=APPROVED + status=ACTIVE |
+| POST | `/api/onboard/[token]/submit` | Student submits self-onboard profile (token auth) |
+| POST | `/api/onboard/[token]/documents` | Student uploads document via self-onboard link (token auth) |
+| DELETE | `/api/onboard/[token]/documents` | Student deletes document via self-onboard link (token auth) |
 | POST | `/api/fee-schedule/create` | Create a new batch with programs, offers, scholarships |
 | POST | `/api/fee-schedule/lock` | Lock/unlock fee schedule |
 | POST | `/api/fee-schedule/update` | Update programs, offers, scholarships for a batch |

@@ -4,6 +4,43 @@ All notable changes to the LE Student Roster system are documented here.
 
 ---
 
+## [1.6.0] — 2026-04-13
+
+### Student Self-Onboarding, Document Management & Onboarding Status Gate
+
+#### Added
+- **Student self-onboarding flow** — admin sends a secure tokenised link to the student; student fills their own profile (blood group, address, parents, guardian) and uploads documents via a public-facing form at `/onboard/[token]`
+- **`OnboardingToken` model** — 32-byte raw token in URL, SHA-256 hash stored in DB; tokens expire after 7 days
+- **`SelfOnboardingStatus` enum** — `NOT_STARTED` → `LINK_SENT` → `SUBMITTED` → `APPROVED`; tracked per student
+- **Self-onboarding status badge** on student profile — shows Link Sent / Profile Submitted / Profile Approved with colour coding
+- **`SendOnboardingLinkButton`** — sends the self-onboard link email; visible on ONBOARDING students; hidden once approved
+- **`POST /api/onboard/[token]/submit`** — student submits profile; sets `selfOnboardingStatus = SUBMITTED`
+- **`POST /api/students/[id]/approve-onboarding`** — admin approves submitted profile; sets `selfOnboardingStatus = APPROVED` and `status = ACTIVE`
+- **`POST /api/students/[id]/complete-onboarding`** — new endpoint; admin manually completes onboarding via wizard; sets `status = ACTIVE` + audit log entry
+- **`POST /api/students/[id]/send-onboarding-link`** — sends tokenised self-onboard link via email
+- **Onboarding status gate** — confirm enrolment now sets `status = ONBOARDING` (not `ACTIVE`); student stays ONBOARDING until admin clicks Complete Onboarding or approves self-submitted profile
+- **Onboard wizard: Student Photo** added to document types list (was missing entirely)
+- **Onboard wizard: Complete Onboarding** button calls `/api/students/[id]/complete-onboarding` and navigates to profile; replaces previous no-op navigation; Resend Email demoted to small secondary action
+- **Documents section on Edit page** — `DocumentUpload` widget now appears at the top of `/students/[id]/edit` so admins can upload/replace documents alongside editing personal details
+- **Received + Pending columns** on Students list — shows total payments received (green) and amount outstanding (red) per student; sourced from the payments journal
+- **Onboarding tab** on Students list — filters to students with `status = ONBOARDING`
+
+#### Changed
+- **Confirm Enrolment** — sets `status = ONBOARDING` on confirmation (was `ACTIVE`); triggers ONBOARDING → ACTIVE transition only when admin explicitly completes onboarding
+- **Onboard buttons** (Onboard Student, Send Link) — shown only when `status = ONBOARDING`; hidden once student is `ACTIVE`
+- **Approve Profile button** — shown on student profile when `selfOnboardingStatus = SUBMITTED`; hidden otherwise
+- **ConfirmEnrolmentDialog offers** — only `EARLY_BIRD` and `ACCEPTANCE_7DAY` offer types are auto-checked by default; all other types (`FULL_PAYMENT`, `FIRST_N_REGISTRATIONS`, `REFERRAL`) start unchecked
+- **ConfirmEnrolmentDialog Annual plan** — Total row added at the bottom of the Year 1/2/3 breakdown table
+- **`send-onboarding` route** — now accepts both `ONBOARDING` and `ACTIVE` status (was ACTIVE only)
+- **Student profile buttons** — changed to `flex-wrap` to prevent overlap when multiple action buttons are visible
+- **`getStudents`** — now includes `payments: { select: { amount: true } }` for Received/Pending computation
+
+#### Fixed
+- **Vercel Blob upload error "The string did not match the expected pattern"** — root cause: blob store was Private; `access: "public"` requires a Public store. New Public blob store created and token updated. Additionally, `file.name` is sanitised before passing to `put()` — spaces and special chars replaced with hyphens, leading/trailing hyphens stripped
+- **TIF file support** — `.tif` and `.tiff` added to `accept=` in all three upload surfaces: admin document panel, admin onboard wizard, and student self-onboard form; `.webp` removed for consistency
+
+---
+
 ## [1.5.0] — 2026-04-13
 
 ### PDF Redesign, Workflow Restructure & LE Branding
