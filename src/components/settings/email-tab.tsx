@@ -44,33 +44,33 @@ export function EmailTab({ initial }: { initial: EmailConfig }) {
       <div>
         <h2 className="text-base font-bold text-slate-800">Email Configuration</h2>
         <p className="text-sm text-slate-500 mt-0.5">
-          Configure the Gmail account that sends automated fee reminders. Uses Gmail SMTP with an App Password.
+          Configure the Hostinger email account that sends automated fee reminders and offer emails.
         </p>
       </div>
 
       <div className="bg-white border border-slate-200 rounded-2xl p-6 space-y-5 shadow-sm">
         {/* SMTP Account */}
         <div>
-          <p className="text-[10px] uppercase font-bold tracking-widest text-slate-400 mb-4">Gmail SMTP Account</p>
+          <p className="text-[10px] uppercase font-bold tracking-widest text-slate-400 mb-4">SMTP Account</p>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-1.5">
-              <Label htmlFor="smtpUser">Gmail Address</Label>
+              <Label htmlFor="smtpUser">Email Address</Label>
               <Input
                 id="smtpUser"
                 type="email"
-                placeholder="fees@yourdomain.com"
+                placeholder="hi@letsenterprise.in"
                 value={form.smtpUser}
                 onChange={(e) => setForm({ ...form, smtpUser: e.target.value })}
               />
-              <p className="text-xs text-slate-400">The Gmail account used to send emails.</p>
+              <p className="text-xs text-slate-400">The Hostinger email account used to send emails.</p>
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="smtpPass">App Password</Label>
+              <Label htmlFor="smtpPass">Password</Label>
               <div className="relative">
                 <Input
                   id="smtpPass"
                   type={showPass ? "text" : "password"}
-                  placeholder="xxxx xxxx xxxx xxxx"
+                  placeholder="Your Hostinger email password"
                   value={form.smtpPassword}
                   onChange={(e) => setForm({ ...form, smtpPassword: e.target.value })}
                   className="pr-10"
@@ -84,7 +84,7 @@ export function EmailTab({ initial }: { initial: EmailConfig }) {
                 </button>
               </div>
               <p className="text-xs text-slate-400">
-                Google Account → Security → 2-Step Verification → App Passwords
+                Your Hostinger email account password (not a separate app password).
               </p>
             </div>
           </div>
@@ -97,22 +97,22 @@ export function EmailTab({ initial }: { initial: EmailConfig }) {
               <Label htmlFor="fromName">Display Name</Label>
               <Input
                 id="fromName"
-                placeholder="Let's Enterprise Fees"
+                placeholder="Let's Enterprise"
                 value={form.fromName}
                 onChange={(e) => setForm({ ...form, fromName: e.target.value })}
               />
-              <p className="text-xs text-slate-400">What parents see as the sender name.</p>
+              <p className="text-xs text-slate-400">What recipients see as the sender name.</p>
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="fromEmail">From Email Address</Label>
               <Input
                 id="fromEmail"
                 type="email"
-                placeholder="Same as Gmail address by default"
+                placeholder="hi@letsenterprise.in"
                 value={form.fromEmail}
                 onChange={(e) => setForm({ ...form, fromEmail: e.target.value })}
               />
-              <p className="text-xs text-slate-400">Override the From address (must be authorised on the Gmail account).</p>
+              <p className="text-xs text-slate-400">Defaults to the SMTP address above if left blank.</p>
             </div>
           </div>
         </div>
