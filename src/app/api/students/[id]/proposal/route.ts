@@ -40,12 +40,14 @@ export async function GET(
   const globalTerms = await getSetting("PROPOSAL_TERMS", "1. All fees laid out in the structure above must be paid on or before the due date.")
   const terms = student.financial?.customTerms || globalTerms
 
-  const filename = `Proposal_${student.rollNo ?? "Draft"}_${student.name.replace(/\s+/g, "_")}`
+  const programSlug = student.program.name.split(/\s*[-–]\s*/)[0].trim().replace(/\s+/g, "")
+  const studentSlug = student.name.replace(/\s+/g, "")
+  const filename = `LE-${programSlug}-${studentSlug}-FeeDetails`
 
   // Load logo as base64
   let logoSrc: string | undefined
   try {
-    const logoBuf = fs.readFileSync(path.join(process.cwd(), "public", "Let's-Enterprise-Final-Logo_PNG.png"))
+    const logoBuf = fs.readFileSync(path.join(process.cwd(), "public", "le-logo-dark.png"))
     logoSrc = `data:image/png;base64,${logoBuf.toString("base64")}`
   } catch {
     // logo missing — PDF will fall back to text

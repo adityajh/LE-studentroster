@@ -184,8 +184,9 @@ const styles = StyleSheet.create({
   },
 })
 
+// PDF-safe formatter: Helvetica has no ₹ glyph — use "Rs." instead.
 function formatINR(amount: number) {
-  return `₹${amount.toLocaleString("en-IN")}`
+  return `Rs. ${amount.toLocaleString("en-IN")}`
 }
 
 export function OfferLetterDocument({ data }: { data: OfferLetterData }) {
@@ -288,7 +289,7 @@ Based on your application, interactions, and assessment process, our admissions 
         {/* Expiry notice */}
         <View style={styles.expiryBox}>
           <Text style={styles.expiryText}>
-            To secure your seat, please pay the ₹50,000 registration fee and confirm your admission by {expiry}.
+            To secure your seat, please pay the Rs. 50,000 registration fee and confirm your admission by {expiry}.
             The 7-day confirmation waiver (if applicable) will lapse after this date.
           </Text>
         </View>

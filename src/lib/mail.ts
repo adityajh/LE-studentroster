@@ -273,11 +273,14 @@ export async function sendOfferEmail(payload: OfferEmailPayload): Promise<SendRe
     day: "numeric", month: "long", year: "numeric",
   })
 
+  const programSlug = payload.programName.split(/\s*[-–]\s*/)[0].trim().replace(/\s+/g, "")
+  const studentSlug = payload.studentName.replace(/\s+/g, "")
+  const dateSlug = payload.offerExpiryDate.toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }).replace(/\s+/g, "")
   const attachments: { filename: string; content: Buffer; contentType: string }[] = [
-    { filename: `Offer_Letter_${payload.studentName.replace(/\s+/g, "_")}.pdf`, content: payload.offerLetterPdf, contentType: "application/pdf" },
+    { filename: `LE-${programSlug}-${studentSlug}-OfferLetter-${dateSlug}.pdf`, content: payload.offerLetterPdf, contentType: "application/pdf" },
   ]
   if (payload.proposalPdf) {
-    attachments.push({ filename: `Fee_Breakdown_${payload.studentName.replace(/\s+/g, "_")}.pdf`, content: payload.proposalPdf, contentType: "application/pdf" })
+    attachments.push({ filename: `LE-${programSlug}-${studentSlug}-FeeDetails.pdf`, content: payload.proposalPdf, contentType: "application/pdf" })
   }
 
   try {
@@ -356,11 +359,14 @@ export async function sendRevisedOfferEmail(payload: RevisedOfferPayload): Promi
   if (!config) return { ok: false, skipped: true, reason: "SMTP not configured" }
 
   const transporter = createTransporter(config)
+  const rProgramSlug = payload.programName.split(/\s*[-–]\s*/)[0].trim().replace(/\s+/g, "")
+  const rStudentSlug = payload.studentName.replace(/\s+/g, "")
+  const rDateSlug = payload.offerExpiryDate.toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }).replace(/\s+/g, "")
   const attachments: { filename: string; content: Buffer; contentType: string }[] = [
-    { filename: `Updated_Offer_Letter_${payload.studentName.replace(/\s+/g, "_")}.pdf`, content: payload.offerLetterPdf, contentType: "application/pdf" },
+    { filename: `LE-${rProgramSlug}-${rStudentSlug}-OfferLetter-${rDateSlug}.pdf`, content: payload.offerLetterPdf, contentType: "application/pdf" },
   ]
   if (payload.proposalPdf) {
-    attachments.push({ filename: `Updated_Fee_Breakdown_${payload.studentName.replace(/\s+/g, "_")}.pdf`, content: payload.proposalPdf, contentType: "application/pdf" })
+    attachments.push({ filename: `LE-${rProgramSlug}-${rStudentSlug}-FeeDetails.pdf`, content: payload.proposalPdf, contentType: "application/pdf" })
   }
 
   try {

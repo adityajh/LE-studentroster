@@ -71,7 +71,7 @@ export async function POST(
   // Load logo as base64
   let logoSrc: string | undefined
   try {
-    const logoBuf = fs.readFileSync(path.join(process.cwd(), "public", "Let's-Enterprise-Final-Logo_PNG.png"))
+    const logoBuf = fs.readFileSync(path.join(process.cwd(), "public", "le-logo-dark.png"))
     logoSrc = `data:image/png;base64,${logoBuf.toString("base64")}`
   } catch {
     // logo missing — PDF will fall back to text
@@ -89,7 +89,13 @@ export async function POST(
     offers: student.offers.map((o) => ({ name: o.offer.name, amount: Number(o.waiverAmount) })),
     scholarships: student.scholarships.map((sc) => ({ name: sc.scholarship.name, amount: Number(sc.amount) })),
     netFee: Number(student.financial?.netFee ?? student.program.totalFee),
-    bodyText: settings["OFFER_LETTER_BODY"] || undefined,
+    bodyText: settings["OFFER_LETTER_BODY"]
+      ? settings["OFFER_LETTER_BODY"]
+          .replace(/\{\{studentName\}\}/g, student.name)
+          .replace(/\{\{programName\}\}/g, student.program.name)
+          .replace(/\{\{batchYear\}\}/g, String(student.batch.year))
+          .replace(/\{\{offerExpiryDate\}\}/g, offerExpiresAt.toLocaleDateString("en-IN", { day: "numeric", month: "long", year: "numeric" }))
+      : undefined,
     logoSrc,
   }
 

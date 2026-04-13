@@ -1,6 +1,12 @@
 import { Document, Page, Text, View, StyleSheet, Image } from '@react-pdf/renderer'
-import { formatINR } from './fee-schedule'
 import { Prisma } from '@prisma/client'
+
+// PDF-safe formatter: Helvetica has no ₹ glyph — use "Rs." instead.
+// Also uses full amounts (no L/K shorthand) for formal documents.
+function formatPDFAmount(amount: number | string | { toNumber: () => number }): string {
+  const num = typeof amount === "object" && "toNumber" in amount ? amount.toNumber() : Number(amount)
+  return `Rs. ${num.toLocaleString("en-IN")}`
+}
 
 type FullStudent = Prisma.StudentGetPayload<{
   include: {
@@ -266,27 +272,27 @@ export function ProposalDocument({ student, terms, logoSrc }: ProposalDocumentPr
 
           <View style={styles.row}>
             <Text style={styles.label}>Base Programme Fee</Text>
-            <Text style={styles.value}>{formatINR(fin.baseFee)}</Text>
+            <Text style={styles.value}>{formatPDFAmount(fin.baseFee)}</Text>
           </View>
 
           {student.offers.map((so) => (
             <View key={so.id} style={styles.row}>
               <Text style={styles.label}>Offer: {so.offer.name}</Text>
-              <Text style={styles.deductionValue}>- {formatINR(so.waiverAmount)}</Text>
+              <Text style={styles.deductionValue}>- {formatPDFAmount(so.waiverAmount)}</Text>
             </View>
           ))}
 
           {student.scholarships.map((ss) => (
             <View key={ss.id} style={styles.row}>
               <Text style={styles.label}>Scholarship: {ss.scholarship.name}</Text>
-              <Text style={styles.deductionValue}>- {formatINR(ss.amount)}</Text>
+              <Text style={styles.deductionValue}>- {formatPDFAmount(ss.amount)}</Text>
             </View>
           ))}
 
           {student.deductions.map((d) => (
             <View key={d.id} style={styles.row}>
               <Text style={styles.label}>Deduction: {d.description}</Text>
-              <Text style={styles.deductionValue}>- {formatINR(d.amount)}</Text>
+              <Text style={styles.deductionValue}>- {formatPDFAmount(d.amount)}</Text>
             </View>
           ))}
 
@@ -294,7 +300,7 @@ export function ProposalDocument({ student, terms, logoSrc }: ProposalDocumentPr
 
           <View style={styles.grandTotalRow}>
             <Text style={styles.grandTotalLabel}>Net Fee Payable</Text>
-            <Text style={styles.grandTotalValue}>{formatINR(fin.netFee)}</Text>
+            <Text style={styles.grandTotalValue}>{formatPDFAmount(fin.netFee)}</Text>
           </View>
         </View>
 
@@ -321,7 +327,7 @@ export function ProposalDocument({ student, terms, logoSrc }: ProposalDocumentPr
                       {new Date(inst.dueDate).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
                     </Text>
                   </View>
-                  <View style={styles.tableCol}><Text style={styles.tableCellAmount}>{formatINR(inst.amount)}</Text></View>
+                  <View style={styles.tableCol}><Text style={styles.tableCellAmount}>{formatPDFAmount(inst.amount)}</Text></View>
                 </View>
               ))
             ) : (
