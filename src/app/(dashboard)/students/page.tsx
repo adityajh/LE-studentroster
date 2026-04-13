@@ -28,6 +28,8 @@ export default async function StudentsPage({
   // Count pending offers for tab badge
   const offeredCount = await prisma.student.count({ where: { status: "OFFERED" } })
 
+  const batches = await prisma.batch.findMany({ orderBy: { year: "desc" }, select: { year: true, name: true } })
+
   const students = await getStudents({
     search,
     status: isOverdueTab ? undefined : isOfferedTab ? "OFFERED" : status,
@@ -110,13 +112,23 @@ export default async function StudentsPage({
             <option value="ALUMNI">Alumni</option>
             <option value="WITHDRAWN">Withdrawn</option>
           </select>
+          <select
+            name="batch"
+            defaultValue={batch ?? ""}
+            className="h-10 rounded-xl border-2 border-slate-200 bg-white px-3 text-sm font-medium text-slate-700 focus:border-indigo-500 focus:outline-none transition-all"
+          >
+            <option value="">All Batches</option>
+            {batches.map((b) => (
+              <option key={b.year} value={b.year}>{b.name}</option>
+            ))}
+          </select>
           <button
             type="submit"
             className="h-10 px-4 bg-slate-900 hover:bg-slate-700 text-white text-sm font-bold rounded-xl transition-all"
           >
             Filter
           </button>
-          {(search || status) && (
+          {(search || status || batch) && (
             <Link href="/students" className="h-10 px-4 flex items-center text-sm font-medium text-slate-500 hover:text-slate-800 transition-colors">
               Clear
             </Link>
