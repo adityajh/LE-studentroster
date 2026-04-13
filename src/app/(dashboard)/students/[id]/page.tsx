@@ -15,7 +15,8 @@ import { SendOfferButton } from "@/components/students/send-offer-button"
 import { cn } from "@/lib/utils"
 import { auth } from "@/auth"
 import { prisma } from "@/lib/prisma"
-import { Phone, Mail, Calendar, MapPin, Users, Droplets, Pencil, Bell, FileText, History, Wallet, Clock, GraduationCap } from "lucide-react"
+import { Phone, Mail, Calendar, MapPin, Users, Droplets, Pencil, Bell, FileText, History, Wallet, Clock, GraduationCap, Link2, CheckCircle2 } from "lucide-react"
+import { SendOnboardingLinkButton } from "@/components/students/send-onboarding-link-button"
 
 export default async function StudentDetailPage({
   params,
@@ -207,6 +208,24 @@ export default async function StudentDetailPage({
                     {student.rollNo}
                   </span>
                 )}
+                {/* Self-onboarding status badge */}
+                {student.selfOnboardingStatus !== "NOT_STARTED" && (() => {
+                  const s = student.selfOnboardingStatus
+                  const badgeStyle =
+                    s === "APPROVED"  ? "bg-emerald-500/10 text-emerald-700 border-emerald-500/20" :
+                    s === "SUBMITTED" ? "bg-[#3663AD]/10 text-[#3663AD] border-[#3663AD]/20" :
+                    "bg-amber-500/10 text-amber-700 border-amber-500/20"
+                  const badgeLabel =
+                    s === "APPROVED"  ? "Profile Approved" :
+                    s === "SUBMITTED" ? "Profile Submitted" :
+                    "Link Sent"
+                  return (
+                    <span className={`inline-flex items-center gap-1 text-[10px] uppercase tracking-wider font-bold px-2.5 py-1 rounded-lg border ${badgeStyle}`}>
+                      {s === "APPROVED" ? <CheckCircle2 className="h-3 w-3" /> : <Link2 className="h-3 w-3" />}
+                      {badgeLabel}
+                    </span>
+                  )
+                })()}
               </div>
             </div>
           </div>
@@ -272,6 +291,14 @@ export default async function StudentDetailPage({
                 <GraduationCap className="h-4 w-4" />
                 {student.onboardingEmailSentAt ? "Onboarding" : "Onboard Student"}
               </Link>
+            )}
+            {/* Self-onboarding link button */}
+            {student.status === "ACTIVE" && canRecord && (
+              <SendOnboardingLinkButton
+                studentId={student.id}
+                currentStatus={student.selfOnboardingStatus}
+                isAdmin={dbUser?.role === "ADMIN"}
+              />
             )}
             {canRecord && (
               <Link

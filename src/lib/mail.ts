@@ -450,6 +450,104 @@ function onboardingEmailHtml(payload: OnboardingEmailPayload) {
 </html>`
 }
 
+// ── Self-onboarding link email ────────────────────────────────────────────────
+
+export type OnboardingLinkEmailPayload = {
+  to: string[]
+  studentName: string
+  programName: string
+  onboardingUrl: string  // full URL with token
+  expiresAt: Date
+}
+
+export async function sendOnboardingLinkEmail(payload: OnboardingLinkEmailPayload): Promise<SendResult> {
+  if (!payload.to.length) return { ok: false, skipped: true, reason: "No recipient email" }
+  const config = await getSmtpConfig()
+  if (!config) return { ok: false, skipped: true, reason: "SMTP not configured" }
+
+  const transporter = createTransporter(config)
+  const expiry = payload.expiresAt.toLocaleDateString("en-IN", {
+    day: "numeric", month: "long", year: "numeric",
+  })
+
+  const html = `<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8" /></head>
+<body style="margin:0;padding:24px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:#333;font-size:15px;line-height:1.6;background:#fff;">
+  ${EMAIL_HEADER}
+  <p>Dear ${payload.studentName},</p>
+  <p>Congratulations on your enrolment in <strong>${payload.programName}</strong> at Let's Enterprise. You're one step away from completing your profile.</p>
+  <p>Please click the button below to fill in your details. The link expires on <strong>${expiry}</strong>.</p>
+  <div style="margin:28px 0;text-align:center;">
+    <a href="${payload.onboardingUrl}" style="display:inline-block;background:#3663AD;color:#ffffff;font-weight:700;font-size:14px;padding:14px 32px;border-radius:8px;text-decoration:none;letter-spacing:0.02em;">
+      Complete Your Profile →
+    </a>
+  </div>
+  <p style="font-size:13px;color:#64748b;">Or copy this link into your browser:<br/><a href="${payload.onboardingUrl}" style="color:#3663AD;word-break:break-all;">${payload.onboardingUrl}</a></p>
+  <p>If you have any questions, please contact your programme coordinator.</p>
+  ${EMAIL_FOOTER}
+</body>
+</html>`
+
+  try {
+    const info = await transporter.sendMail({
+      from: `${config.fromName} <${config.fromEmail}>`,
+      to: payload.to,
+      subject: `Action Required: Complete Your Profile — ${payload.programName}`,
+      html,
+    })
+    return { ok: true, messageId: info.messageId }
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message : String(err) }
+  }
+}
+
+// ── Self-onboarding submitted alert (to team) ─────────────────────────────────
+
+export type OnboardingSubmittedAlertPayload = {
+  to: string[]
+  studentName: string
+  programName: string
+  batchYear: number
+  studentProfileUrl: string
+}
+
+export async function sendOnboardingSubmittedAlert(payload: OnboardingSubmittedAlertPayload): Promise<SendResult> {
+  if (!payload.to.length) return { ok: false, skipped: true, reason: "No recipient email" }
+  const config = await getSmtpConfig()
+  if (!config) return { ok: false, skipped: true, reason: "SMTP not configured" }
+
+  const transporter = createTransporter(config)
+
+  const html = `<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8" /></head>
+<body style="margin:0;padding:24px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:#333;font-size:15px;line-height:1.6;background:#fff;">
+  ${EMAIL_HEADER}
+  <p><strong>${payload.studentName}</strong> has submitted their self-onboarding form for <strong>${payload.programName} (${payload.batchYear})</strong>.</p>
+  <p>Please review the submitted profile and documents, then approve or request changes.</p>
+  <div style="margin:28px 0;text-align:center;">
+    <a href="${payload.studentProfileUrl}" style="display:inline-block;background:#3663AD;color:#ffffff;font-weight:700;font-size:14px;padding:14px 32px;border-radius:8px;text-decoration:none;letter-spacing:0.02em;">
+      Review Profile →
+    </a>
+  </div>
+  ${EMAIL_FOOTER}
+</body>
+</html>`
+
+  try {
+    const info = await transporter.sendMail({
+      from: `${config.fromName} <${config.fromEmail}>`,
+      to: payload.to,
+      subject: `[Action Needed] ${payload.studentName} submitted onboarding form`,
+      html,
+    })
+    return { ok: true, messageId: info.messageId }
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message : String(err) }
+  }
+}
+
 export async function sendOnboardingEmail(payload: OnboardingEmailPayload): Promise<SendResult> {
   if (!payload.to.length) return { ok: false, skipped: true, reason: "No recipient email" }
   const config = await getSmtpConfig()
