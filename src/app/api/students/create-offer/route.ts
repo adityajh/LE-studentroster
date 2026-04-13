@@ -18,7 +18,6 @@ export async function POST(req: NextRequest) {
     programId,
     offerIds,       // string[]
     scholarships,   // [{ scholarshipId, amount }]
-    installmentType, // "ANNUAL" | "ONE_TIME" | "CUSTOM"
     customTerms,
     feeY1,          // optional per-year overrides
     feeY2,
@@ -26,8 +25,8 @@ export async function POST(req: NextRequest) {
     registrationFee, // optional registration fee override
   } = body
 
-  if (!name || !email || !contact || !batchId || !programId || !installmentType) {
-    return NextResponse.json({ error: "name, email, contact, batchId, programId, installmentType are required" }, { status: 400 })
+  if (!name || !email || !contact || !batchId || !programId) {
+    return NextResponse.json({ error: "name, email, contact, batchId, programId are required" }, { status: 400 })
   }
 
   const program = await prisma.program.findUnique({
@@ -76,7 +75,7 @@ export async function POST(req: NextRequest) {
         totalWaiver,
         totalDeduction: 0,
         netFee,
-        installmentType,
+        installmentType: "ANNUAL", // placeholder — confirmed at enrolment
         customTerms: customTerms ?? null,
         registrationFeeOverride: registrationFee != null ? Number(registrationFee) : null,
         isLocked: false,        // locked when enrolment is confirmed

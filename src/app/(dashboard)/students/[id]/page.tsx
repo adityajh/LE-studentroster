@@ -221,8 +221,42 @@ export default async function StudentDetailPage({
                 <ConfirmEnrolmentDialog
                   studentId={student.id}
                   studentName={student.name}
+                  baseFee={fin ? Number(fin.baseFee) : student.program.totalFee.toNumber()}
+                  registrationFee={regFeeAmount}
+                  year1Fee={student.program.year1Fee.toNumber()}
+                  year2Fee={student.program.year2Fee.toNumber()}
+                  year3Fee={student.program.year3Fee.toNumber()}
+                  batchYear={student.batch.year}
+                  offeredOffers={student.offers.map((o) => ({
+                    id: o.id,
+                    offerId: o.offer.id,
+                    name: o.offer.name,
+                    waiverAmount: Number(o.waiverAmount),
+                  }))}
+                  offeredScholarships={student.scholarships.map((s) => ({
+                    id: s.id,
+                    scholarshipId: s.scholarship.id,
+                    name: s.scholarship.name,
+                    category: s.scholarship.category,
+                    amount: Number(s.amount),
+                    spreadAcrossYears: (s.scholarship as { spreadAcrossYears: boolean }).spreadAcrossYears,
+                  }))}
                 />
               </>
+            )}
+            {student.status === "ACTIVE" && canRecord && (
+              <Link
+                href={`/students/${student.id}/onboard`}
+                className={cn(
+                  "flex items-center gap-1.5 h-9 px-4 rounded-xl text-sm font-bold transition-all shrink-0",
+                  student.onboardingEmailSentAt
+                    ? "border-2 border-slate-200 text-slate-600 hover:border-indigo-300 hover:text-indigo-600 hover:bg-indigo-50"
+                    : "bg-indigo-600 text-white hover:bg-indigo-700"
+                )}
+              >
+                <GraduationCap className="h-4 w-4" />
+                {student.onboardingEmailSentAt ? "Onboarding" : "Onboard Student"}
+              </Link>
             )}
             {canRecord && (
               <Link

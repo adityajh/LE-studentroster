@@ -4,7 +4,6 @@ import { useState, useMemo } from "react"
 import { useRouter } from "next/navigation"
 import { Loader2, ChevronRight, ChevronLeft } from "lucide-react"
 import { formatINR } from "@/lib/fee-schedule"
-import { isSpreadCondition } from "@/lib/fee-calc"
 import { cn } from "@/lib/utils"
 
 type Batch = {
@@ -46,7 +45,7 @@ export function CreateOfferForm({ batches }: { batches: Batch[] }) {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
-  const [step, setStep] = useState(1) // 1: Candidate, 2: Fee Plan, 3: Review
+  const [step, setStep] = useState(1) // 1: Candidate, 2: Offer Details, 3: Review
 
   // Step 1 — candidate basics
   const [firstName, setFirstName] = useState("")
@@ -55,19 +54,18 @@ export function CreateOfferForm({ batches }: { batches: Batch[] }) {
   const [contact, setContact] = useState("")
   const [city, setCity] = useState("")
 
-  // Per-year fee overrides
+  // Per-year fee overrides (admin only)
   const [feeOverrideReg, setFeeOverrideReg] = useState("")
   const [feeOverrideY1, setFeeOverrideY1] = useState("")
   const [feeOverrideY2, setFeeOverrideY2] = useState("")
   const [feeOverrideY3, setFeeOverrideY3] = useState("")
 
-  // Step 2 — fee plan
+  // Step 2 — offer details
   const [batchId, setBatchId] = useState(batches[0]?.id ?? "")
   const [programId, setProgramId] = useState("")
   const [selectedOfferIds, setSelectedOfferIds] = useState<string[]>([])
   const [scholarshipA, setScholarshipA] = useState<{ id: string; amount: number } | null>(null)
   const [scholarshipB, setScholarshipB] = useState<{ id: string; amount: number } | null>(null)
-  const [installmentType, setInstallmentType] = useState<"ANNUAL" | "ONE_TIME" | "CUSTOM">("ANNUAL")
 
   const selectedBatch = batches.find((b) => b.id === batchId)
   const programs = selectedBatch?.programs ?? []
@@ -88,14 +86,9 @@ export function CreateOfferForm({ batches }: { batches: Batch[] }) {
     const baseFee = y1 + y2 + y3
 
     const selectedOffers = offers.filter((o) => selectedOfferIds.includes(o.id))
-    const spreadWaiver = selectedOffers
-      .filter((o) => isSpreadCondition(o.conditions))
-      .reduce((s, o) => s + parseFloat(o.waiverAmount.toString()), 0)
-    const onetimeWaiver = selectedOffers
-      .filter((o) => !isSpreadCondition(o.conditions))
-      .reduce((s, o) => s + parseFloat(o.waiverAmount.toString()), 0)
+    const totalOfferWaiver = selectedOffers.reduce((s, o) => s + parseFloat(o.waiverAmount.toString()), 0)
     const schWaiver = (scholarshipA?.amount ?? 0) + (scholarshipB?.amount ?? 0)
-    const totalWaiver = spreadWaiver + onetimeWaiver + schWaiver
+    const totalWaiver = totalOfferWaiver + schWaiver
     const netFee = Math.round(baseFee - totalWaiver)
     const hasOverride = feeOverrideReg !== "" || feeOverrideY1 !== "" || feeOverrideY2 !== "" || feeOverrideY3 !== ""
     return { baseFee, y1, y2, y3, hasOverride, totalWaiver, netFee }
@@ -124,7 +117,6 @@ export function CreateOfferForm({ batches }: { batches: Batch[] }) {
             ...(scholarshipA ? [{ scholarshipId: scholarshipA.id, amount: scholarshipA.amount }] : []),
             ...(scholarshipB ? [{ scholarshipId: scholarshipB.id, amount: scholarshipB.amount }] : []),
           ],
-          installmentType,
           feeY1: feeOverrideY1 !== "" ? parseFloat(feeOverrideY1) : undefined,
           feeY2: feeOverrideY2 !== "" ? parseFloat(feeOverrideY2) : undefined,
           feeY3: feeOverrideY3 !== "" ? parseFloat(feeOverrideY3) : undefined,
@@ -145,7 +137,7 @@ export function CreateOfferForm({ batches }: { batches: Batch[] }) {
     <div className="space-y-8">
       {/* Step indicators */}
       <div className="flex items-center gap-2">
-        {[{ n: 1, label: "Candidate" }, { n: 2, label: "Fee Plan" }, { n: 3, label: "Review" }].map(({ n, label }, i, arr) => (
+        {[{ n: 1, label: "Candidate" }, { n: 2, label: "Offer Details" }, { n: 3, label: "Review" }].map(({ n, label }, i, arr) => (
           <div key={n} className="flex items-center gap-2">
             <div className={cn(
               "w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold border-2",
@@ -192,25 +184,25 @@ export function CreateOfferForm({ batches }: { batches: Batch[] }) {
                 value={city} onChange={(e) => setCity(e.target.value)} placeholder="Pune" />
             </div>
           </div>
-
           <div className="flex justify-end pt-2">
             <button
+              type="button"
               onClick={() => {
                 if (!firstName || !email || !contact) { setError("First name, email, and phone are required."); return }
                 setError(""); setStep(2)
               }}
               className="flex items-center gap-1.5 px-5 py-2 bg-violet-600 text-white text-sm font-semibold rounded-lg hover:bg-violet-700"
             >
-              Next: Fee Plan <ChevronRight className="w-4 h-4" />
+              Next: Offer Details <ChevronRight className="w-4 h-4" />
             </button>
           </div>
         </div>
       )}
 
-      {/* ── Step 2: Fee plan ─────────────────────────────────────── */}
+      {/* ── Step 2: Offer details ─────────────────────────────────── */}
       {step === 2 && (
         <div className="space-y-5">
-          <h2 className="text-base font-semibold text-slate-800">Fee Plan</h2>
+          <h2 className="text-base font-semibold text-slate-800">Offer Details</h2>
 
           {/* Batch + Program */}
           <div className="grid grid-cols-2 gap-4">
@@ -269,107 +261,99 @@ export function CreateOfferForm({ batches }: { batches: Batch[] }) {
                 )}
               </div>
 
-              {/* Offers */}
-              {offers.length > 0 && (
-                <div>
-                  <label className="block text-xs font-semibold text-slate-600 mb-2">Applicable Offers</label>
-                  <div className="space-y-2">
-                    {offers.map((o) => (
-                      <label key={o.id} className={cn(
-                        "flex items-center gap-3 p-3 rounded-lg border cursor-pointer",
-                        selectedOfferIds.includes(o.id) ? "border-violet-400 bg-violet-50" : "border-slate-200 hover:border-slate-300"
-                      )}>
-                        <input type="checkbox" checked={selectedOfferIds.includes(o.id)} onChange={() => toggleOffer(o.id)}
-                          className="rounded border-slate-300" />
-                        <span className="flex-1 text-sm">{o.name}</span>
-                        <span className="text-sm font-semibold text-emerald-600">- {formatINR(parseFloat(o.waiverAmount.toString()))}</span>
-                      </label>
-                    ))}
+              {/* Eligible Benefits */}
+              {(offers.length > 0 || scholarshipsA.length > 0 || scholarshipsB.length > 0) && (
+                <div className="space-y-4">
+                  <div>
+                    <p className="text-xs font-semibold text-slate-600 mb-0.5">Eligible Benefits</p>
+                    <p className="text-xs text-slate-400">These appear on the offer letter. The student confirms which apply at enrolment.</p>
                   </div>
-                </div>
-              )}
 
-              {/* Scholarships */}
-              {(scholarshipsA.length > 0 || scholarshipsB.length > 0) && (
-                <div className="grid grid-cols-2 gap-4">
-                  {scholarshipsA.length > 0 && (
-                    <div>
-                      <label className="block text-xs font-semibold text-slate-600 mb-2">Scholarship — Category A</label>
-                      <select className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500"
-                        value={scholarshipA?.id ?? ""}
-                        onChange={(e) => {
-                          if (!e.target.value) { setScholarshipA(null); return }
-                          const sc = scholarshipsA.find((s) => s.id === e.target.value)!
-                          const min = parseFloat(sc.minAmount.toString())
-                          const max = parseFloat(sc.maxAmount.toString())
-                          setScholarshipA({ id: sc.id, amount: min === max ? min : max })
-                        }}>
-                        <option value="">None</option>
-                        {scholarshipsA.map((s) => (
-                          <option key={s.id} value={s.id}>{s.name} (up to {formatINR(parseFloat(s.maxAmount.toString()))})</option>
-                        ))}
-                      </select>
-                      {scholarshipA && (() => {
-                        const sc = scholarshipsA.find((s) => s.id === scholarshipA.id)!
-                        const min = parseFloat(sc.minAmount.toString())
-                        const max = parseFloat(sc.maxAmount.toString())
-                        return min !== max ? (
-                          <div className="mt-2">
-                            <label className="block text-xs text-slate-500 mb-1">Amount</label>
-                            <input type="number" min={min} max={max} step={5000}
-                              className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500"
-                              value={scholarshipA.amount}
-                              onChange={(e) => setScholarshipA({ id: scholarshipA.id, amount: Number(e.target.value) })} />
-                          </div>
-                        ) : null
-                      })()}
+                  {offers.length > 0 && (
+                    <div className="space-y-2">
+                      {offers.map((o) => (
+                        <label key={o.id} className={cn(
+                          "flex items-center gap-3 p-3 rounded-lg border cursor-pointer",
+                          selectedOfferIds.includes(o.id) ? "border-violet-400 bg-violet-50" : "border-slate-200 hover:border-slate-300"
+                        )}>
+                          <input type="checkbox" checked={selectedOfferIds.includes(o.id)} onChange={() => toggleOffer(o.id)}
+                            className="rounded border-slate-300" />
+                          <span className="flex-1 text-sm">{o.name}</span>
+                          <span className="text-sm font-semibold text-emerald-600">- {formatINR(parseFloat(o.waiverAmount.toString()))}</span>
+                        </label>
+                      ))}
                     </div>
                   )}
 
-                  {scholarshipsB.length > 0 && (
-                    <div>
-                      <label className="block text-xs font-semibold text-slate-600 mb-2">Scholarship — Category B</label>
-                      <select className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500"
-                        value={scholarshipB?.id ?? ""}
-                        onChange={(e) => {
-                          if (!e.target.value) { setScholarshipB(null); return }
-                          const sc = scholarshipsB.find((s) => s.id === e.target.value)!
-                          setScholarshipB({ id: sc.id, amount: parseFloat(sc.maxAmount.toString()) })
-                        }}>
-                        <option value="">None</option>
-                        {scholarshipsB.map((s) => (
-                          <option key={s.id} value={s.id}>{s.name} — {formatINR(parseFloat(s.maxAmount.toString()))}</option>
-                        ))}
-                      </select>
+                  {(scholarshipsA.length > 0 || scholarshipsB.length > 0) && (
+                    <div className="grid grid-cols-2 gap-4">
+                      {scholarshipsA.length > 0 && (
+                        <div>
+                          <label className="block text-xs font-semibold text-slate-600 mb-2">Scholarship — Category A</label>
+                          <select className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500"
+                            value={scholarshipA?.id ?? ""}
+                            onChange={(e) => {
+                              if (!e.target.value) { setScholarshipA(null); return }
+                              const sc = scholarshipsA.find((s) => s.id === e.target.value)!
+                              const min = parseFloat(sc.minAmount.toString())
+                              const max = parseFloat(sc.maxAmount.toString())
+                              setScholarshipA({ id: sc.id, amount: min === max ? min : max })
+                            }}>
+                            <option value="">None</option>
+                            {scholarshipsA.map((s) => (
+                              <option key={s.id} value={s.id}>{s.name} (up to {formatINR(parseFloat(s.maxAmount.toString()))})</option>
+                            ))}
+                          </select>
+                          {scholarshipA && (() => {
+                            const sc = scholarshipsA.find((s) => s.id === scholarshipA.id)!
+                            const min = parseFloat(sc.minAmount.toString())
+                            const max = parseFloat(sc.maxAmount.toString())
+                            return min !== max ? (
+                              <div className="mt-2">
+                                <label className="block text-xs text-slate-500 mb-1">Amount</label>
+                                <input type="number" min={min} max={max} step={5000}
+                                  className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500"
+                                  value={scholarshipA.amount}
+                                  onChange={(e) => setScholarshipA({ id: scholarshipA.id, amount: Number(e.target.value) })} />
+                              </div>
+                            ) : null
+                          })()}
+                        </div>
+                      )}
+                      {scholarshipsB.length > 0 && (
+                        <div>
+                          <label className="block text-xs font-semibold text-slate-600 mb-2">Scholarship — Category B</label>
+                          <select className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500"
+                            value={scholarshipB?.id ?? ""}
+                            onChange={(e) => {
+                              if (!e.target.value) { setScholarshipB(null); return }
+                              const sc = scholarshipsB.find((s) => s.id === e.target.value)!
+                              setScholarshipB({ id: sc.id, amount: parseFloat(sc.maxAmount.toString()) })
+                            }}>
+                            <option value="">None</option>
+                            {scholarshipsB.map((s) => (
+                              <option key={s.id} value={s.id}>{s.name} — {formatINR(parseFloat(s.maxAmount.toString()))}</option>
+                            ))}
+                          </select>
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
               )}
 
-              {/* Installment type */}
-              <div>
-                <label className="block text-xs font-semibold text-slate-600 mb-2">Payment Plan</label>
-                <div className="grid grid-cols-3 gap-3">
-                  {(["ANNUAL", "ONE_TIME", "CUSTOM"] as const).map((t) => (
-                    <button key={t} onClick={() => setInstallmentType(t)}
-                      className={cn(
-                        "p-3 rounded-lg border text-sm font-medium text-left",
-                        installmentType === t ? "border-violet-500 bg-violet-50 text-violet-800" : "border-slate-200 text-slate-600 hover:border-slate-300"
-                      )}>
-                      {t === "ANNUAL" ? "Annual (3 payments)" : t === "ONE_TIME" ? "One-Time (full)" : "Custom schedule"}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Fee summary */}
+              {/* Fee preview */}
               {fees && (
                 <div className="rounded-lg bg-slate-50 border border-slate-200 p-4 space-y-2">
+                  <p className="text-[10px] uppercase font-bold tracking-widest text-slate-400 mb-3">Indicative Fee</p>
                   <div className="flex justify-between text-sm"><span className="text-slate-500">Programme Fee</span><span>{formatINR(fees.baseFee)}</span></div>
-                  {fees.totalWaiver > 0 && <div className="flex justify-between text-sm text-emerald-700"><span>Total Waiver</span><span>- {formatINR(fees.totalWaiver)}</span></div>}
+                  {fees.totalWaiver > 0 && <div className="flex justify-between text-sm text-emerald-700"><span>Total Eligible Benefits</span><span>- {formatINR(fees.totalWaiver)}</span></div>}
                   <div className="flex justify-between text-sm font-bold border-t border-slate-200 pt-2"><span>Net Fee</span><span>{formatINR(fees.netFee)}</span></div>
                   <p className="text-xs text-slate-400 pt-1">
-                    + {formatINR(feeOverrideReg !== "" ? parseFloat(feeOverrideReg) : parseFloat(selectedProgram.registrationFee.toString()))} registration (paid on enrolment confirmation)
+                    + {formatINR(feeOverrideReg !== "" ? parseFloat(feeOverrideReg) : parseFloat(selectedProgram.registrationFee.toString()))} registration (confirmed at enrolment)
+                  </p>
+                  <p className="text-xs text-amber-600 bg-amber-50 border border-amber-200 rounded-lg px-2 py-1.5 mt-2">
+                    Payment plan is chosen at enrolment — after the student confirms their seat.
                   </p>
                 </div>
               )}
@@ -377,11 +361,12 @@ export function CreateOfferForm({ batches }: { batches: Batch[] }) {
           )}
 
           <div className="flex justify-between pt-2">
-            <button onClick={() => { setError(""); setStep(1) }}
+            <button type="button" onClick={() => { setError(""); setStep(1) }}
               className="flex items-center gap-1.5 px-4 py-2 border border-slate-200 text-slate-600 text-sm font-medium rounded-lg hover:bg-slate-50">
               <ChevronLeft className="w-4 h-4" /> Back
             </button>
             <button
+              type="button"
               onClick={() => {
                 if (!programId) { setError("Please select a program."); return }
                 setError(""); setStep(3)
@@ -403,26 +388,25 @@ export function CreateOfferForm({ batches }: { batches: Batch[] }) {
             <div className="px-4 py-3 flex justify-between text-sm"><span className="text-slate-500">Email</span><span className="font-medium">{email}</span></div>
             <div className="px-4 py-3 flex justify-between text-sm"><span className="text-slate-500">Phone</span><span className="font-medium">{contact}</span></div>
             <div className="px-4 py-3 flex justify-between text-sm"><span className="text-slate-500">Program</span><span className="font-medium">{selectedProgram?.name ?? "—"}</span></div>
-            <div className="px-4 py-3 flex justify-between text-sm"><span className="text-slate-500">Payment Plan</span><span className="font-medium">{installmentType}</span></div>
             {fees && <>
-              <div className="px-4 py-3 flex justify-between text-sm"><span className="text-slate-500">Waivers Applied</span><span className="font-medium text-emerald-700">- {formatINR(fees.totalWaiver)}</span></div>
-              <div className="px-4 py-3 flex justify-between text-sm font-bold"><span>Net Programme Fee</span><span>{formatINR(fees.netFee)}</span></div>
+              <div className="px-4 py-3 flex justify-between text-sm"><span className="text-slate-500">Eligible Benefits</span><span className="font-medium text-emerald-700">- {formatINR(fees.totalWaiver)}</span></div>
+              <div className="px-4 py-3 flex justify-between text-sm font-bold"><span>Indicative Net Fee</span><span>{formatINR(fees.netFee)}</span></div>
             </>}
           </div>
 
           <p className="text-xs text-slate-500 bg-violet-50 border border-violet-200 rounded-lg px-4 py-3">
-            This will create a candidate record with <strong>OFFERED</strong> status. No roll number is assigned yet.
-            After saving, you can send the offer email from the candidate&apos;s profile.
+            This creates a candidate record with <strong>OFFERED</strong> status. Payment plan and confirmed benefits are set at enrolment.
+            After saving, send the offer email from the candidate&apos;s profile.
           </p>
 
           {error && <p className="text-sm text-rose-600 bg-rose-50 border border-rose-200 rounded-lg px-3 py-2">{error}</p>}
 
           <div className="flex justify-between pt-2">
-            <button onClick={() => { setError(""); setStep(2) }}
+            <button type="button" onClick={() => { setError(""); setStep(2) }}
               className="flex items-center gap-1.5 px-4 py-2 border border-slate-200 text-slate-600 text-sm font-medium rounded-lg hover:bg-slate-50">
               <ChevronLeft className="w-4 h-4" /> Back
             </button>
-            <button onClick={handleSubmit} disabled={loading}
+            <button type="button" onClick={handleSubmit} disabled={loading}
               className="flex items-center gap-1.5 px-5 py-2 bg-violet-600 text-white text-sm font-semibold rounded-lg hover:bg-violet-700 disabled:opacity-60">
               {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
               Create Offer

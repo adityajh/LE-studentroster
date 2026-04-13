@@ -3,27 +3,6 @@ import { auth } from "@/auth"
 import { prisma } from "@/lib/prisma"
 import { generateRollNo } from "@/lib/students"
 import { splitWaivers } from "@/lib/fee-calc"
-import { renderToBuffer } from "@react-pdf/renderer"
-import { createElement } from "react"
-import { sendOnboardingEmail } from "@/lib/mail"
-import { getSettings, getSetting } from "@/app/actions/settings"
-
-const DEFAULT_ONBOARDING_BODY = `Hi {{studentName}},
-
-You're officially in! Welcome to {{programName}} at Let's Enterprise.
-
-We've bundled everything you need to get started on your journey below.
-
-What You Should Do Now:
-1. Read the Onboarding Handbook and Welcome Kit
-2. Go through the Fee Structure document to understand timelines and benefits
-
-Once this is done, our team will guide you through the remaining onboarding steps.
-
-We are seriously pumped to have you with us.
-
-Let's give it 100,
-The Let's Enterprise Team`
 
 export async function POST(
   req: NextRequest,
@@ -35,17 +14,24 @@ export async function POST(
   const { id } = await params
   const body = await req.json()
   const {
-    amount,          // should be 50000
-    date,            // ISO string
-    paymentMode,     // "CASH" | "CHEQUE" | "NEFT" | "UPI" | "RTGS" | "OTHER"
+    // Confirmed benefits (may differ from what was offered)
+    offerIds,           // string[]
+    scholarships,       // [{ scholarshipId, amount }]
+    deductions,         // [{ description, amount }]
+    // Payment plan
+    installmentType,    // "ANNUAL" | "ONE_TIME" | "CUSTOM"
+    customInstallments, // [{ label, dueDate, amount, year }] — only for CUSTOM
+    // Registration payment
+    amount,
+    date,
+    paymentMode,
     referenceNo,
     payerName,
     notes,
-    sendOnboarding = true,
   } = body
 
-  if (!amount || !date || !paymentMode) {
-    return NextResponse.json({ error: "amount, date, and paymentMode are required" }, { status: 400 })
+  if (!amount || !date || !paymentMode || !installmentType) {
+    return NextResponse.json({ error: "amount, date, paymentMode and installmentType are required" }, { status: 400 })
   }
 
   const student = await prisma.student.findUnique({
@@ -54,9 +40,6 @@ export async function POST(
       program: { include: { batch: true } },
       batch: true,
       financial: true,
-      offers: { include: { offer: true } },
-      scholarships: { include: { scholarship: true } },
-      deductions: true,
     },
   })
 
@@ -75,79 +58,115 @@ export async function POST(
 
   const program = student.program
   const batchYear = student.batch.year
-  const financial = student.financial
   const today = new Date(date)
 
-  // Build installment schedule (same logic as enroll route)
+  // ── Load confirmed offers & scholarships ──────────────────────────────────
+  const selectedOffers = (offerIds ?? []).length
+    ? await prisma.offer.findMany({ where: { id: { in: offerIds } } })
+    : []
+
+  const selectedScholarships: { scholarshipId: string; amount: number }[] = scholarships ?? []
+  const scholarshipIds = selectedScholarships.map((s: { scholarshipId: string }) => s.scholarshipId)
+  const scholarshipRecords = scholarshipIds.length
+    ? await prisma.scholarship.findMany({ where: { id: { in: scholarshipIds } } })
+    : []
+
+  const selectedDeductions: { description: string; amount: number }[] = deductions ?? []
+
+  // ── Recalculate fees from confirmed values ────────────────────────────────
+  const baseFee = Number(student.financial.baseFee)  // base was set at offer time (may include overrides)
+  const totalOfferWaiver = selectedOffers.reduce((s, o) => s + Number(o.waiverAmount), 0)
+  const totalScholarshipWaiver = selectedScholarships.reduce((s: number, sc: { amount: number }) => s + sc.amount, 0)
+  const totalDeduction = selectedDeductions.reduce((s, d) => s + d.amount, 0)
+  const totalWaiver = totalOfferWaiver + totalScholarshipWaiver
+  const netFee = Math.max(0, baseFee - totalWaiver - totalDeduction)
+
+  const regFee = student.financial.registrationFeeOverride != null
+    ? Number(student.financial.registrationFeeOverride)
+    : Number(program.registrationFee)
+
   const year1 = Number(program.year1Fee)
   const year2 = Number(program.year2Fee)
   const year3 = Number(program.year3Fee)
-  const regFee = financial.registrationFeeOverride != null ? Number(financial.registrationFeeOverride) : Number(program.registrationFee)
-  const totalWaiver = Number(financial.totalWaiver)
-  const installmentType = financial.installmentType
 
   const { spreadPerYear, onetimeTotal: onetimeWaiver } = splitWaivers(
-    student.offers.map(o => ({ conditions: o.offer.conditions, waiverAmount: Number(o.waiverAmount) })),
-    student.scholarships.map(sc => ({
-      amount: Number(sc.amount),
-      spreadAcrossYears: (sc.scholarship as { spreadAcrossYears?: boolean }).spreadAcrossYears ?? true,
+    selectedOffers.map((o) => ({ conditions: o.conditions, waiverAmount: Number(o.waiverAmount) })),
+    selectedScholarships.map((s: { scholarshipId: string; amount: number }) => ({
+      amount: s.amount,
+      spreadAcrossYears: scholarshipRecords.find((r) => r.id === s.scholarshipId)?.spreadAcrossYears ?? true,
     }))
   )
 
-  const installments: {
-    year: number; label: string; dueDate: Date; amount: number; status: "DUE" | "UPCOMING"
-  }[] = []
-
-  // Use actual due dates from the program's yearWiseDetails if available
+  // ── Build installment schedule ─────────────────────────────────────────────
   const yearWise = program.yearWiseDetails as Record<string, { dueDate?: string }> | null
+  const year1Due = yearWise?.year1?.dueDate ? new Date(yearWise.year1.dueDate) : new Date(`${batchYear}-08-07`)
+  const year2Due = yearWise?.year2?.dueDate ? new Date(yearWise.year2.dueDate) : new Date(`${batchYear + 1}-05-15`)
+  const year3Due = yearWise?.year3?.dueDate ? new Date(yearWise.year3.dueDate) : new Date(`${batchYear + 2}-05-15`)
 
-  const year1Due = yearWise?.year1?.dueDate
-    ? new Date(yearWise.year1.dueDate)
-    : new Date(`${batchYear}-08-07`)
-  const year2Due = yearWise?.year2?.dueDate
-    ? new Date(yearWise.year2.dueDate)
-    : new Date(`${batchYear + 1}-05-15`)
-  const year3Due = yearWise?.year3?.dueDate
-    ? new Date(yearWise.year3.dueDate)
-    : new Date(`${batchYear + 2}-05-15`)
+  const installments: { year: number; label: string; dueDate: Date; amount: number; status: "DUE" | "UPCOMING" }[] = []
 
-  if (installmentType === "ANNUAL") {
+  if (installmentType === "CUSTOM") {
+    for (const inst of (customInstallments as { label: string; dueDate: string; amount: number; year: number }[])) {
+      const due = new Date(inst.dueDate)
+      installments.push({ year: inst.year, label: inst.label, dueDate: due, amount: inst.amount, status: due <= today ? "DUE" : "UPCOMING" })
+    }
+  } else if (installmentType === "ANNUAL") {
     installments.push(
-      { year: 1, label: "Year 1 — Growth", dueDate: year1Due, amount: Math.max(0, Math.round(year1 - spreadPerYear - onetimeWaiver)), status: year1Due <= today ? "DUE" : "UPCOMING" },
+      { year: 1, label: "Year 1 — Growth", dueDate: year1Due, amount: Math.max(0, Math.round(year1 - spreadPerYear - onetimeWaiver - totalDeduction)), status: year1Due <= today ? "DUE" : "UPCOMING" },
       { year: 2, label: "Year 2 — Projects", dueDate: year2Due, amount: Math.max(0, Math.round(year2 - spreadPerYear)), status: "UPCOMING" },
       { year: 3, label: "Year 3 — Work", dueDate: year3Due, amount: Math.max(0, Math.round(year3 - spreadPerYear)), status: "UPCOMING" },
     )
-  } else if (installmentType === "ONE_TIME") {
+  } else {
+    // ONE_TIME
     const fullDue = new Date(today)
     fullDue.setDate(fullDue.getDate() + 30)
-    installments.push({
-      year: 1,
-      label: "Full Programme Fee (3 Years)",
-      dueDate: fullDue,
-      amount: Math.max(0, year1 + year2 + year3 - totalWaiver),
-      status: "UPCOMING",
-    })
+    installments.push({ year: 1, label: "Full Programme Fee (3 Years)", dueDate: fullDue, amount: Math.max(0, baseFee - totalWaiver - totalDeduction), status: "UPCOMING" })
   }
-  // CUSTOM: installments are already created for CUSTOM at offer time (if any) — skip
 
   const rollNo = await generateRollNo(batchYear)
 
-  // Everything in a transaction
+  // ── Transaction ───────────────────────────────────────────────────────────
   const result = await prisma.$transaction(async (tx) => {
-    // 1. Assign roll number, set status ACTIVE, lock financials
+    // 1. Assign roll number, set ACTIVE
     await tx.student.update({
       where: { id },
-      data: {
-        rollNo,
-        status: "ACTIVE",
-        enrollmentDate: today,
-      },
+      data: { rollNo, status: "ACTIVE", enrollmentDate: today },
     })
 
-    // 2. Mark registration paid
+    // 2. Replace offers with confirmed set
+    await tx.studentOffer.deleteMany({ where: { studentId: id } })
+    if (selectedOffers.length > 0) {
+      await tx.studentOffer.createMany({
+        data: selectedOffers.map((o) => ({ studentId: id, offerId: o.id, waiverAmount: o.waiverAmount })),
+      })
+    }
+
+    // 3. Replace scholarships with confirmed set
+    await tx.studentScholarship.deleteMany({ where: { studentId: id } })
+    if (selectedScholarships.length > 0) {
+      await tx.studentScholarship.createMany({
+        data: selectedScholarships.map((s: { scholarshipId: string; amount: number }) => ({
+          studentId: id, scholarshipId: s.scholarshipId, amount: s.amount,
+        })),
+      })
+    }
+
+    // 4. Replace deductions
+    await tx.studentDeduction.deleteMany({ where: { studentId: id } })
+    if (selectedDeductions.length > 0) {
+      await tx.studentDeduction.createMany({
+        data: selectedDeductions.map((d) => ({ studentId: id, description: d.description, amount: d.amount })),
+      })
+    }
+
+    // 5. Update financial with confirmed values & lock
     await tx.studentFinancial.update({
       where: { studentId: id },
       data: {
+        totalWaiver,
+        totalDeduction,
+        netFee,
+        installmentType,
         registrationPaid: true,
         registrationPaidDate: today,
         isLocked: true,
@@ -155,7 +174,7 @@ export async function POST(
       },
     })
 
-    // 3. Record the registration payment
+    // 6. Record registration payment
     const payment = await tx.payment.create({
       data: {
         studentId: id,
@@ -169,7 +188,7 @@ export async function POST(
       },
     })
 
-    // 4. Create the registration installment as PAID
+    // 7. Create registration installment as PAID
     await tx.installment.create({
       data: {
         studentId: id,
@@ -184,14 +203,14 @@ export async function POST(
       },
     })
 
-    // 5. Create future installments
+    // 8. Create future installments
     if (installments.length > 0) {
       await tx.installment.createMany({
         data: installments.map((inst) => ({ studentId: id, ...inst })),
       })
     }
 
-    // 6. Audit log
+    // 9. Audit log
     await tx.studentAuditLog.create({
       data: {
         studentId: id,
@@ -199,74 +218,16 @@ export async function POST(
         field: "status",
         oldValue: "OFFERED",
         newValue: "ACTIVE",
-        reason: `Enrolment confirmed — ₹${Number(amount).toLocaleString("en-IN")} registration payment received (${paymentMode}${referenceNo ? `, ref: ${referenceNo}` : ""})`,
+        reason: `Enrolment confirmed — Rs. ${Number(amount).toLocaleString("en-IN")} registration payment received (${paymentMode}${referenceNo ? `, ref: ${referenceNo}` : ""})`,
       },
     })
 
     return { payment }
   })
 
-  // 7. Optionally send onboarding email
-  let onboardingResult: { ok: boolean; error?: string } = { ok: true }
-  if (sendOnboarding && student.email) {
-    try {
-      const settings = await getSettings([
-        "ONBOARDING_EMAIL_BODY",
-        "ONBOARDING_HANDBOOK_URL",
-        "ONBOARDING_WELCOME_KIT_URL",
-        "ONBOARDING_YEAR1_URL",
-        "PROPOSAL_TERMS",
-      ])
-
-      // Re-fetch student with roll number for proposal PDF
-      const updatedStudent = await prisma.student.findUnique({
-        where: { id },
-        include: {
-          program: true, batch: true, financial: true,
-          offers: { include: { offer: true } },
-          scholarships: { include: { scholarship: true } },
-          deductions: true,
-          installments: { orderBy: { dueDate: "asc" } },
-        },
-      })
-
-      if (updatedStudent) {
-        const { ProposalDocument } = await import("@/lib/pdf-generator")
-        const terms = updatedStudent.financial?.customTerms || settings["PROPOSAL_TERMS"] || "All fees must be paid on or before the due date."
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const proposalBuffer = await renderToBuffer(createElement(ProposalDocument, { student: updatedStudent, terms }) as any)
-
-        const recipients = [student.email!]
-        if (student.parent1Email) recipients.push(student.parent1Email)
-
-        onboardingResult = await sendOnboardingEmail({
-          to: recipients,
-          studentName: student.name,
-          programName: student.program.name,
-          bodyText: settings["ONBOARDING_EMAIL_BODY"] || DEFAULT_ONBOARDING_BODY,
-          handbookUrl: settings["ONBOARDING_HANDBOOK_URL"] || undefined,
-          welcomeKitUrl: settings["ONBOARDING_WELCOME_KIT_URL"] || undefined,
-          year1Url: settings["ONBOARDING_YEAR1_URL"] || undefined,
-          proposalPdf: Buffer.from(proposalBuffer),
-        })
-
-        if (onboardingResult.ok) {
-          await prisma.student.update({
-            where: { id },
-            data: { onboardingEmailSentAt: new Date() },
-          })
-        }
-      }
-    } catch (err) {
-      onboardingResult = { ok: false, error: err instanceof Error ? err.message : String(err) }
-    }
-  }
-
   return NextResponse.json({
     ok: true,
     rollNo,
     paymentId: result.payment.id,
-    onboardingEmailSent: onboardingResult.ok,
-    onboardingError: onboardingResult.ok ? undefined : ("error" in onboardingResult ? onboardingResult.error : undefined),
   })
 }
