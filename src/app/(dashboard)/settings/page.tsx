@@ -10,20 +10,23 @@ import { TeamTab } from "@/components/settings/team-tab"
 import { ApiKeysTab } from "@/components/settings/api-keys-tab"
 import { EmailTab } from "@/components/settings/email-tab"
 import { OfferSettings } from "@/components/settings/offer-settings"
+import { RemindersTab } from "@/components/settings/reminders-tab"
+import { getReminderSettings } from "@/app/actions/reminder-settings"
 import { Eyebrow } from "@/components/ui/brand"
 import { cn } from "@/lib/utils"
-import { Users, Key, Mail, FileText, Send } from "lucide-react"
+import { Users, Key, Mail, FileText, Send, Bell } from "lucide-react"
 
 const DEFAULT_TERMS = `1. All fees laid out in the structure above must be paid on or before the due date.
 2. In the event of withdrawal, the registration fee and deposit are strictly non-refundable.
 3. The scholarship and waiver discounts have already been deducted from your base fee computation.`
 
 const TABS = [
-  { id: "team",     label: "Team",     icon: Users },
-  { id: "api-keys", label: "API Keys", icon: Key },
-  { id: "email",    label: "Email",    icon: Mail },
-  { id: "proposal", label: "Proposal", icon: FileText },
-  { id: "offers",   label: "Offers",   icon: Send },
+  { id: "team",      label: "Team",      icon: Users },
+  { id: "api-keys",  label: "API Keys",  icon: Key },
+  { id: "email",     label: "Email",     icon: Mail },
+  { id: "proposal",  label: "Proposal",  icon: FileText },
+  { id: "offers",    label: "Offers",    icon: Send },
+  { id: "reminders", label: "Reminders", icon: Bell },
 ] as const
 
 type Tab = typeof TABS[number]["id"]
@@ -43,7 +46,7 @@ export default async function SettingsPage({
   if (dbUser?.role !== "ADMIN") redirect("/dashboard")
 
   // Load data for each tab
-  const [members, apiKeys, emailSettings, terms, offerSettings] = await Promise.all([
+  const [members, apiKeys, emailSettings, terms, offerSettings, reminderSettings, lastRunRaw] = await Promise.all([
     getTeamMembers(),
     getApiKeys(),
     getSettings(["SMTP_USER", "SMTP_PASSWORD", "SMTP_FROM_NAME", "SMTP_FROM_EMAIL", "REMINDER_PAYMENT_URL"]),
@@ -59,7 +62,11 @@ export default async function SettingsPage({
       "ONBOARDING_WELCOME_KIT_URL",
       "ONBOARDING_YEAR1_URL",
     ]),
+    getReminderSettings(),
+    getSetting("CRON_LAST_RUN_FEE_REMINDERS", ""),
   ])
+
+  const lastRun = lastRunRaw ? JSON.parse(lastRunRaw) : null
 
   const activeTab = (TABS.some(t => t.id === tab) ? tab : "team") as Tab
 
@@ -129,6 +136,10 @@ export default async function SettingsPage({
               year1Url:           offerSettings["ONBOARDING_YEAR1_URL"] || "",
             }}
           />
+        )}
+
+        {activeTab === "reminders" && (
+          <RemindersTab settings={reminderSettings} lastRun={lastRun} />
         )}
       </div>
     </div>

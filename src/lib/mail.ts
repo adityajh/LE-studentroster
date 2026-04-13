@@ -14,7 +14,7 @@ import { prisma } from "./prisma"
 //   SMTP_FROM_EMAIL   — Override "from" address (defaults to SMTP_USER)
 
 export type ReminderEmailPayload = {
-  to: string
+  to: string | string[]
   studentName: string
   installmentLabel: string
   amount: number
@@ -123,7 +123,8 @@ function reminderHtml(payload: ReminderEmailPayload) {
 }
 
 export async function sendFeeReminder(payload: ReminderEmailPayload): Promise<SendResult> {
-  if (!payload.to) {
+  const recipients = Array.isArray(payload.to) ? payload.to.filter(Boolean) : [payload.to].filter(Boolean)
+  if (!recipients.length) {
     return { ok: false, skipped: true, reason: "Student has no email address" }
   }
 
@@ -143,7 +144,7 @@ export async function sendFeeReminder(payload: ReminderEmailPayload): Promise<Se
   try {
     const info = await transporter.sendMail({
       from,
-      to: payload.to,
+      to: recipients,
       subject: reminderSubject(payload.reminderType, payload.installmentLabel),
       html: reminderHtml(payload),
     })

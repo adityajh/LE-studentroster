@@ -39,7 +39,7 @@ export async function processDailyReminders(): Promise<{
   // Fetch all non-paid installments with an email address, within our window
   const installments = await prisma.installment.findMany({
     where: {
-      status: { in: ["UPCOMING", "DUE", "PARTIAL"] },
+      status: { in: ["UPCOMING", "DUE", "OVERDUE", "PARTIAL"] },
       dueDate: { lte: maxLookahead },
       student: {
         email: { not: null },
@@ -47,7 +47,7 @@ export async function processDailyReminders(): Promise<{
       },
     },
     include: {
-      student: { select: { id: true, name: true, email: true } },
+      student: { select: { id: true, name: true, email: true, parent1Email: true } },
       reminderLogs: { select: { type: true } },
     },
     orderBy: { dueDate: "asc" },
@@ -80,9 +80,10 @@ export async function processDailyReminders(): Promise<{
         },
       })
 
-      // Send the email
+      // Send the email — student + parent1
+      const recipients = [inst.student.email, inst.student.parent1Email].filter((e): e is string => !!e)
       const result = await sendFeeReminder({
-        to:               inst.student.email!,
+        to:               recipients,
         studentName:      inst.student.name,
         installmentLabel: inst.label,
         amount:           Number(inst.paidAmount
@@ -120,5 +121,14 @@ export async function processDailyReminders(): Promise<{
     }
   }
 
-  return { checked: installments.length, sent, skipped, failed }
+  const stats = { checked: installments.length, sent, skipped, failed }
+
+  // Persist last-run stats for the Settings UI
+  await prisma.systemSetting.upsert({
+    where: { key: "CRON_LAST_RUN_FEE_REMINDERS" },
+    update: { value: JSON.stringify({ ...stats, runAt: new Date().toISOString() }) },
+    create: { key: "CRON_LAST_RUN_FEE_REMINDERS", value: JSON.stringify({ ...stats, runAt: new Date().toISOString() }), updatedBy: "system" },
+  })
+
+  return stats
 }
