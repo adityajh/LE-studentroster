@@ -2,9 +2,10 @@
 
 import { useState } from "react"
 import { useRouter } from "next/navigation"
-import { Loader2, ChevronDown, Plus, X, AlertTriangle, Settings, ChevronRight } from "lucide-react"
+import { Loader2, ChevronDown, Plus, X, AlertTriangle, Settings, ChevronRight, CalendarDays } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { DeleteStudentButton } from "./delete-student-button"
+import { InstallmentEditor } from "./installment-editor"
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -45,6 +46,15 @@ type Student = {
   offers: { id: string; offerId: string; waiverAmount: any; offer: { id: string; name: string; type: string; waiverAmount: any } }[]
   scholarships: { id: string; scholarshipId: string; amount: any; scholarship: { id: string; name: string; category: string } }[]
   deductions: { id: string; description: string; amount: any }[]
+  installments: {
+    id: string
+    label: string
+    dueDate: Date
+    amount: { toString(): string }
+    year: number
+    status: "UPCOMING" | "DUE" | "OVERDUE" | "PARTIAL" | "PAID"
+    paidAmount?: { toString(): string } | null
+  }[]
 }
 
 type FeeSchedule = {
@@ -171,6 +181,7 @@ export function EditStudentForm({
   )
 
   const [showFinancialPlan, setShowFinancialPlan] = useState(false)
+  const [showSchedule, setShowSchedule] = useState(false)
 
   // ── Fee Preview ──
   const baseFeeNum = parseFloat(baseFee) || 0
@@ -681,6 +692,52 @@ export function EditStudentForm({
               ? "⚠️ This record is LOCKED. All financial changes require a reason and will be logged to the Changelog."
               : "Changes to financial fields will automatically recalculate the Net Fee and redistribute future installments."}
           </p>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Section 4 — Installment Schedule (visible to all, editable by admin) */}
+      {student.financial && (
+        <div className="space-y-4">
+          <button
+            type="button"
+            onClick={() => setShowSchedule(!showSchedule)}
+            className={cn(
+              "w-full flex items-center justify-between p-4 rounded-2xl border-2 transition-all font-bold",
+              showSchedule
+                ? "bg-indigo-600 border-indigo-600 text-white shadow-lg shadow-indigo-100"
+                : "bg-white border-slate-200 text-slate-600 hover:border-indigo-200 hover:bg-indigo-50/30"
+            )}
+          >
+            <div className="flex items-center gap-3">
+              <div className={cn(
+                "p-2 rounded-xl transition-colors",
+                showSchedule ? "bg-indigo-500 text-white" : "bg-indigo-100 text-indigo-600"
+              )}>
+                <CalendarDays className="h-4 w-4" />
+              </div>
+              <div className="text-left">
+                <p className="text-sm">Installment Schedule</p>
+                <p className={cn(
+                  "text-[11px] font-medium mt-0.5",
+                  showSchedule ? "text-indigo-200" : "text-slate-400"
+                )}>
+                  View{isAdmin ? " or edit" : ""} payment due dates and amounts
+                </p>
+              </div>
+            </div>
+            <ChevronDown className={cn("h-4 w-4 transition-transform", showSchedule && "rotate-180")} />
+          </button>
+
+          {showSchedule && (
+            <div className="rounded-2xl border-2 border-indigo-100 bg-white/60 overflow-hidden">
+              <InstallmentEditor
+                installments={student.installments}
+                financial={student.financial}
+                isAdmin={isAdmin}
+                studentId={student.id}
+              />
             </div>
           )}
         </div>

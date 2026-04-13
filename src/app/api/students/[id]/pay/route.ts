@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { auth } from "@/auth"
 import { prisma } from "@/lib/prisma"
+import { syncFifoToDb } from "@/lib/fifo"
 
 // Get payment history for a student
 export async function GET(
@@ -13,7 +14,7 @@ export async function GET(
   }
 
   const { id: studentId } = await params
-  
+
   const payments = await prisma.payment.findMany({
     where: { studentId },
     include: {
@@ -42,28 +43,27 @@ export async function POST(
 
   const { id: studentId } = await params
   const body = await req.json()
-  const { 
-    installmentId, 
-    paidAmount, 
-    paidDate, 
-    paymentMode, 
-    referenceNo, 
-    payerName, 
-    notes 
+  const {
+    installmentId,
+    paidAmount,
+    paidDate,
+    paymentMode,
+    referenceNo,
+    payerName,
+    notes
   } = body
 
   if (!paidAmount || !paidDate || !paymentMode) {
     return NextResponse.json({ error: "Missing required fields" }, { status: 400 })
   }
 
-  // Get current user DB ID
   const dbUser = await prisma.user.findUnique({
     where: { email: session.user.email }
   })
 
   try {
     const result = await prisma.$transaction(async (tx) => {
-      // 1. Create the Payment Journal entry
+      // 1. Create the payment journal entry
       const payment = await tx.payment.create({
         data: {
           studentId,
@@ -78,44 +78,9 @@ export async function POST(
         }
       })
 
-      // 2. If tied to an installment, update that installment's status/paidAmount
-      if (installmentId) {
-        const installment = await tx.installment.findUnique({
-          where: { id: installmentId },
-          include: { payments: true }
-        })
-
-        if (!installment || installment.studentId !== studentId) {
-          throw new Error("Installment not found")
-        }
-
-        // Sum all payments for this installment (including the one just created)
-        const allPayments = await tx.payment.findMany({
-          where: { installmentId }
-        })
-        
-        const totalPaid = allPayments.reduce((sum, p) => sum + Number(p.amount), 0)
-        const dueAmount = Number(installment.amount)
-        
-        // Determine status
-        let status: "PAID" | "PARTIAL" | "DUE" | "OVERDUE" = "PARTIAL"
-        if (totalPaid >= dueAmount) {
-          status = "PAID"
-        }
-
-        // Update the installment
-        await tx.installment.update({
-          where: { id: installmentId },
-          data: {
-            status,
-            paidAmount: totalPaid,
-            paidDate: new Date(paidDate), // Last payment date
-            paymentMethod: paymentMode,   // Keep for legacy compatibility
-            referenceNo: referenceNo || null,
-            notes: notes || installment.notes // Update notes if provided, otherwise keep old
-          }
-        })
-      }
+      // 2. Run FIFO across all installments and write statuses back
+      //    This replaces the old per-installment status update.
+      await syncFifoToDb(tx, studentId)
 
       return payment
     })

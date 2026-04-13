@@ -600,14 +600,6 @@ export default async function StudentDetailPage({
                             {pending > 0 ? formatINR(pending) : <span className="text-emerald-500">✓</span>}
                           </td>
                           <td className="px-5 py-4 text-right">
-                            {isPaid && (
-                              <Link
-                                href={`/students/${student.id}/receipts/${inst.id}`}
-                                className="text-xs font-semibold text-indigo-600 hover:text-indigo-800 transition-colors"
-                              >
-                                Receipt →
-                              </Link>
-                            )}
                             {!isPaid && canRecord && (
                               <RecordPaymentDialog studentId={student.id} studentName={student.firstName || student.name} installment={inst} />
                             )}

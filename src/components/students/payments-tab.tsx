@@ -1,9 +1,10 @@
 "use client"
 
+import Link from "next/link"
 import { formatINR } from "@/lib/fee-schedule"
 import { cn } from "@/lib/utils"
 import { RecordPaymentDialog } from "./record-payment-dialog"
-import { Wallet, Info, FileText, User as UserIcon } from "lucide-react"
+import { Wallet, Info, FileText, User as UserIcon, Receipt } from "lucide-react"
 
 interface Payment {
   id: string
@@ -122,12 +123,13 @@ export function PaymentsTab({ studentId, studentName, payments, netFee, canRecor
               </div>
               
               <div className="flex flex-col items-end gap-2">
-                <button 
-                  onClick={() => alert("Receipt feature coming in Phase 5")}
-                  className="text-[10px] uppercase tracking-widest font-black text-indigo-600 hover:text-indigo-800 transition-colors"
+                <Link
+                  href={`/students/${studentId}/receipts/payments/${p.id}`}
+                  className="flex items-center gap-1 text-[10px] uppercase tracking-widest font-black text-indigo-600 hover:text-indigo-800 transition-colors"
                 >
-                  View Receipt
-                </button>
+                  <Receipt className="h-3 w-3" />
+                  Receipt
+                </Link>
               </div>
             </div>
           ))

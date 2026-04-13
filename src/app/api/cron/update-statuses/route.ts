@@ -21,6 +21,12 @@ export async function GET(req: NextRequest) {
   const gracePeriodDays = 7
 
   // ── 1. Installment status transitions ──────────────────────────────────────
+  //
+  // PAID and PARTIAL statuses are set exclusively by FIFO write-back in the
+  // pay route (src/lib/fifo.ts syncFifoToDb). This cron only manages the
+  // time-based transitions: UPCOMING → DUE → OVERDUE.
+  // PAID installments are invisible to these queries (WHERE status = "UPCOMING"
+  // / "DUE" / "PARTIAL" never matches PAID), so they are never touched here.
 
   // UPCOMING → DUE: dueDate has passed, still unpaid
   const { count: markedDue } = await prisma.installment.updateMany({
@@ -37,6 +43,8 @@ export async function GET(req: NextRequest) {
     data: { status: "OVERDUE" },
   })
 
+  // PARTIAL → OVERDUE: partially paid but past grace period
+  // (PARTIAL means FIFO has allocated some but not all of the fee)
   const { count: markedPartialOverdue } = await prisma.installment.updateMany({
     where: { status: "PARTIAL", dueDate: { lte: overdueThreshold } },
     data: { status: "OVERDUE" },
