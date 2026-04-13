@@ -55,11 +55,21 @@ export async function POST(
     .replace(/[^a-zA-Z0-9._-]/g, "-")
     .replace(/-{2,}/g, "-")
     .replace(/^-|-$/g, "")
-  const blob = await put(
-    `students/${studentId}/${docType}/${safeName}`,
-    file,
-    { access: "public" }
-  )
+
+  const fileBuffer = Buffer.from(await file.arrayBuffer())
+
+  let blob
+  try {
+    blob = await put(
+      `students/${studentId}/${docType}/${safeName}`,
+      fileBuffer,
+      { access: "public", contentType: file.type || "application/octet-stream" }
+    )
+  } catch (err) {
+    console.error("[blob upload error]", err)
+    const msg = err instanceof Error ? err.message : String(err)
+    return NextResponse.json({ error: `Blob upload failed: ${msg}` }, { status: 500 })
+  }
 
   const dbUser = await prisma.user.findUnique({
     where: { email: session.user.email! },
