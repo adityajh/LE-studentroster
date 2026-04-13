@@ -5,6 +5,8 @@ import { ProposalDocument } from "@/lib/pdf-generator"
 import { generateDocxProposal } from "@/lib/docx-generator"
 import { renderToStream } from "@react-pdf/renderer"
 import { getSetting } from "@/app/actions/settings"
+import fs from "fs"
+import path from "path"
 
 export async function GET(
   req: NextRequest,
@@ -40,9 +42,18 @@ export async function GET(
 
   const filename = `Proposal_${student.rollNo ?? "Draft"}_${student.name.replace(/\s+/g, "_")}`
 
+  // Load logo as base64
+  let logoSrc: string | undefined
+  try {
+    const logoBuf = fs.readFileSync(path.join(process.cwd(), "public", "Let's-Enterprise-Final-Logo_PNG.png"))
+    logoSrc = `data:image/png;base64,${logoBuf.toString("base64")}`
+  } catch {
+    // logo missing — PDF will fall back to text
+  }
+
   if (format === "pdf") {
     // Return PDF
-    const stream = await renderToStream(ProposalDocument({ student, terms }))
+    const stream = await renderToStream(ProposalDocument({ student, terms, logoSrc }))
     return new NextResponse(stream as unknown as ReadableStream, {
       headers: {
         "Content-Type": "application/pdf",

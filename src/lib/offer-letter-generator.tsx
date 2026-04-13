@@ -1,4 +1,4 @@
-import { Document, Page, Text, View, StyleSheet } from "@react-pdf/renderer"
+import { Document, Page, Text, View, StyleSheet, Image } from "@react-pdf/renderer"
 
 export type OfferLetterData = {
   studentName: string
@@ -12,6 +12,8 @@ export type OfferLetterData = {
   netFee: number
   // Configurable body text (from SystemSetting OFFER_LETTER_BODY)
   bodyText?: string
+  // Logo (base64 data URI passed from server route)
+  logoSrc?: string
 }
 
 const styles = StyleSheet.create({
@@ -19,34 +21,56 @@ const styles = StyleSheet.create({
     padding: 50,
     fontSize: 10,
     lineHeight: 1.6,
-    color: "#1a1a1a",
+    color: "#1e293b",
   },
   header: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-end",
     marginBottom: 28,
     borderBottomWidth: 2,
     borderBottomColor: "#3663AD",
-    paddingBottom: 12,
+    paddingBottom: 14,
+  },
+  headerLeft: {
+    flexDirection: "column",
   },
   logo: {
+    width: 160,
+    height: 44,
+    objectFit: "contain",
+  },
+  logoFallback: {
     fontSize: 16,
-    fontWeight: "bold",
+    fontFamily: "Helvetica-Bold",
     color: "#3663AD",
-    letterSpacing: 1,
+    letterSpacing: 0.5,
     marginBottom: 4,
   },
   tagline: {
     fontSize: 8,
-    color: "#666",
+    color: "#64748b",
+    marginTop: 3,
+  },
+  headerRight: {
+    flexDirection: "column",
+    alignItems: "flex-end",
+  },
+  contact: {
+    fontSize: 8,
+    color: "#94a3b8",
+    textAlign: "right",
+    lineHeight: 1.6,
   },
   title: {
     fontSize: 14,
-    fontWeight: "bold",
-    marginBottom: 6,
-    color: "#1a1a1a",
+    fontFamily: "Helvetica-Bold",
+    marginBottom: 4,
+    color: "#1e293b",
   },
   subtitle: {
     fontSize: 10,
-    color: "#555",
+    color: "#64748b",
     marginBottom: 20,
   },
   salutation: {
@@ -60,7 +84,7 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     fontSize: 11,
-    fontWeight: "bold",
+    fontFamily: "Helvetica-Bold",
     marginTop: 16,
     marginBottom: 6,
     color: "#3663AD",
@@ -88,18 +112,40 @@ const styles = StyleSheet.create({
   feeRow: {
     flexDirection: "row",
     justifyContent: "space-between",
-    marginBottom: 3,
+    marginBottom: 4,
     fontSize: 10,
+  },
+  feeAmount: {
+    fontSize: 10,
+    letterSpacing: 0,
+  },
+  feeDeductLabel: {
+    fontSize: 10,
+    color: "#475569",
+  },
+  feeDeductAmount: {
+    fontSize: 10,
+    color: "#475569",
+    letterSpacing: 0,
   },
   feeRowBold: {
     flexDirection: "row",
     justifyContent: "space-between",
     borderTopWidth: 1,
-    borderTopColor: "#ccc",
-    paddingTop: 5,
-    marginTop: 5,
+    borderTopColor: "#c8d6e8",
+    paddingTop: 6,
+    marginTop: 6,
     fontSize: 10,
-    fontWeight: "bold",
+  },
+  feeRowBoldLabel: {
+    fontFamily: "Helvetica-Bold",
+    fontSize: 10,
+  },
+  feeRowBoldAmount: {
+    fontFamily: "Helvetica-Bold",
+    fontSize: 10,
+    color: "#3663AD",
+    letterSpacing: 0,
   },
   expiryBox: {
     borderWidth: 1,
@@ -116,20 +162,25 @@ const styles = StyleSheet.create({
   },
   footer: {
     marginTop: 28,
-    paddingTop: 12,
+    paddingTop: 10,
     borderTopWidth: 1,
-    borderTopColor: "#ddd",
+    borderTopColor: "#e2e8f0",
   },
   footerText: {
     fontSize: 9,
-    color: "#555",
-    marginBottom: 3,
+    color: "#64748b",
+    marginBottom: 2,
+  },
+  footerAddress: {
+    fontSize: 8,
+    color: "#94a3b8",
+    marginTop: 4,
   },
   ack: {
-    marginTop: 20,
+    marginTop: 16,
     fontSize: 9,
-    color: "#555",
-    fontStyle: "italic",
+    color: "#64748b",
+    fontFamily: "Helvetica-Oblique",
   },
 })
 
@@ -159,8 +210,18 @@ Based on your application, interactions, and assessment process, our admissions 
       <Page size="A4" style={styles.page}>
         {/* Header */}
         <View style={styles.header}>
-          <Text style={styles.logo}>LET'S ENTERPRISE</Text>
-          <Text style={styles.tagline}>www.letsenterprise.in  |  +91 84472 84008</Text>
+          <View style={styles.headerLeft}>
+            {data.logoSrc ? (
+              <Image src={data.logoSrc} style={styles.logo} />
+            ) : (
+              <Text style={styles.logoFallback}>LET'S ENTERPRISE</Text>
+            )}
+            <Text style={styles.tagline}>Work is the Curriculum</Text>
+          </View>
+          <View style={styles.headerRight}>
+            <Text style={styles.contact}>www.letsenterprise.in</Text>
+            <Text style={styles.contact}>+91 84472 84008</Text>
+          </View>
         </View>
 
         {/* Title */}
@@ -198,36 +259,36 @@ Based on your application, interactions, and assessment process, our admissions 
         <View style={styles.feeBox}>
           <View style={styles.feeRow}>
             <Text>Programme Fee</Text>
-            <Text>{formatINR(data.baseFee)}</Text>
+            <Text style={styles.feeAmount}>{formatINR(data.baseFee)}</Text>
           </View>
           {data.offers.map((o, i) => (
             <View key={i} style={styles.feeRow}>
-              <Text style={{ color: "#2a7a2a" }}>Less: {o.name}</Text>
-              <Text style={{ color: "#2a7a2a" }}>- {formatINR(o.amount)}</Text>
+              <Text style={styles.feeDeductLabel}>Less: {o.name}</Text>
+              <Text style={styles.feeDeductAmount}>- {formatINR(o.amount)}</Text>
             </View>
           ))}
           {data.scholarships.map((sc, i) => (
             <View key={i} style={styles.feeRow}>
-              <Text style={{ color: "#2a7a2a" }}>Less: {sc.name} Scholarship</Text>
-              <Text style={{ color: "#2a7a2a" }}>- {formatINR(sc.amount)}</Text>
+              <Text style={styles.feeDeductLabel}>Less: {sc.name} Scholarship</Text>
+              <Text style={styles.feeDeductAmount}>- {formatINR(sc.amount)}</Text>
             </View>
           ))}
           {totalWaiver > 0 && (
             <View style={styles.feeRow}>
-              <Text style={{ color: "#2a7a2a", fontWeight: "bold" }}>Total Benefit</Text>
-              <Text style={{ color: "#2a7a2a", fontWeight: "bold" }}>- {formatINR(totalWaiver)}</Text>
+              <Text style={styles.feeDeductLabel}>Total Benefit</Text>
+              <Text style={styles.feeDeductAmount}>- {formatINR(totalWaiver)}</Text>
             </View>
           )}
           <View style={styles.feeRowBold}>
-            <Text>Net Programme Fee</Text>
-            <Text>{formatINR(data.netFee)}</Text>
+            <Text style={styles.feeRowBoldLabel}>Net Programme Fee</Text>
+            <Text style={styles.feeRowBoldAmount}>{formatINR(data.netFee)}</Text>
           </View>
         </View>
 
         {/* Expiry notice */}
         <View style={styles.expiryBox}>
           <Text style={styles.expiryText}>
-            ⏳  To secure your seat, please pay the ₹50,000 registration fee and confirm your admission by {expiry}.
+            To secure your seat, please pay the ₹50,000 registration fee and confirm your admission by {expiry}.
             The 7-day confirmation waiver (if applicable) will lapse after this date.
           </Text>
         </View>
@@ -250,7 +311,12 @@ Based on your application, interactions, and assessment process, our admissions 
         <View style={styles.footer}>
           <Text style={styles.footerText}>Warm regards,</Text>
           <Text style={styles.footerText}>Admissions Team, Let's Enterprise</Text>
-          <Text style={styles.footerText}>www.letsenterprise.in  |  +91 84472 84008</Text>
+          <Text style={styles.footerAddress}>
+            6th Floor, Trimurty Honeygold, 44 Range Hill Road, Sinchan Nagar, Ashok Nagar, Pune, Maharashtra 411016
+          </Text>
+          <Text style={styles.footerAddress}>
+            www.letsenterprise.in  ·  +91 84472 84008
+          </Text>
         </View>
 
         <Text style={styles.ack}>

@@ -6,6 +6,8 @@ import { createElement } from "react"
 import { OfferLetterDocument, type OfferLetterData } from "@/lib/offer-letter-generator"
 import { sendOfferEmail } from "@/lib/mail"
 import { getSettings } from "@/app/actions/settings"
+import fs from "fs"
+import path from "path"
 
 const DEFAULT_OFFER_EMAIL_BODY = `Hi {{studentName}},
 
@@ -66,6 +68,15 @@ export async function POST(
     "BANK_DETAILS",
   ])
 
+  // Load logo as base64
+  let logoSrc: string | undefined
+  try {
+    const logoBuf = fs.readFileSync(path.join(process.cwd(), "public", "Let's-Enterprise-Final-Logo_PNG.png"))
+    logoSrc = `data:image/png;base64,${logoBuf.toString("base64")}`
+  } catch {
+    // logo missing — PDF will fall back to text
+  }
+
   const offerExpiresAt = student.offerExpiresAt ?? new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
 
   // Build offer letter PDF data
@@ -79,6 +90,7 @@ export async function POST(
     scholarships: student.scholarships.map((sc) => ({ name: sc.scholarship.name, amount: Number(sc.amount) })),
     netFee: Number(student.financial?.netFee ?? student.program.totalFee),
     bodyText: settings["OFFER_LETTER_BODY"] || undefined,
+    logoSrc,
   }
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -92,7 +104,7 @@ export async function POST(
     const globalTerms = await getSetting("PROPOSAL_TERMS", "All fees must be paid on or before the due date.")
     const terms = student.financial?.customTerms || globalTerms
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    proposalPdf = await renderToBuffer(createElement(ProposalDocument, { student, terms }) as any)
+    proposalPdf = await renderToBuffer(createElement(ProposalDocument, { student, terms, logoSrc }) as any)
   }
 
   const recipients = [student.email]

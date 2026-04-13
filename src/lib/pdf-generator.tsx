@@ -1,4 +1,4 @@
-import { Document, Page, Text, View, StyleSheet } from '@react-pdf/renderer'
+import { Document, Page, Text, View, StyleSheet, Image } from '@react-pdf/renderer'
 import { formatINR } from './fee-schedule'
 import { Prisma } from '@prisma/client'
 
@@ -21,148 +21,225 @@ const styles = StyleSheet.create({
     padding: 40,
     fontFamily: 'Helvetica',
     fontSize: 10,
-    color: '#160E44', // Deep Blue
+    color: '#1e293b',
     lineHeight: 1.5,
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 40,
-    borderBottom: '2px solid #3663AD', // Enterprise Blue
-    paddingBottom: 20,
+    alignItems: 'flex-end',
+    marginBottom: 32,
+    borderBottomWidth: 2,
+    borderBottomColor: '#3663AD',
+    paddingBottom: 16,
+  },
+  headerLeft: {
+    flexDirection: 'column',
+    gap: 4,
   },
   logo: {
-    width: 140,
+    width: 160,
+    height: 44,
+    objectFit: 'contain',
+  },
+  logoFallback: {
+    fontSize: 15,
+    fontFamily: 'Helvetica-Bold',
+    color: '#3663AD',
+    letterSpacing: 0.5,
+  },
+  tagline: {
+    fontSize: 8,
+    color: '#64748b',
+    marginTop: 3,
+  },
+  headerRight: {
+    flexDirection: 'column',
+    alignItems: 'flex-end',
   },
   title: {
-    fontSize: 18,
-    fontWeight: 'bold',
+    fontSize: 16,
+    fontFamily: 'Helvetica-Bold',
     color: '#3663AD',
     textTransform: 'uppercase',
+    letterSpacing: 1,
+  },
+  docSubtitle: {
+    fontSize: 8,
+    color: '#94a3b8',
+    marginTop: 2,
   },
   section: {
-    marginBottom: 30,
+    marginBottom: 24,
   },
   sectionTitle: {
-    fontSize: 14,
-    fontWeight: 'bold',
-    color: '#160E44',
-    marginBottom: 10,
-    borderBottom: '1px solid #e2e8f0',
+    fontSize: 11,
+    fontFamily: 'Helvetica-Bold',
+    color: '#1e293b',
+    marginBottom: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: '#e2e8f0',
     paddingBottom: 4,
   },
   row: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 6,
+    marginBottom: 5,
   },
   label: {
     color: '#64748b',
-    width: '40%',
+    width: '55%',
   },
   value: {
-    fontWeight: 'bold',
-    width: '60%',
+    fontFamily: 'Helvetica-Bold',
+    width: '45%',
     textAlign: 'right',
+    letterSpacing: 0,
   },
   divider: {
-    borderBottom: '1px solid #e2e8f0',
-    marginVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: '#e2e8f0',
+    marginVertical: 8,
   },
-  grandTotal: {
-    fontSize: 14,
-    fontWeight: 'bold',
-    color: '#25BCBD', // Bright teal
+  grandTotalRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 4,
+  },
+  grandTotalLabel: {
+    fontSize: 11,
+    fontFamily: 'Helvetica-Bold',
+    color: '#1e293b',
+  },
+  grandTotalValue: {
+    fontSize: 11,
+    fontFamily: 'Helvetica-Bold',
+    color: '#3663AD',
+    letterSpacing: 0,
+  },
+  deductionValue: {
+    fontFamily: 'Helvetica-Bold',
+    width: '45%',
+    textAlign: 'right',
+    color: '#475569',
+    letterSpacing: 0,
   },
   table: {
     width: 'auto',
-    borderStyle: 'solid',
     borderWidth: 1,
     borderColor: '#e2e8f0',
     borderRightWidth: 0,
     borderBottomWidth: 0,
-    marginTop: 10,
+    marginTop: 8,
   },
   tableRow: {
-    margin: 'auto',
     flexDirection: 'row',
   },
   tableColHeader: {
     width: '25%',
-    borderStyle: 'solid',
-    borderWidth: 1,
-    borderLeftWidth: 0,
-    borderTopWidth: 0,
+    borderRightWidth: 1,
+    borderBottomWidth: 1,
     borderColor: '#e2e8f0',
-    backgroundColor: '#f8fafc',
-    padding: 5,
+    backgroundColor: '#f1f5f9',
+    padding: 6,
   },
   tableCol: {
     width: '25%',
-    borderStyle: 'solid',
-    borderWidth: 1,
-    borderLeftWidth: 0,
-    borderTopWidth: 0,
+    borderRightWidth: 1,
+    borderBottomWidth: 1,
     borderColor: '#e2e8f0',
-    padding: 5,
+    padding: 6,
   },
   tableCellHeader: {
     fontSize: 8,
-    fontWeight: 'bold',
-    color: '#64748b',
+    fontFamily: 'Helvetica-Bold',
+    color: '#475569',
+    letterSpacing: 0,
   },
   tableCell: {
     fontSize: 9,
+    letterSpacing: 0,
+  },
+  tableCellAmount: {
+    fontSize: 9,
+    fontFamily: 'Helvetica-Bold',
+    letterSpacing: 0,
+  },
+  emptyTableRow: {
+    padding: 12,
+    borderRightWidth: 1,
+    borderBottomWidth: 1,
+    borderColor: '#e2e8f0',
+    width: '100%',
+  },
+  emptyTableText: {
+    fontSize: 9,
+    color: '#94a3b8',
+    fontFamily: 'Helvetica-Oblique',
   },
   footer: {
     position: 'absolute',
-    bottom: 40,
+    bottom: 32,
     left: 40,
     right: 40,
+    borderTopWidth: 1,
+    borderTopColor: '#e2e8f0',
+    paddingTop: 8,
+  },
+  footerText: {
     fontSize: 8,
     color: '#94a3b8',
     textAlign: 'center',
-    borderTop: '1px solid #e2e8f0',
-    paddingTop: 10,
+    marginBottom: 2,
   },
   termsContainer: {
-    marginTop: 20,
-    padding: 15,
+    marginTop: 16,
+    padding: 12,
     backgroundColor: '#f8fafc',
-    borderRadius: 8,
+    borderRadius: 4,
   },
   termsTitle: {
-    fontSize: 10,
-    fontWeight: 'bold',
-    marginBottom: 5,
+    fontSize: 9,
+    fontFamily: 'Helvetica-Bold',
+    marginBottom: 4,
     color: '#3663AD',
   },
   termsText: {
     fontSize: 8,
     color: '#475569',
-  }
+    lineHeight: 1.5,
+  },
 })
 
 interface ProposalDocumentProps {
   student: FullStudent
   terms: string
+  logoSrc?: string
 }
 
-export function ProposalDocument({ student, terms }: ProposalDocumentProps) {
+export function ProposalDocument({ student, terms, logoSrc }: ProposalDocumentProps) {
   const fin = student.financial
   if (!fin) throw new Error("Financial records missing")
 
   return (
     <Document>
       <Page size="A4" style={styles.page}>
-        
+
         {/* Header */}
         <View style={styles.header}>
-          <Text style={styles.title}>FEE PROPOSAL</Text>
-          {/* We use a public URL or base64 for PDF renderer compatibility */}
-          <View style={{ width: 140, height: 40, backgroundColor: '#f1f5f9', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
-            <Text style={{ fontSize: 10, color: '#94a3b8' }}>[LE LOGO PLACEHOLDER]</Text>
+          <View style={styles.headerLeft}>
+            {logoSrc ? (
+              <Image src={logoSrc} style={styles.logo} />
+            ) : (
+              <Text style={styles.logoFallback}>LET'S ENTERPRISE</Text>
+            )}
+            <Text style={styles.tagline}>Work is the Curriculum</Text>
+          </View>
+          <View style={styles.headerRight}>
+            <Text style={styles.title}>Fee Proposal</Text>
+            <Text style={styles.docSubtitle}>
+              Generated {new Date().toLocaleDateString("en-IN", { day: "numeric", month: "long", year: "numeric" })}
+            </Text>
           </View>
         </View>
 
@@ -170,60 +247,62 @@ export function ProposalDocument({ student, terms }: ProposalDocumentProps) {
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Student Details</Text>
           <View style={styles.row}>
-            <Text style={styles.label}>Name:</Text>
+            <Text style={styles.label}>Name</Text>
             <Text style={styles.value}>{student.name}</Text>
           </View>
           <View style={styles.row}>
-            <Text style={styles.label}>Roll No:</Text>
+            <Text style={styles.label}>Roll No</Text>
             <Text style={styles.value}>{student.rollNo ?? "Pending Enrolment"}</Text>
           </View>
           <View style={styles.row}>
-            <Text style={styles.label}>Program:</Text>
-            <Text style={styles.value}>{student.program.name} (Batch {student.batch.year})</Text>
+            <Text style={styles.label}>Programme</Text>
+            <Text style={styles.value}>{student.program.name} — Batch {student.batch.year}</Text>
           </View>
         </View>
 
         {/* Financial Breakdown */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Financial Breakdown</Text>
-          
+
           <View style={styles.row}>
-            <Text style={styles.label}>Base Program Fee:</Text>
+            <Text style={styles.label}>Base Programme Fee</Text>
             <Text style={styles.value}>{formatINR(fin.baseFee)}</Text>
           </View>
 
           {student.offers.map((so) => (
             <View key={so.id} style={styles.row}>
               <Text style={styles.label}>Offer: {so.offer.name}</Text>
-              <Text style={{ ...styles.value, color: '#dc2626' }}>- {formatINR(so.waiverAmount)}</Text>
+              <Text style={styles.deductionValue}>- {formatINR(so.waiverAmount)}</Text>
             </View>
           ))}
 
           {student.scholarships.map((ss) => (
             <View key={ss.id} style={styles.row}>
               <Text style={styles.label}>Scholarship: {ss.scholarship.name}</Text>
-              <Text style={{ ...styles.value, color: '#dc2626' }}>- {formatINR(ss.amount)}</Text>
+              <Text style={styles.deductionValue}>- {formatINR(ss.amount)}</Text>
             </View>
           ))}
 
           {student.deductions.map((d) => (
             <View key={d.id} style={styles.row}>
               <Text style={styles.label}>Deduction: {d.description}</Text>
-              <Text style={{ ...styles.value, color: '#dc2626' }}>- {formatINR(d.amount)}</Text>
+              <Text style={styles.deductionValue}>- {formatINR(d.amount)}</Text>
             </View>
           ))}
 
           <View style={styles.divider} />
 
-          <View style={styles.row}>
-            <Text style={styles.label}>Net Fee Payable:</Text>
-            <Text style={{ ...styles.value, ...styles.grandTotal }}>{formatINR(fin.netFee)}</Text>
+          <View style={styles.grandTotalRow}>
+            <Text style={styles.grandTotalLabel}>Net Fee Payable</Text>
+            <Text style={styles.grandTotalValue}>{formatINR(fin.netFee)}</Text>
           </View>
         </View>
 
         {/* Payment Schedule Table */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Payment Schedule ({fin.installmentType.replace('_', ' ')})</Text>
+          <Text style={styles.sectionTitle}>
+            Payment Schedule ({fin.installmentType.replace('_', ' ')})
+          </Text>
           <View style={styles.table}>
             <View style={styles.tableRow}>
               <View style={styles.tableColHeader}><Text style={styles.tableCellHeader}>INSTALLMENT</Text></View>
@@ -231,19 +310,29 @@ export function ProposalDocument({ student, terms }: ProposalDocumentProps) {
               <View style={styles.tableColHeader}><Text style={styles.tableCellHeader}>DUE DATE</Text></View>
               <View style={styles.tableColHeader}><Text style={styles.tableCellHeader}>AMOUNT</Text></View>
             </View>
-            
-            {student.installments.map((inst) => (
-              <View style={styles.tableRow} key={inst.id}>
-                <View style={styles.tableCol}><Text style={styles.tableCell}>{inst.label}</Text></View>
-                <View style={styles.tableCol}><Text style={styles.tableCell}>{inst.year}</Text></View>
-                <View style={styles.tableCol}>
-                  <Text style={styles.tableCell}>
-                    {new Date(inst.dueDate).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
+
+            {student.installments.length > 0 ? (
+              student.installments.map((inst) => (
+                <View style={styles.tableRow} key={inst.id}>
+                  <View style={styles.tableCol}><Text style={styles.tableCell}>{inst.label}</Text></View>
+                  <View style={styles.tableCol}><Text style={styles.tableCell}>{inst.year}</Text></View>
+                  <View style={styles.tableCol}>
+                    <Text style={styles.tableCell}>
+                      {new Date(inst.dueDate).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
+                    </Text>
+                  </View>
+                  <View style={styles.tableCol}><Text style={styles.tableCellAmount}>{formatINR(inst.amount)}</Text></View>
+                </View>
+              ))
+            ) : (
+              <View style={styles.tableRow}>
+                <View style={[styles.emptyTableRow, { width: '100%' }]}>
+                  <Text style={styles.emptyTableText}>
+                    Schedule will be finalised upon confirmation of enrolment.
                   </Text>
                 </View>
-                <View style={styles.tableCol}><Text style={{ ...styles.tableCell, fontWeight: 'bold' }}>{formatINR(inst.amount)}</Text></View>
               </View>
-            ))}
+            )}
           </View>
         </View>
 
@@ -255,8 +344,12 @@ export function ProposalDocument({ student, terms }: ProposalDocumentProps) {
 
         {/* Footer */}
         <View style={styles.footer}>
-          <Text>Let's Enterprise · Smart and Sleek Premium Education</Text>
-          <Text>Generated on {new Date().toLocaleDateString("en-IN", { day: 'numeric', month: 'long', year: 'numeric' })} · Page 1 of 1</Text>
+          <Text style={styles.footerText}>
+            Let's Enterprise · 6th Floor, Trimurty Honeygold, 44 Range Hill Road, Sinchan Nagar, Ashok Nagar, Pune 411016
+          </Text>
+          <Text style={styles.footerText}>
+            www.letsenterprise.in  ·  +91 84472 84008
+          </Text>
         </View>
 
       </Page>
