@@ -163,6 +163,7 @@ export function OnboardWizard({
   // ── Step 3 state ─────────────────────────────────────────────────────────
 
   const [sending, setSending] = useState(false)
+  const [completing, setCompleting] = useState(false)
   const [emailSent, setEmailSent] = useState(!!onboardingEmailSentAt)
   const [emailSentAt, setEmailSentAt] = useState<string | null>(
     onboardingEmailSentAt ? new Date(onboardingEmailSentAt).toLocaleString("en-IN") : null
@@ -181,6 +182,19 @@ export function OnboardWizard({
       setError(e instanceof Error ? e.message : "Failed to send onboarding email")
     } finally {
       setSending(false)
+    }
+  }
+
+  async function handleCompleteOnboarding() {
+    setCompleting(true)
+    setError("")
+    try {
+      const res = await fetch(`/api/students/${studentId}/complete-onboarding`, { method: "POST" })
+      if (!res.ok) { const d = await res.json(); throw new Error(d.error ?? "Failed to complete") }
+      router.push(`/students/${studentId}`)
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed to complete onboarding")
+      setCompleting(false)
     }
   }
 
@@ -409,9 +423,12 @@ export function OnboardWizard({
             {error && <p className="text-sm text-rose-600 bg-rose-50 border border-rose-200 rounded-lg px-3 py-2">{error}</p>}
 
             {emailSent ? (
-              <button type="button" onClick={() => router.push(`/students/${studentId}`)}
-                className="w-full flex items-center justify-center gap-2 py-2.5 bg-emerald-600 text-white text-sm font-bold rounded-xl hover:bg-emerald-700">
-                <CheckCircle2 className="w-4 h-4" /> Complete Onboarding
+              <button type="button" onClick={handleCompleteOnboarding} disabled={completing}
+                className="w-full flex items-center justify-center gap-2 py-2.5 bg-emerald-600 text-white text-sm font-bold rounded-xl hover:bg-emerald-700 disabled:opacity-60">
+                {completing
+                  ? <><Loader2 className="w-4 h-4 animate-spin" /> Completing…</>
+                  : <><CheckCircle2 className="w-4 h-4" /> Complete Onboarding</>
+                }
               </button>
             ) : (
               <button type="button" onClick={handleSendEmail} disabled={sending}

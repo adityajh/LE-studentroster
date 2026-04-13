@@ -279,8 +279,8 @@ export default async function StudentDetailPage({
                 />
               </>
             )}
-            {/* Onboard button — hidden once profile is approved */}
-            {student.status === "ACTIVE" && canRecord && student.selfOnboardingStatus !== "APPROVED" && (
+            {/* Onboard buttons — only visible while status is ONBOARDING, hidden once ACTIVE */}
+            {student.status === "ONBOARDING" && canRecord && (
               <Link
                 href={`/students/${student.id}/onboard`}
                 className={cn(
@@ -294,8 +294,8 @@ export default async function StudentDetailPage({
                 {student.onboardingEmailSentAt ? "Onboarding" : "Onboard Student"}
               </Link>
             )}
-            {/* Self-onboarding link button */}
-            {student.status === "ACTIVE" && canRecord && student.selfOnboardingStatus !== "APPROVED" && (
+            {/* Self-onboarding link button — only while ONBOARDING */}
+            {student.status === "ONBOARDING" && canRecord && student.selfOnboardingStatus !== "APPROVED" && (
               <SendOnboardingLinkButton
                 studentId={student.id}
                 currentStatus={student.selfOnboardingStatus}

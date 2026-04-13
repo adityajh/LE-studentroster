@@ -48,7 +48,7 @@ export async function POST(
   })
 
   if (!student) return NextResponse.json({ error: "Student not found" }, { status: 404 })
-  if (student.status !== "ACTIVE") return NextResponse.json({ error: "Student must be ACTIVE to send onboarding email" }, { status: 400 })
+  if (!["ACTIVE", "ONBOARDING"].includes(student.status)) return NextResponse.json({ error: "Student must be in ONBOARDING or ACTIVE status to send onboarding email" }, { status: 400 })
   if (!student.email) return NextResponse.json({ error: "Student has no email address" }, { status: 400 })
 
   const settings = await getSettings([

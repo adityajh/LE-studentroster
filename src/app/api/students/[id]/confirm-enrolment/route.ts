@@ -140,10 +140,10 @@ export async function POST(
 
   // ── Transaction ───────────────────────────────────────────────────────────
   const result = await prisma.$transaction(async (tx) => {
-    // 1. Assign roll number, set ACTIVE
+    // 1. Assign roll number, set ONBOARDING
     await tx.student.update({
       where: { id },
-      data: { rollNo, status: "ACTIVE", enrollmentDate: today },
+      data: { rollNo, status: "ONBOARDING", enrollmentDate: today },
     })
 
     // 2. Replace offers with confirmed set
@@ -230,7 +230,7 @@ export async function POST(
         changedBy: dbUser?.id ?? session.user!.email!,
         field: "status",
         oldValue: "OFFERED",
-        newValue: "ACTIVE",
+        newValue: "ONBOARDING",
         reason: `Enrolment confirmed — Rs. ${Number(amount).toLocaleString("en-IN")} registration payment received (${paymentMode}${referenceNo ? `, ref: ${referenceNo}` : ""})`,
       },
     })
