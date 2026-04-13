@@ -189,6 +189,13 @@ export function OnboardWizard({
     setCompleting(true)
     setError("")
     try {
+      // Send onboarding email first if not yet sent
+      if (!emailSent) {
+        const emailRes = await fetch(`/api/students/${studentId}/send-onboarding`, { method: "POST" })
+        if (!emailRes.ok) { const d = await emailRes.json(); throw new Error(d.error ?? "Failed to send onboarding email") }
+        setEmailSent(true)
+        setEmailSentAt(new Date().toLocaleString("en-IN"))
+      }
       const res = await fetch(`/api/students/${studentId}/complete-onboarding`, { method: "POST" })
       if (!res.ok) { const d = await res.json(); throw new Error(d.error ?? "Failed to complete") }
       router.push(`/students/${studentId}`)

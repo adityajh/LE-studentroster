@@ -121,16 +121,19 @@ export function ConfirmEnrolmentDialog({
   const netFee = Math.max(0, baseFee - totalWaiver - confirmedDeductionTotal)
 
   const schedule = useMemo(() => {
-    // Per-year spread: scholarships that spread divided by 3; one-time offers only in Y1
+    // Per-year spread: scholarships that spread divided by 3; one-time offers + non-spread scholarships only in Y1
     const spreadWaiver = confirmedScholarships
       .filter((s) => s.spreadAcrossYears)
+      .reduce((sum, s) => sum + s.amount, 0)
+    const nonSpreadScholarshipWaiver = confirmedScholarships
+      .filter((s) => !s.spreadAcrossYears)
       .reduce((sum, s) => sum + s.amount, 0)
     const onetimeOfferWaiver = offerSource
       .filter((o) => confirmedOfferIds.includes(o.id))
       .reduce((sum, o) => sum + o.waiverAmount, 0)
     const spreadPerYear = Math.round(spreadWaiver / 3)
 
-    const y1Net = Math.max(0, Math.round(year1Fee - spreadPerYear - onetimeOfferWaiver - confirmedDeductionTotal))
+    const y1Net = Math.max(0, Math.round(year1Fee - spreadPerYear - onetimeOfferWaiver - nonSpreadScholarshipWaiver - confirmedDeductionTotal))
     const y2Net = Math.max(0, Math.round(year2Fee - spreadPerYear))
     const y3Net = Math.max(0, Math.round(year3Fee - spreadPerYear))
 
@@ -434,10 +437,10 @@ export function ConfirmEnrolmentDialog({
 
                       {/* Fee summary */}
                       <div className="rounded-lg bg-slate-50 border border-slate-200 p-4 space-y-2">
-                        <div className="flex justify-between text-sm"><span className="text-slate-500">Programme Fee</span><span>{formatINR(baseFee)}</span></div>
+                        <div className="flex justify-between text-sm"><span className="text-slate-500">Programme Fee</span><span>{formatINR(baseFee + registrationFee)}</span></div>
                         {totalWaiver > 0 && <div className="flex justify-between text-sm text-emerald-700"><span>Confirmed Benefits</span><span>- {formatINR(totalWaiver)}</span></div>}
                         {confirmedDeductionTotal > 0 && <div className="flex justify-between text-sm text-slate-600"><span>Deductions</span><span>- {formatINR(confirmedDeductionTotal)}</span></div>}
-                        <div className="flex justify-between text-sm font-bold border-t border-slate-200 pt-2"><span>Net Fee</span><span>{formatINR(netFee)}</span></div>
+                        <div className="flex justify-between text-sm font-bold border-t border-slate-200 pt-2"><span>Net Fee</span><span>{formatINR(netFee + registrationFee)}</span></div>
                       </div>
                     </div>
                   )}
@@ -449,7 +452,22 @@ export function ConfirmEnrolmentDialog({
 
                       <div className="grid grid-cols-3 gap-3">
                         {(["ANNUAL", "ONE_TIME", "CUSTOM"] as const).map((t) => (
-                          <button type="button" key={t} onClick={() => setInstallmentType(t)}
+                          <button type="button" key={t} onClick={() => {
+                            setInstallmentType(t)
+                            // Pre-populate custom amounts with waiver-applied values when switching to CUSTOM
+                            if (t === "CUSTOM") {
+                              const spreadW = confirmedScholarships.filter((s) => s.spreadAcrossYears).reduce((s, sc) => s + sc.amount, 0)
+                              const nonSpreadW = confirmedScholarships.filter((s) => !s.spreadAcrossYears).reduce((s, sc) => s + sc.amount, 0)
+                              const offerW = offerSource.filter((o) => confirmedOfferIds.includes(o.id)).reduce((s, o) => s + o.waiverAmount, 0)
+                              const spd = Math.round(spreadW / 3)
+                              setCustomInstallments([
+                                { label: "Registration Fee", dueDate: today, amount: registrationFee, year: 0, yearOption: "0" },
+                                { label: "Year 1 — Growth", dueDate: y1Due, amount: Math.max(0, Math.round(year1Fee - spd - offerW - nonSpreadW - confirmedDeductionTotal)), year: 1, yearOption: "1" },
+                                { label: "Year 2 — Projects", dueDate: y2Due, amount: Math.max(0, Math.round(year2Fee - spd)), year: 2, yearOption: "2" },
+                                { label: "Year 3 — Work", dueDate: y3Due, amount: Math.max(0, Math.round(year3Fee - spd)), year: 3, yearOption: "3" },
+                              ])
+                            }
+                          }}
                             className={cn(
                               "p-3 rounded-lg border text-sm font-medium text-left",
                               installmentType === t ? "border-emerald-500 bg-emerald-50 text-emerald-800" : "border-slate-200 text-slate-600 hover:border-slate-300"
