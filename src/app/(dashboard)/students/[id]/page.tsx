@@ -52,7 +52,6 @@ export default async function StudentDetailPage({
     .filter((i) => i.status !== "PAID")
     .reduce((s, i) => s + Math.round(i.amount.toNumber()), 0)
 
-  const waiverPerYear = fin ? Math.round(fin.totalWaiver.toNumber() / 3) : 0
   const yearFees: Record<number, number> = {
     1: student.program.year1Fee.toNumber(),
     2: student.program.year2Fee.toNumber(),
@@ -83,7 +82,36 @@ export default async function StudentDetailPage({
     : null
   const offerExpired = daysLeft !== null && daysLeft < 0
 
-  // FIFO schedule rows
+  // Compute per-installment fees from current fee scheme (not stale inst.amount)
+  const isSpreadOffer = (c: unknown) =>
+    c == null || typeof c !== "object" || (c as Record<string, unknown>).spreadAcrossYears !== false
+  const spreadOfferWaiver = student.offers
+    .filter(o => isSpreadOffer((o.offer as { conditions: unknown }).conditions))
+    .reduce((s, o) => s + Number(o.waiverAmount), 0)
+  const onetimeOfferWaiver = student.offers
+    .filter(o => !isSpreadOffer((o.offer as { conditions: unknown }).conditions))
+    .reduce((s, o) => s + Number(o.waiverAmount), 0)
+  const spreadSchWaiver = student.scholarships
+    .filter(sc => (sc.scholarship as { spreadAcrossYears: boolean }).spreadAcrossYears !== false)
+    .reduce((s, sc) => s + Number(sc.amount), 0)
+  const onetimeSchWaiver = student.scholarships
+    .filter(sc => (sc.scholarship as { spreadAcrossYears: boolean }).spreadAcrossYears === false)
+    .reduce((s, sc) => s + Number(sc.amount), 0)
+  const schemeSpreadPerYear = Math.round((spreadOfferWaiver + spreadSchWaiver) / 3)
+  const schemeOnetimeTotal = onetimeOfferWaiver + onetimeSchWaiver
+
+  // Expected fee for a given installment year under the current scheme
+  const expectedInstFee = (year: number, instAmount: number): number => {
+    if (year === 0) return regFeeAmount
+    if (fin?.installmentType === "ANNUAL") {
+      const base = yearFees[year] ?? 0
+      return Math.max(0, Math.round(base - schemeSpreadPerYear - (year === 1 ? schemeOnetimeTotal : 0)))
+    }
+    // ONE_TIME or CUSTOM: use stored amount (custom plans are admin-set)
+    return instAmount
+  }
+
+  // FIFO: walk installments in year order, allocate payments against scheme fees
   const sortedInstsForSchedule = [...student.installments].sort((a, b) => a.year - b.year)
   let fifoRemaining = totalPaid
   let syntheticRegFifo: { fee: number; received: number; pending: number } | null = null
@@ -94,7 +122,7 @@ export default async function StudentDetailPage({
     syntheticRegFifo = { fee, received, pending: Math.max(0, fee - received) }
   }
   const scheduleRows = sortedInstsForSchedule.map(inst => {
-    const fee = Number(inst.amount)
+    const fee = expectedInstFee(inst.year, Number(inst.amount))
     const received = Math.min(fifoRemaining, fee)
     fifoRemaining -= received
     return { inst, fee, received, pending: Math.max(0, fee - received) }
@@ -389,12 +417,6 @@ export default async function StudentDetailPage({
                     <span className="font-bold text-emerald-600">−{formatINR(fin.totalWaiver)}</span>
                   </div>
                 )}
-                {fin.totalDeduction.toNumber() > 0 && student.deductions.length === 0 && (
-                  <div className="flex justify-between text-xs pl-2 border-l-2 border-slate-200">
-                    <span className="font-semibold text-slate-500 italic">Fixed Deductions</span>
-                    <span className="font-bold text-rose-600">−{formatINR(fin.totalDeduction)}</span>
-                  </div>
-                )}
                 <div className="flex justify-between border-t border-slate-100 pt-2">
                   <span className="text-sm font-bold text-slate-700">Net fee</span>
                   <span className="text-base font-black text-indigo-600">{formatINR(fin.netFee)}</span>
@@ -544,8 +566,10 @@ export default async function StudentDetailPage({
                     {scheduleRows.map(({ inst, fee, received, pending }) => {
                       const style = formatInstallmentStatus(inst.status)
                       const isPaid = inst.status === "PAID" || inst.status === "PARTIAL"
-                      const impliedWaiver = fin?.installmentType === "ANNUAL" && inst.year > 0 && yearFees[inst.year]
-                        ? Math.round(yearFees[inst.year] - fee)
+                      // Build breakdown lines for ANNUAL years only
+                      const isAnnualYear = fin?.installmentType === "ANNUAL" && inst.year > 0 && yearFees[inst.year]
+                      const totalWaiverForYear = isAnnualYear
+                        ? schemeSpreadPerYear + (inst.year === 1 ? schemeOnetimeTotal : 0)
                         : 0
                       return (
                         <tr key={inst.id}>
@@ -560,11 +584,11 @@ export default async function StudentDetailPage({
                           </td>
                           <td className="px-4 py-4 text-right">
                             <p className="font-extrabold text-slate-800">{formatINR(fee)}</p>
-                            {impliedWaiver > 0 && (
+                            {isAnnualYear && totalWaiverForYear > 0 && (
                               <p className="text-[10px] text-slate-400 mt-0.5">
                                 {formatINR(yearFees[inst.year])}
                                 {" − "}
-                                <span className="text-emerald-600">{formatINR(impliedWaiver)} waiver</span>
+                                <span className="text-emerald-600">{formatINR(totalWaiverForYear)} waiver</span>
                               </p>
                             )}
                             <p className="text-[10px] text-slate-400 mt-0.5">
