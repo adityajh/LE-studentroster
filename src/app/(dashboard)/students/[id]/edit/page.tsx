@@ -3,6 +3,7 @@ import Link from "next/link"
 import { auth } from "@/auth"
 import { getStudentById } from "@/lib/students"
 import { EditStudentForm } from "@/components/students/edit-student-form"
+import { DocumentUpload } from "@/components/students/document-upload"
 import { prisma } from "@/lib/prisma"
 
 export default async function EditStudentPage({
@@ -69,6 +70,22 @@ export default async function EditStudentPage({
             </div>
           ))}
         </div>
+      </div>
+
+      {/* Documents */}
+      <div>
+        <h2 className="text-base font-extrabold text-slate-800 mb-3">Documents</h2>
+        <DocumentUpload
+          studentId={student.id}
+          documents={student.documents.map((d) => ({
+            id: d.id,
+            type: d.type,
+            fileName: d.fileName,
+            fileUrl: d.fileUrl,
+            fileSize: d.fileSize,
+            uploadedAt: d.uploadedAt,
+          }))}
+        />
       </div>
 
       <EditStudentForm

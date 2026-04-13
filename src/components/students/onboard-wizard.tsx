@@ -309,7 +309,7 @@ export function OnboardWizard({
             <p className="text-sm text-slate-500 mt-0.5">Upload the student&apos;s documents. Required documents are marked with *.</p>
           </div>
 
-          <input ref={fileInputRef} type="file" accept=".pdf,.jpg,.jpeg,.png" className="hidden"
+          <input ref={fileInputRef} type="file" accept=".pdf,.jpg,.jpeg,.png,.tif,.tiff" className="hidden"
             onChange={handleFileChange} />
 
           <div className="bg-white border border-slate-200 rounded-2xl divide-y divide-slate-100 shadow-sm overflow-hidden">

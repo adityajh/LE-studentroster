@@ -219,7 +219,7 @@ export function DocumentUpload({
                 <input
                   ref={(el) => { inputRefs.current[value] = el }}
                   type="file"
-                  accept=".pdf,.jpg,.jpeg,.png,.webp"
+                  accept=".pdf,.jpg,.jpeg,.png,.tif,.tiff"
                   className="hidden"
                   onChange={(e) => {
                     const file = e.target.files?.[0]

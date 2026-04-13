@@ -202,7 +202,7 @@ function DocumentUploadCard({
             }`}>
               {uploading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Upload className="h-3.5 w-3.5" />}
               {uploading ? "Uploading…" : existing ? "Replace" : "Upload"}
-              <input type="file" className="hidden" onChange={handleFileChange} accept=".pdf,.jpg,.jpeg,.png" />
+              <input type="file" className="hidden" onChange={handleFileChange} accept=".pdf,.jpg,.jpeg,.png,.tif,.tiff" />
             </label>
           )}
         </div>
