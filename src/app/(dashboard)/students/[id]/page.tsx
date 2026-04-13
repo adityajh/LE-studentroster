@@ -14,7 +14,7 @@ import { SendOfferButton } from "@/components/students/send-offer-button"
 import { cn } from "@/lib/utils"
 import { auth } from "@/auth"
 import { prisma } from "@/lib/prisma"
-import { Phone, Mail, Calendar, MapPin, Users, Droplets, Pencil, Bell, FileText, History, Trash2, AlertTriangle, Wallet, Clock } from "lucide-react"
+import { Phone, Mail, Calendar, MapPin, Users, Droplets, Pencil, Bell, FileText, History, Trash2, AlertTriangle, Wallet, Clock, GraduationCap, Linkedin, Instagram } from "lucide-react"
 import { DeleteStudentButton } from "@/components/students/delete-student-button"
 
 export default async function StudentDetailPage({
@@ -295,6 +295,38 @@ export default async function StudentDetailPage({
                   </div>
                   {student.localGuardianPhone && <p className="text-xs font-medium text-slate-500 pl-5">{student.localGuardianPhone}</p>}
                   {student.localGuardianEmail && <p className="text-xs font-medium text-slate-500 pl-5">{student.localGuardianEmail}</p>}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Social & University */}
+          {(student.universityChoice || student.linkedinHandle || student.instagramHandle) && (
+            <div className="bg-white border border-slate-200/50 rounded-2xl shadow-sm p-5 space-y-3">
+              <p className="text-[10px] uppercase tracking-widest font-bold text-slate-400">Social & University</p>
+              {student.universityChoice && (
+                <div className="flex items-center gap-2.5">
+                  <GraduationCap className="h-4 w-4 text-slate-400 shrink-0" />
+                  <div>
+                    <p className="text-sm font-bold text-slate-700">{student.universityChoice}</p>
+                    {student.universityStatus && (
+                      <p className="text-xs font-medium text-emerald-600 mt-0.5">{student.universityStatus}</p>
+                    )}
+                  </div>
+                </div>
+              )}
+              {student.linkedinHandle && (
+                <div className="flex items-center gap-2.5">
+                  <Linkedin className="h-4 w-4 text-[#0A66C2] shrink-0" />
+                  <a href={student.linkedinHandle} target="_blank" rel="noopener noreferrer" className="text-sm font-medium text-[#0A66C2] hover:underline truncate">
+                    {student.linkedinHandle.replace(/^https?:\/\/(www\.)?linkedin\.com\/in\//, "").replace(/\?.*$/, "").replace(/\/$/, "")}
+                  </a>
+                </div>
+              )}
+              {student.instagramHandle && (
+                <div className="flex items-center gap-2.5">
+                  <Instagram className="h-4 w-4 text-pink-500 shrink-0" />
+                  <span className="text-sm font-medium text-slate-700">{student.instagramHandle}</span>
                 </div>
               )}
             </div>

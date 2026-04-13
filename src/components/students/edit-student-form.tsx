@@ -28,6 +28,10 @@ type Student = {
   localGuardianName: string | null
   localGuardianPhone: string | null
   localGuardianEmail: string | null
+  linkedinHandle: string | null
+  instagramHandle: string | null
+  universityChoice: string | null
+  universityStatus: string | null
   financial: {
     baseFee: any
     netFee: any
@@ -129,6 +133,12 @@ export function EditStudentForm({
   const [address, setAddress] = useState(student.address ?? "")
   const [localAddressDifferent, setLocalAddressDifferent] = useState(!!student.localAddress)
   const [localAddress, setLocalAddress] = useState(student.localAddress ?? "")
+
+  // ── Social & University ──
+  const [linkedinHandle, setLinkedinHandle] = useState(student.linkedinHandle ?? "")
+  const [instagramHandle, setInstagramHandle] = useState(student.instagramHandle ?? "")
+  const [universityChoice, setUniversityChoice] = useState(student.universityChoice ?? "")
+  const [universityStatus, setUniversityStatus] = useState(student.universityStatus ?? "")
 
   // ── Parents & Guardian ──
   const [parent1Name, setParent1Name] = useState(student.parent1Name ?? "")
@@ -235,6 +245,10 @@ export function EditStudentForm({
           localGuardianName:  localGuardianName  || null,
           localGuardianPhone: localGuardianPhone || null,
           localGuardianEmail: localGuardianEmail || null,
+          linkedinHandle:     linkedinHandle     || null,
+          instagramHandle:    instagramHandle    || null,
+          universityChoice:   universityChoice   || null,
+          universityStatus:   universityStatus   || null,
           baseFee:            isAdmin ? baseFee : undefined,
           registrationFee:    isAdmin && feeReg !== "" ? computedReg : undefined,
           customTerms:        isAdmin ? customTerms : undefined,
@@ -290,7 +304,26 @@ export function EditStudentForm({
         </div>
       </div>
 
-      {/* Section 2 — Address, Parents & Guardian */}
+      {/* Section 2 — Social & University */}
+      <div className="bg-white border border-slate-200/50 rounded-2xl shadow-sm p-6 space-y-4">
+        <p className="text-[10px] uppercase tracking-widest font-bold text-slate-400">Social & University</p>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <Field label="University / College">
+            <input value={universityChoice} onChange={(e) => setUniversityChoice(e.target.value)} placeholder="e.g. DY Patil" className={inputCls} />
+          </Field>
+          <Field label="University Status">
+            <input value={universityStatus} onChange={(e) => setUniversityStatus(e.target.value)} placeholder="e.g. Admission Done" className={inputCls} />
+          </Field>
+          <Field label="LinkedIn Handle" span2>
+            <input value={linkedinHandle} onChange={(e) => setLinkedinHandle(e.target.value)} placeholder="https://linkedin.com/in/…" className={inputCls} />
+          </Field>
+          <Field label="Instagram Handle" span2>
+            <input value={instagramHandle} onChange={(e) => setInstagramHandle(e.target.value)} placeholder="@username" className={inputCls} />
+          </Field>
+        </div>
+      </div>
+
+      {/* Section 3 — Address, Parents & Guardian */}
       <div className="bg-white border border-slate-200/50 rounded-2xl shadow-sm p-6 space-y-5">
         <p className="text-[10px] uppercase tracking-widest font-bold text-slate-400">Address, Parents & Guardian</p>
 

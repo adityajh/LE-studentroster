@@ -33,6 +33,7 @@ export async function PATCH(
     firstName, lastName, email, contact, bloodGroup, city, address, localAddress,
     parent1Name, parent1Email, parent1Phone, parent2Name, parent2Email, parent2Phone,
     localGuardianName, localGuardianPhone, localGuardianEmail,
+    linkedinHandle, instagramHandle, universityChoice, universityStatus,
     baseFee, customTerms,
     registrationFee, // optional registration fee override → updates depositAmount + year=0 installment
     // Financial plan updates (Admin only)
@@ -155,6 +156,10 @@ export async function PATCH(
           firstName, lastName, name, email, contact, bloodGroup, city, address, localAddress,
           parent1Name, parent1Email, parent1Phone, parent2Name, parent2Email, parent2Phone,
           localGuardianName, localGuardianPhone, localGuardianEmail,
+          linkedinHandle: linkedinHandle ?? undefined,
+          instagramHandle: instagramHandle ?? undefined,
+          universityChoice: universityChoice ?? undefined,
+          universityStatus: universityStatus ?? undefined,
         },
       })
 

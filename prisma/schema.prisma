@@ -197,13 +197,14 @@ model Offer {
 }
 
 model Scholarship {
-  id            String              @id @default(cuid())
-  feeScheduleId String
-  category      ScholarshipCategory
-  name          String
-  minAmount     Decimal             @db.Decimal(12, 2)
-  maxAmount     Decimal             @db.Decimal(12, 2)
-  createdAt     DateTime            @default(now())
+  id                String              @id @default(cuid())
+  feeScheduleId     String
+  category          ScholarshipCategory
+  name              String
+  minAmount         Decimal             @db.Decimal(12, 2)
+  maxAmount         Decimal             @db.Decimal(12, 2)
+  spreadAcrossYears Boolean             @default(true)
+  createdAt         DateTime            @default(now())
 
   feeSchedule         FeeSchedule          @relation(fields: [feeScheduleId], references: [id])
   studentScholarships StudentScholarship[]
@@ -232,6 +233,13 @@ model Student {
   localGuardianName  String?
   localGuardianPhone String?
   localGuardianEmail String?
+
+  // Social & University
+  linkedinHandle   String?  @db.Text
+  instagramHandle  String?
+  universityChoice String?
+  universityStatus String?
+
   batchId        String
   programId      String
   enrollmentDate DateTime      @default(now())
