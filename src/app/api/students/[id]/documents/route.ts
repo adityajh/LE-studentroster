@@ -51,7 +51,10 @@ export async function POST(
     await prisma.studentDocument.delete({ where: { id: existing.id } })
   }
 
-  const safeName = file.name.replace(/[^a-zA-Z0-9.\-_]/g, "-").replace(/-+/g, "-")
+  const safeName = file.name
+    .replace(/[^a-zA-Z0-9._-]/g, "-")
+    .replace(/-{2,}/g, "-")
+    .replace(/^-|-$/g, "")
   const blob = await put(
     `students/${studentId}/${docType}/${safeName}`,
     file,

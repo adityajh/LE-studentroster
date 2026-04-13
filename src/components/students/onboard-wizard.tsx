@@ -7,9 +7,10 @@ import { cn } from "@/lib/utils"
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
-type DocumentType = "TENTH_MARKSHEET" | "TWELFTH_MARKSHEET" | "ACCEPTANCE_LETTER" | "AADHAR_CARD" | "DRIVERS_LICENSE"
+type DocumentType = "STUDENT_PHOTO" | "TENTH_MARKSHEET" | "TWELFTH_MARKSHEET" | "ACCEPTANCE_LETTER" | "AADHAR_CARD" | "DRIVERS_LICENSE"
 
 const DOCUMENT_TYPES: { type: DocumentType; label: string; required: boolean }[] = [
+  { type: "STUDENT_PHOTO",     label: "Student Photo",      required: false },
   { type: "TENTH_MARKSHEET",   label: "10th Marksheet",     required: true },
   { type: "TWELFTH_MARKSHEET", label: "12th Marksheet",     required: true },
   { type: "AADHAR_CARD",       label: "Aadhar Card",        required: true },
@@ -407,13 +408,20 @@ export function OnboardWizard({
 
             {error && <p className="text-sm text-rose-600 bg-rose-50 border border-rose-200 rounded-lg px-3 py-2">{error}</p>}
 
-            <button type="button" onClick={handleSendEmail} disabled={sending}
-              className="w-full flex items-center justify-center gap-2 py-2.5 bg-indigo-600 text-white text-sm font-bold rounded-xl hover:bg-indigo-700 disabled:opacity-60">
-              {sending
-                ? <><Loader2 className="w-4 h-4 animate-spin" /> Sending…</>
-                : <><Send className="w-4 h-4" />{emailSent ? "Complete Onboarding" : "Send Onboarding Email"}</>
-              }
-            </button>
+            {emailSent ? (
+              <button type="button" onClick={() => router.push(`/students/${studentId}`)}
+                className="w-full flex items-center justify-center gap-2 py-2.5 bg-emerald-600 text-white text-sm font-bold rounded-xl hover:bg-emerald-700">
+                <CheckCircle2 className="w-4 h-4" /> Complete Onboarding
+              </button>
+            ) : (
+              <button type="button" onClick={handleSendEmail} disabled={sending}
+                className="w-full flex items-center justify-center gap-2 py-2.5 bg-indigo-600 text-white text-sm font-bold rounded-xl hover:bg-indigo-700 disabled:opacity-60">
+                {sending
+                  ? <><Loader2 className="w-4 h-4 animate-spin" /> Sending…</>
+                  : <><Send className="w-4 h-4" /> Send Onboarding Email</>
+                }
+              </button>
+            )}
           </div>
 
           <div className="flex justify-between">
@@ -421,10 +429,13 @@ export function OnboardWizard({
               className="flex items-center gap-1.5 px-4 py-2.5 border border-slate-200 text-slate-600 text-sm font-medium rounded-xl hover:bg-slate-50">
               <ChevronLeft className="w-4 h-4" /> Back
             </button>
-            <a href={`/students/${studentId}`}
-              className="flex items-center gap-1.5 px-5 py-2.5 bg-slate-900 text-white text-sm font-semibold rounded-xl hover:bg-slate-700">
-              Back to Profile
-            </a>
+            {emailSent && (
+              <button type="button" onClick={handleSendEmail} disabled={sending}
+                className="flex items-center gap-1.5 px-4 py-2.5 border border-slate-200 text-slate-500 text-sm font-medium rounded-xl hover:bg-slate-50 disabled:opacity-50">
+                {sending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+                Resend Email
+              </button>
+            )}
           </div>
         </div>
       )}
