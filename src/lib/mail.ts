@@ -461,7 +461,18 @@ export type EnrolmentConfirmationEmailPayload = {
   onboardingUrl: string
   onboardingExpiresAt: Date
   feeLetterPdf: Buffer
+  bodyText?: string   // from SystemSetting ENROLMENT_CONFIRMATION_EMAIL_BODY
 }
+
+const DEFAULT_ENROLMENT_CONFIRMATION_BODY = `Dear {{studentName}},
+
+Congratulations! Your enrolment in {{programName}} at Let's Enterprise is now confirmed.
+
+Your Roll Number: {{rollNo}}
+
+Your personalised fee structure is attached to this email. Please review it carefully.
+
+As the next step, please complete your profile using the link below. This link is valid until {{onboardingExpiryDate}}.`
 
 export async function sendEnrolmentConfirmationEmail(payload: EnrolmentConfirmationEmailPayload): Promise<SendResult> {
   if (!payload.to.length) return { ok: false, skipped: true, reason: "No recipient email" }
@@ -473,16 +484,20 @@ export async function sendEnrolmentConfirmationEmail(payload: EnrolmentConfirmat
     day: "numeric", month: "long", year: "numeric",
   })
 
+  const rawBody = (payload.bodyText || DEFAULT_ENROLMENT_CONFIRMATION_BODY)
+    .replace(/{{studentName}}/g, payload.studentName)
+    .replace(/{{programName}}/g, payload.programName)
+    .replace(/{{rollNo}}/g, payload.rollNo)
+    .replace(/{{onboardingExpiryDate}}/g, expiry)
+    .replace(/</g, "&lt;").replace(/>/g, "&gt;")
+    .replace(/\n/g, "<br/>")
+
   const html = `<!DOCTYPE html>
 <html>
 <head><meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1.0" /></head>
 <body style="margin:0;padding:24px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:#333;font-size:15px;line-height:1.6;background:#fff;">
   ${EMAIL_HEADER}
-  <p>Dear ${payload.studentName},</p>
-  <p>Congratulations! Your enrolment in <strong>${payload.programName}</strong> at Let's Enterprise is now confirmed.</p>
-  <p><strong>Your Roll Number:</strong> ${payload.rollNo}</p>
-  <p>Your personalised fee structure is attached to this email. Please review it carefully.</p>
-  <p>As the next step, please complete your profile using the link below. This link is valid until <strong>${expiry}</strong>.</p>
+  <div>${rawBody}</div>
   <div style="margin:28px 0;text-align:center;">
     <a href="${payload.onboardingUrl}" style="display:inline-block;background:#3663AD;color:#ffffff;font-weight:700;font-size:14px;padding:14px 32px;border-radius:8px;text-decoration:none;letter-spacing:0.02em;">
       Complete Your Profile →
@@ -526,7 +541,14 @@ export type OnboardingLinkEmailPayload = {
   programName: string
   onboardingUrl: string  // full URL with token
   expiresAt: Date
+  bodyText?: string      // from SystemSetting SELF_ONBOARDING_LINK_EMAIL_BODY
 }
+
+const DEFAULT_ONBOARDING_LINK_BODY = `Dear {{studentName}},
+
+Congratulations on your enrolment in {{programName}} at Let's Enterprise. You're one step away from completing your profile.
+
+Please click the button below to fill in your details. The link expires on {{onboardingExpiryDate}}.`
 
 export async function sendOnboardingLinkEmail(payload: OnboardingLinkEmailPayload): Promise<SendResult> {
   if (!payload.to.length) return { ok: false, skipped: true, reason: "No recipient email" }
@@ -538,14 +560,19 @@ export async function sendOnboardingLinkEmail(payload: OnboardingLinkEmailPayloa
     day: "numeric", month: "long", year: "numeric",
   })
 
+  const rawBody = (payload.bodyText || DEFAULT_ONBOARDING_LINK_BODY)
+    .replace(/{{studentName}}/g, payload.studentName)
+    .replace(/{{programName}}/g, payload.programName)
+    .replace(/{{onboardingExpiryDate}}/g, expiry)
+    .replace(/</g, "&lt;").replace(/>/g, "&gt;")
+    .replace(/\n/g, "<br/>")
+
   const html = `<!DOCTYPE html>
 <html>
 <head><meta charset="utf-8" /></head>
 <body style="margin:0;padding:24px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:#333;font-size:15px;line-height:1.6;background:#fff;">
   ${EMAIL_HEADER}
-  <p>Dear ${payload.studentName},</p>
-  <p>Congratulations on your enrolment in <strong>${payload.programName}</strong> at Let's Enterprise. You're one step away from completing your profile.</p>
-  <p>Please click the button below to fill in your details. The link expires on <strong>${expiry}</strong>.</p>
+  <div>${rawBody}</div>
   <div style="margin:28px 0;text-align:center;">
     <a href="${payload.onboardingUrl}" style="display:inline-block;background:#3663AD;color:#ffffff;font-weight:700;font-size:14px;padding:14px 32px;border-radius:8px;text-decoration:none;letter-spacing:0.02em;">
       Complete Your Profile →

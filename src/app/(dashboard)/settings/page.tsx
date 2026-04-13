@@ -24,8 +24,8 @@ const TABS = [
   { id: "team",      label: "Team",      icon: Users },
   { id: "api-keys",  label: "API Keys",  icon: Key },
   { id: "email",     label: "Email",     icon: Mail },
-  { id: "proposal",  label: "Proposal",  icon: FileText },
-  { id: "offers",    label: "Offers",    icon: Send },
+  { id: "tcs",       label: "T&C's",     icon: FileText },
+  { id: "emails",    label: "Emails",    icon: Send },
   { id: "reminders", label: "Reminders", icon: Bell },
 ] as const
 
@@ -46,17 +46,20 @@ export default async function SettingsPage({
   if (dbUser?.role !== "ADMIN") redirect("/dashboard")
 
   // Load data for each tab
-  const [members, apiKeys, emailSettings, terms, offerSettings, reminderSettings, lastRunRaw] = await Promise.all([
+  const [members, apiKeys, emailSettings, terms, termsChangelog, offerSettings, reminderSettings, lastRunRaw] = await Promise.all([
     getTeamMembers(),
     getApiKeys(),
     getSettings(["SMTP_USER", "SMTP_PASSWORD", "SMTP_FROM_NAME", "SMTP_FROM_EMAIL", "REMINDER_PAYMENT_URL"]),
     getSetting("PROPOSAL_TERMS", DEFAULT_TERMS),
+    getSetting("PROPOSAL_TERMS_CHANGELOG", "[]"),
     getSettings([
       "OFFER_EMAIL_BODY",
       "OFFER_LETTER_BODY",
       "OFFER_REMINDER_1_BODY",
       "OFFER_REMINDER_2_BODY",
       "ONBOARDING_EMAIL_BODY",
+      "ENROLMENT_CONFIRMATION_EMAIL_BODY",
+      "SELF_ONBOARDING_LINK_EMAIL_BODY",
       "BANK_DETAILS",
       "ONBOARDING_HANDBOOK_URL",
       "ONBOARDING_WELCOME_KIT_URL",
@@ -118,22 +121,24 @@ export default async function SettingsPage({
           />
         )}
 
-        {activeTab === "proposal" && (
-          <ProposalSettings initialTerms={terms} />
+        {activeTab === "tcs" && (
+          <ProposalSettings initialTerms={terms} initialChangelog={termsChangelog} />
         )}
 
-        {activeTab === "offers" && (
+        {activeTab === "emails" && (
           <OfferSettings
             initial={{
-              offerEmailBody:     offerSettings["OFFER_EMAIL_BODY"] || "",
-              offerLetterBody:    offerSettings["OFFER_LETTER_BODY"] || "",
-              offerReminder1Body: offerSettings["OFFER_REMINDER_1_BODY"] || "",
-              offerReminder2Body: offerSettings["OFFER_REMINDER_2_BODY"] || "",
-              onboardingEmailBody:offerSettings["ONBOARDING_EMAIL_BODY"] || "",
-              bankDetails:        offerSettings["BANK_DETAILS"] || "",
-              handbookUrl:        offerSettings["ONBOARDING_HANDBOOK_URL"] || "",
-              welcomeKitUrl:      offerSettings["ONBOARDING_WELCOME_KIT_URL"] || "",
-              year1Url:           offerSettings["ONBOARDING_YEAR1_URL"] || "",
+              offerEmailBody:                    offerSettings["OFFER_EMAIL_BODY"] || "",
+              offerLetterBody:                   offerSettings["OFFER_LETTER_BODY"] || "",
+              offerReminder1Body:                offerSettings["OFFER_REMINDER_1_BODY"] || "",
+              offerReminder2Body:                offerSettings["OFFER_REMINDER_2_BODY"] || "",
+              onboardingEmailBody:               offerSettings["ONBOARDING_EMAIL_BODY"] || "",
+              enrolmentConfirmationEmailBody:    offerSettings["ENROLMENT_CONFIRMATION_EMAIL_BODY"] || "",
+              selfOnboardingLinkEmailBody:       offerSettings["SELF_ONBOARDING_LINK_EMAIL_BODY"] || "",
+              bankDetails:                       offerSettings["BANK_DETAILS"] || "",
+              handbookUrl:                       offerSettings["ONBOARDING_HANDBOOK_URL"] || "",
+              welcomeKitUrl:                     offerSettings["ONBOARDING_WELCOME_KIT_URL"] || "",
+              year1Url:                          offerSettings["ONBOARDING_YEAR1_URL"] || "",
             }}
           />
         )}

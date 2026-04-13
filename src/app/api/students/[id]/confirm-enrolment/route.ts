@@ -270,8 +270,11 @@ export async function POST(
       } catch { /* logo missing */ }
 
       const { ProposalDocument } = await import("@/lib/pdf-generator")
-      const terms = studentFull.financial?.customTerms
-        || await getSetting("PROPOSAL_TERMS", "All fees must be paid on or before the due date.")
+      const [terms, enrolmentConfirmationEmailBody] = await Promise.all([
+        studentFull.financial?.customTerms
+          || getSetting("PROPOSAL_TERMS", "All fees must be paid on or before the due date."),
+        getSetting("ENROLMENT_CONFIRMATION_EMAIL_BODY", ""),
+      ])
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const pdfBuffer = await renderToBuffer(createElement(ProposalDocument, { student: studentFull, terms, logoSrc }) as any)
 
@@ -304,6 +307,7 @@ export async function POST(
         onboardingUrl,
         onboardingExpiresAt: expiresAt,
         feeLetterPdf: Buffer.from(pdfBuffer),
+        bodyText: enrolmentConfirmationEmailBody || undefined,
       })
     }
   } catch (err) {

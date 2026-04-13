@@ -11,7 +11,7 @@ export default async function NewOfferPage() {
     select: { role: true },
   })
 
-  if (dbUser?.role !== "ADMIN") redirect("/students")
+  if (!dbUser) redirect("/students")
 
   const batches = await getEnrollmentFormData()
 

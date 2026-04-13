@@ -11,7 +11,7 @@ export default async function NewStudentPage() {
     select: { role: true },
   })
 
-  if (dbUser?.role !== "ADMIN") {
+  if (!dbUser) {
     redirect("/students")
   }
 

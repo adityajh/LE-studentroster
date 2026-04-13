@@ -68,7 +68,7 @@ export default async function StudentsPage({
             {isOverdueTab ? " with overdue payments" : isOfferedTab ? " with pending offers" : isOnboardingTab ? " in onboarding" : " total"}
           </p>
         </div>
-        {isAdmin && (
+        {!!dbUser && (
           <div className="flex items-center gap-2">
             <Link href="/students/offer/new" className={cn(buttonVariants(), "bg-[#160E44] hover:bg-[#3663AD] text-white transition-colors duration-200")}>
               <Send className="h-4 w-4 mr-2" />

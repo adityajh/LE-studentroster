@@ -3,6 +3,7 @@ import { auth } from "@/auth"
 import { prisma } from "@/lib/prisma"
 import crypto from "crypto"
 import { sendOnboardingLinkEmail } from "@/lib/mail"
+import { getSetting } from "@/app/actions/settings"
 
 export async function POST(
   req: NextRequest,
@@ -46,12 +47,14 @@ export async function POST(
   const sendEmail = (await req.json().catch(() => ({}))).sendEmail !== false
 
   if (sendEmail && student.email) {
+    const selfOnboardingLinkEmailBody = await getSetting("SELF_ONBOARDING_LINK_EMAIL_BODY", "")
     await sendOnboardingLinkEmail({
       to: [student.email],
       studentName: student.name,
       programName: student.program.name,
       onboardingUrl,
       expiresAt,
+      bodyText: selfOnboardingLinkEmailBody || undefined,
     })
   }
 
