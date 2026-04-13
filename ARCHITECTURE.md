@@ -1,6 +1,6 @@
 # Architecture — LE Student Roster
 
-> Last updated: 2026-04-10 (v1.0.0, Phase 10 complete)
+> Last updated: 2026-04-13 (v1.3.0)
 
 ---
 
@@ -57,6 +57,7 @@ src/
     students.ts           — getStudents, getStudentById, getEnrollmentFormData, formatters
     mail.ts               — All email send functions (SMTP via SystemSetting or env)
     fee-schedule.ts       — formatINR, fee calculation helpers
+    fee-calc.ts           — Shared fee helpers: isSpreadCondition, splitWaivers
     pdf-generator.tsx     — Proposal PDF (react-pdf)
     receipt-pdf.tsx       — Payment receipt PDF (react-pdf)
     offer-letter-generator.tsx — Offer letter PDF (react-pdf)
@@ -65,7 +66,9 @@ src/
     utils.ts              — cn() tailwind merge
   components/
     students/             — RecordPaymentDialog, EnrollmentForm, CreateOfferForm,
-                            SendOfferButton, ConfirmEnrolmentDialog
+                            SendOfferButton, ConfirmEnrolmentDialog, EditStudentForm,
+                            HistoryTab, PaymentsTab, RemindersTab, ProposalTab
+    fee-schedule/         — FeeScheduleEditForm, NewFeeScheduleForm
     settings/             — TeamTab, ApiKeysTab, EmailTab, ProposalSettings, OfferSettings
     ui/                   — shadcn/ui components + brand components (Eyebrow, SoftCard, AdminCard)
 prisma/
@@ -93,13 +96,19 @@ Batch (year, name)
 
 ### Student Roster
 ```
-Student (rollNo?, name, email, contact, batchId, programId, status)
+Student (rollNo?, name, firstName?, lastName?, email, contact, batchId, programId, status)
+  ├── profile: bloodGroup, city, address, localAddress
+  ├── parents: parent1Name/Email/Phone, parent2Name/Email/Phone
+  ├── guardian: localGuardianName/Phone/Email
+  ├── social: linkedinHandle, instagramHandle, universityChoice, universityStatus
   ├── offer-window: offerSentAt, offerExpiresAt, offerReminder1SentAt,
   │                 offerReminder2SentAt, offerRevised, onboardingEmailSentAt
-  ├── StudentFinancial (baseFee, totalWaiver, netFee, installmentType, isLocked)
+  ├── StudentFinancial (baseFee, totalWaiver, totalDeduction, netFee,
+  │                     installmentType, customTerms, isLocked,
+  │                     registrationFeeOverride?, registrationPaid, registrationPaidDate?)
   ├── StudentOffer[] (offerId, waiverAmount)
   ├── StudentScholarship[] (scholarshipId, amount)
-  ├── StudentDeduction[] (description, amount)
+  ├── StudentDeduction[] (description, amount)  ← manual admin-only deductions
   ├── Installment[] (year, label, dueDate, amount, status, paidDate, paidAmount)
   │     ├── Payment[] (date, amount, paymentMode, referenceNo)
   │     └── ReminderLog[] (type, sentAt, readAt, emailStatus)
@@ -108,6 +117,8 @@ Student (rollNo?, name, email, contact, batchId, programId, status)
 ```
 
 `Student.rollNo` is **nullable** — assigned only when a student is confirmed enrolled (status transitions from `OFFERED` → `ACTIVE`). Roll number format: `LE{year}{seq}` e.g. `LE2026001`.
+
+`StudentFinancial.registrationFeeOverride` — admin can override the registration fee per-student (null = use `Program.registrationFee`). Stored separately so it can be pre-populated in the edit form and applied to the year=0 installment.
 
 ### Supporting tables
 - `ApiKey` — hashed API keys for external API access
@@ -121,9 +132,48 @@ Student (rollNo?, name, email, contact, batchId, programId, status)
 | `InstallmentStatus` | `UPCOMING` → `DUE` → `OVERDUE` / `PARTIAL` / `PAID` |
 | `InstallmentType` | `ONE_TIME`, `ANNUAL`, `CUSTOM` |
 | `OfferType` | `FIRST_N_REGISTRATIONS`, `EARLY_BIRD`, `ACCEPTANCE_7DAY`, `FULL_PAYMENT` |
-| `ScholarshipCategory` | `A` (merit, variable), `B` (circumstantial, flat ₹25K) |
+| `ScholarshipCategory` | `A` (merit, variable amount), `B` (circumstantial, flat ₹25K) |
+| `Role` | `ADMIN`, `STAFF` |
 | `PaymentMode` | `CASH`, `CHEQUE`, `NEFT`, `UPI`, `RTGS`, `OTHER` |
 | `DocumentType` | `STUDENT_PHOTO`, `TENTH_MARKSHEET`, `TWELFTH_MARKSHEET`, `ACCEPTANCE_LETTER`, `AADHAR_CARD`, `DRIVERS_LICENSE` |
+
+---
+
+## Fee Calculation
+
+All fee math is centralised in `src/lib/fee-calc.ts`.
+
+### `splitWaivers(offers, scholarships)`
+
+Splits waivers into spread-per-year and one-time-year-1 amounts:
+
+```
+spreadPerYear = round((spreadOfferWaiver + spreadSchWaiver) / 3)
+onetimeTotal  = onetimeOfferWaiver + onetimeSchWaiver
+```
+
+An offer is **spread** when `Offer.conditions` is null or has no `spreadAcrossYears: false` flag. A scholarship is **spread** when `Scholarship.spreadAcrossYears = true`.
+
+### ANNUAL installment formula
+
+```
+Year 0 (Registration) = registrationFeeOverride ?? program.registrationFee
+Year 1                = max(0, program.year1Fee − spreadPerYear − onetimeTotal − totalDeductions)
+Year 2                = max(0, program.year2Fee − spreadPerYear)
+Year 3                = max(0, program.year3Fee − spreadPerYear)
+```
+
+`totalDeductions` = sum of all `StudentDeduction.amount` records. Applied to Year 1 only.
+
+### Outstanding
+
+`outstanding = max(0, StudentFinancial.netFee − totalPaid)`
+
+`netFee = baseFee − totalWaiver − totalDeduction` (computed and stored at save time).
+
+### Schedule tab (display-only)
+
+Fees are recomputed from the live scheme on every page render via `expectedInstFee()` — this ensures the display is always correct even if DB installment amounts are stale. FIFO allocation walks installments in year order (0→1→2→3), allocating `min(remaining, fee)` to each row.
 
 ---
 
@@ -175,8 +225,9 @@ Direct enrolment path (`/students/new`) still exists for retroactive entries —
 | GET | `/api/students/[id]/pay/[paymentId]/receipt` | Generate receipt PDF |
 | GET | `/api/students/[id]/proposal` | Generate proposal PDF or DOCX |
 | POST | `/api/students/[id]/documents` | Upload document to Vercel Blob |
+| POST | `/api/fee-schedule/create` | Create a new batch with programs, offers, scholarships |
 | POST | `/api/fee-schedule/lock` | Lock/unlock fee schedule |
-| POST | `/api/fee-schedule/update` | Update fee schedule |
+| POST | `/api/fee-schedule/update` | Update programs, offers, scholarships for a batch |
 | GET | `/api/audit-logs` | Global audit log (admin) |
 
 ### Cron (Bearer token)
@@ -279,3 +330,6 @@ Email body templates support merge fields: `{{studentName}}`, `{{programName}}`,
 - **Decimal fields** — Prisma `Decimal` fields are passed as plain JS numbers; never import `Decimal` from `@prisma/client/runtime/library`.
 - **Nullable `rollNo`** — `Student.rollNo` is `String? @unique`. Always guard display with `rollNo ?? "—"` or `rollNo ?? "Pending Enrolment"`.
 - **Financial locking** — `StudentFinancial.isLocked = true` after enrolment confirmation. Mutations to locked records require admin role + audit log entry with reason.
+- **Fee calculation** — all waiver-split logic lives in `src/lib/fee-calc.ts` (`isSpreadCondition`, `splitWaivers`). Never inline the spread/one-time formula in routes or components.
+- **Outstanding** — always compute as `max(0, netFee − totalPaid)`. Never sum installment amounts for this — they may not match `netFee` (deductions are not distributed to all installments).
+- **Schedule display** — always recompute per-installment fees from the live scheme via `expectedInstFee()` on the detail page; don't trust `inst.amount` for display (it may be stale from before a financial plan edit).

@@ -4,6 +4,52 @@ All notable changes to the LE Student Roster system are documented here.
 
 ---
 
+## [1.3.0] — 2026-04-13
+
+### Fee Calculation Correctness, Schedule Tab Redesign & Form Persistence
+
+#### Fixed
+- **Outstanding amount** — was summing non-PAID `installment.amount` values, which never included manual deductions; now computed as `max(0, netFee − totalPaid)` so deductions are always reflected
+- **Deductions in Schedule tab** — `expectedInstFee` for ANNUAL plans now subtracts `StudentDeduction` total from Year 1; PATCH route installment redistribution does the same so DB values stay in sync
+- **Fee breakdown tooltip** on Year 1 now shows offer waiver + one-time waiver + manual deductions as a single combined reduction line
+- **Admin financial plan form not pre-populating** — `registrationFeeOverride` is now loaded into the Registration Fee input when the edit form opens (was always blank before)
+- **Silent baseFee reset** — edit form previously sent `baseFee = programY1+Y2+Y3` on every admin save even if year fields were untouched, which could silently reset a custom baseFee; now only sends `baseFee` when a year fee field was explicitly changed
+- **`isFinancialChanged` reg fee comparison** — now compares against the stored initial override value instead of `""` so the "reason for change" prompt triggers correctly
+
+#### Added
+- **`registrationFeeOverride`** added to `Student.financial` type in `EditStudentForm` so the value flows through correctly
+
+---
+
+## [1.2.0] — 2026-04-13
+
+### Batch Management, Scholarship Spread, Student Profile & UX Polish
+
+#### Added
+- **New Batch page** (`/fee-schedule/new`) — single form to create a new batch with programs, offers, and scholarships in one step; duplicate year blocked with a 409 error
+- **Program management in fee schedule editor** — admin can add and remove programs from an existing batch; new programs get a `new-` prefix and are created on save; deleting a program with enrolled students shows a descriptive error
+- **Batch name field** on the New Batch form alongside Year; defaults to `"Batch {year}"` if left blank
+- **Batch filter dropdown** on the Students list page — filter by batch year alongside the existing program/status filters
+- **LinkedIn, Instagram, University Choice, University Status** fields on the Student model — shown in a "Social & University" card on student detail and editable in the edit form
+- **Schedule tab redesign** — replaced the old card layout with a clean table: Type / Fee (with breakdown + due date) / Received / Pending / Actions; default tab on student detail
+- **FIFO payment allocation** on Schedule tab — total payments walk through installments in year order (0→1→2→3); each row shows scheme-computed fee (not stale DB amount), amount received, and amount pending
+
+#### Fixed
+- **`spreadAcrossYears` on scholarships** — enroll, confirm-enrolment, and PATCH routes now correctly split scholarship waivers into spread-per-year vs one-time-year-1, matching how offers are handled
+- **Fee schedule create/update APIs** now persist `spreadAcrossYears` on scholarships
+- **Scholarship tab redesign** — now displayed as a table matching the offers layout; Year 1 deduction badge shown for one-time scholarships
+- **Offers condition display** — fee schedule view now shows "Spread" / "Year 1 Only" badges instead of raw JSON in the Condition column
+- **Schedule fees computed from live scheme** — `expectedInstFee()` computes from current offers/scholarships rather than stale `inst.amount` DB values (fixes cases where a fee edit left installment records stale)
+
+#### Refactored
+- **`src/lib/fee-calc.ts`** (new) — centralises `isSpreadCondition`, `splitWaivers` helpers; used by enroll, confirm-enrolment, PATCH route, and both client forms; eliminates 4 copies of the same waiver-split logic
+- Removed dead imports (`Trash2`, `AlertTriangle`, `DeleteStudentButton`) from student detail page
+- Removed unreachable `else if` branch in PATCH route
+- Fixed `HistoryTab` `AuditLog.role` type to use `Role` from `@prisma/client`
+- Fixed session `as any` cast in edit page — replaced with typed narrowing
+
+---
+
 ## [1.1.0] — 2026-04-11
 
 ### Fee Override & Spread Waiver Improvements
@@ -197,34 +243,10 @@ All notable changes to the LE Student Roster system are documented here.
 
 ---
 
-## Upcoming
+## Future Enhancements
 
-### [0.2.0] — Phase 2: Master Fee Schedule
-- Fee schedule list, detail, and edit pages
-- Admin lock/unlock with confirmation
-- External fee schedule API with API key auth
-
-### [0.3.0] — Phase 3: Student Roster & Enrollment
-- Student list with search and filters
-- Enrollment flow with offer/scholarship application and fee calculation
-- Installment schedule generation
-- External student roster API
-
-### [0.4.0] — Phase 4: Payment Tracking
-- Record payments per installment
-- Auto-status cron job (Upcoming → Due → Overdue)
-- Dashboard wired to live data
-
-### [0.5.0] — Phase 5: Email Reminders
-- Gmail integration
-- Automated reminders at 1 month, 1 week, and on due date
-- Reminder log per installment
-
-### [0.7.0] — Phase 7: Settings & Admin
-- Team member management
-- API key generation and management
-- Email and system configuration
-
-### [0.8.0] — Phase 8: Polish & Production
-- Error handling, loading states, mobile responsiveness
-- End-to-end production testing
+- **Razorpay integration** — auto-record payments via webhook
+- **Student portal** — read-only view for students to check payment status
+- **WhatsApp reminders** — via WhatsApp Business API
+- **Multi-year fee schedule comparison** — view fee changes across batches
+- **Bulk import** — CSV upload for existing students

@@ -301,6 +301,34 @@ New entries in **Settings → Email** tab:
 
 ---
 
+---
+
+## Phase 11: Batch & Fee Schedule Management ✅ COMPLETE
+
+> Goal: Admin can create and manage batches without touching seed files
+
+- [x] **11.1** New Batch page (`/fee-schedule/new`) — create a batch with programs, offers, and scholarships in a single form; duplicate year returns a 409 error; batch name defaults to `"Batch {year}"`
+- [x] **11.2** Program management in fee schedule editor — add / remove programs from existing batches; deleting a program with enrolled students blocked with a descriptive error
+- [x] **11.3** Offer condition display — fee schedule view shows "Spread" / "Year 1 Only" badges instead of raw JSON
+- [x] **11.4** `spreadAcrossYears` checkbox per scholarship in both new-batch and edit-fee-schedule forms
+- [x] **11.5** Batch filter dropdown on students list
+
+---
+
+## Phase 12: Fee Calculation Correctness & Schedule UX ✅ COMPLETE
+
+> Goal: All fee math is provably correct; schedule tab is the primary payment view
+
+- [x] **12.1** Centralise waiver-split logic in `src/lib/fee-calc.ts` (`isSpreadCondition`, `splitWaivers`)
+- [x] **12.2** ANNUAL redistribution in PATCH route uses `splitWaivers`; deductions subtracted from Year 1
+- [x] **12.3** Schedule tab redesigned — table layout (Type / Fee / Received / Pending / Actions); FIFO allocation from payments journal
+- [x] **12.4** Schedule fees computed from live scheme (`expectedInstFee`) — not stale DB amounts
+- [x] **12.5** Outstanding = `max(0, netFee − totalPaid)` — previously summed installment amounts, ignoring deductions
+- [x] **12.6** Admin financial plan form: registration fee pre-populated from `registrationFeeOverride`; `baseFee` only sent when year fields explicitly changed (prevents silent reset)
+- [x] **12.7** LinkedIn, Instagram, University Choice/Status fields on student profile
+
+---
+
 ## Pending (owner: Aditya)
 
 - [ ] Upload LE Logo / Letterhead for Proposal PDF (currently placeholder)
@@ -314,8 +342,6 @@ New entries in **Settings → Email** tab:
 ## Future Enhancements (post v1)
 
 - **Razorpay integration** — auto-record payments via webhook
-- **Bulk import** — CSV upload for existing 35 students
-- **Audit log** — track who changed what and when
 - **Student portal** — read-only view for students to check payment status
 - **WhatsApp reminders** — via WhatsApp Business API
 - **Multi-year fee schedule comparison** — view fee changes across batches
