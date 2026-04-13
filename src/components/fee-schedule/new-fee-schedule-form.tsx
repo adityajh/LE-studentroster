@@ -50,6 +50,7 @@ export function NewFeeScheduleForm() {
   const router = useRouter()
   const [saving, setSaving] = useState(false)
   const [year, setYear] = useState(String(new Date().getFullYear() + 1))
+  const [batchName, setBatchName] = useState("")
 
   const [programs, setPrograms] = useState<ProgramDraft[]>([
     { _key: "p1", name: "", registrationFee: "50000", year1Fee: "", year2Fee: "", year3Fee: "", targetStudents: "" },
@@ -100,7 +101,7 @@ export function NewFeeScheduleForm() {
       const res = await fetch("/api/fee-schedule/create", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ year, programs, offers, scholarships }),
+        body: JSON.stringify({ year, name: batchName || `Batch ${year}`, programs, offers, scholarships }),
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || "Failed")
@@ -116,12 +117,12 @@ export function NewFeeScheduleForm() {
 
   return (
     <div className="space-y-6">
-      {/* Batch year */}
+      {/* Batch details */}
       <Card className="shadow-sm">
         <CardHeader className="pb-3">
-          <CardTitle className="text-base">Batch Year</CardTitle>
+          <CardTitle className="text-base">Batch Details</CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="flex gap-4">
           <div className="w-48 space-y-1">
             <Label className="text-xs">Year</Label>
             <Input
@@ -129,6 +130,14 @@ export function NewFeeScheduleForm() {
               value={year}
               onChange={(e) => setYear(e.target.value)}
               placeholder="e.g. 2027"
+            />
+          </div>
+          <div className="flex-1 space-y-1">
+            <Label className="text-xs">Batch Name</Label>
+            <Input
+              value={batchName}
+              onChange={(e) => setBatchName(e.target.value)}
+              placeholder={`e.g. Batch ${year}`}
             />
           </div>
         </CardContent>

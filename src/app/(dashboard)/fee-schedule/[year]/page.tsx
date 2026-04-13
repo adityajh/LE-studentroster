@@ -161,9 +161,9 @@ export default async function FeeScheduleYearPage({
                     <TableCell className="text-sm font-medium text-slate-400">
                       {offer.deadline
                         ? new Date(offer.deadline).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })
-                        : offer.conditions
-                        ? JSON.stringify(offer.conditions)
-                        : "—"}
+                        : (offer.conditions as { spreadAcrossYears?: boolean } | null)?.spreadAcrossYears === false
+                        ? <span className="bg-amber-500/10 text-amber-700 border border-amber-500/20 text-[10px] uppercase tracking-wider font-bold px-2 py-1 rounded">One Time</span>
+                        : <span className="bg-emerald-500/10 text-emerald-700 border border-emerald-500/20 text-[10px] uppercase tracking-wider font-bold px-2 py-1 rounded">Yes</span>}
                     </TableCell>
                   </TableRow>
                 ))}

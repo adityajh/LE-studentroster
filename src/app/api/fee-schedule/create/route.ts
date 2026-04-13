@@ -17,7 +17,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 })
   }
 
-  const { year, programs, offers, scholarships } = await req.json()
+  const { year, name, programs, offers, scholarships } = await req.json()
 
   if (!year || !programs?.length) {
     return NextResponse.json({ error: "Year and at least one program are required" }, { status: 400 })
@@ -39,7 +39,7 @@ export async function POST(req: NextRequest) {
     const batch = await tx.batch.create({
       data: {
         year: batchYear,
-        name: `Batch ${batchYear}`,
+        name: name || `Batch ${batchYear}`,
       },
     })
 
