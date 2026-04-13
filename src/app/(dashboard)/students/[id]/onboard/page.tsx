@@ -17,8 +17,8 @@ export default async function OnboardPage({
   const student = await getStudentById(id)
   if (!student) notFound()
 
-  // Only ACTIVE students can be onboarded
-  if (student.status !== "ACTIVE") {
+  // Only ONBOARDING students can be onboarded (wizard transitions them to ACTIVE)
+  if (student.status !== "ONBOARDING") {
     redirect(`/students/${id}`)
   }
 

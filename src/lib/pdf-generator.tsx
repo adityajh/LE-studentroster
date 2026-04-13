@@ -227,6 +227,26 @@ export function ProposalDocument({ student, terms, logoSrc }: ProposalDocumentPr
   const fin = student.financial
   if (!fin) throw new Error("Financial records missing")
 
+  // Separate time-based offers (have a deadline) from permanent ones
+  const permanentOffers = student.offers.filter((so) => !so.offer.deadline)
+  const conditionalOffers = student.offers.filter((so) => !!so.offer.deadline)
+
+  // Registration fee: use override if set, else program default
+  const regFee = fin.registrationFeeOverride != null
+    ? Number(fin.registrationFeeOverride)
+    : Number(student.program.registrationFee)
+
+  const y1Fee = Number(student.program.year1Fee)
+  const y2Fee = Number(student.program.year2Fee)
+  const y3Fee = Number(student.program.year3Fee)
+  const programTotal = y1Fee + y2Fee + y3Fee
+
+  // Total confirmed permanent deductions (offers + scholarships + deductions)
+  const permanentOfferWaiver = permanentOffers.reduce((s, so) => s + Number(so.waiverAmount), 0)
+  const scholarshipWaiver = student.scholarships.reduce((s, ss) => s + Number(ss.amount), 0)
+  const deductionTotal = student.deductions.reduce((s, d) => s + Number(d.amount), 0)
+  const totalConfirmedWaiver = permanentOfferWaiver + scholarshipWaiver + deductionTotal
+
   return (
     <Document>
       <Page size="A4" style={styles.page}>
@@ -266,42 +286,93 @@ export function ProposalDocument({ student, terms, logoSrc }: ProposalDocumentPr
           </View>
         </View>
 
-        {/* Financial Breakdown */}
+        {/* Fee Breakdown Table */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Financial Breakdown</Text>
+          <Text style={styles.sectionTitle}>Fee Breakdown</Text>
 
+          {/* Year-by-year rows */}
           <View style={styles.row}>
-            <Text style={styles.label}>Base Programme Fee</Text>
-            <Text style={styles.value}>{formatPDFAmount(fin.baseFee)}</Text>
+            <Text style={styles.label}>Registration Fee</Text>
+            <Text style={styles.value}>{formatPDFAmount(regFee)}</Text>
           </View>
-
-          {student.offers.map((so) => (
-            <View key={so.id} style={styles.row}>
-              <Text style={styles.label}>Offer: {so.offer.name}</Text>
-              <Text style={styles.deductionValue}>- {formatPDFAmount(so.waiverAmount)}</Text>
-            </View>
-          ))}
-
-          {student.scholarships.map((ss) => (
-            <View key={ss.id} style={styles.row}>
-              <Text style={styles.label}>Scholarship: {ss.scholarship.name}</Text>
-              <Text style={styles.deductionValue}>- {formatPDFAmount(ss.amount)}</Text>
-            </View>
-          ))}
-
-          {student.deductions.map((d) => (
-            <View key={d.id} style={styles.row}>
-              <Text style={styles.label}>Deduction: {d.description}</Text>
-              <Text style={styles.deductionValue}>- {formatPDFAmount(d.amount)}</Text>
-            </View>
-          ))}
+          <View style={styles.row}>
+            <Text style={styles.label}>Year 1 — Growth</Text>
+            <Text style={styles.value}>{formatPDFAmount(y1Fee)}</Text>
+          </View>
+          <View style={styles.row}>
+            <Text style={styles.label}>Year 2 — Projects</Text>
+            <Text style={styles.value}>{formatPDFAmount(y2Fee)}</Text>
+          </View>
+          <View style={styles.row}>
+            <Text style={styles.label}>Year 3 — Work</Text>
+            <Text style={styles.value}>{formatPDFAmount(y3Fee)}</Text>
+          </View>
 
           <View style={styles.divider} />
 
+          <View style={styles.row}>
+            <Text style={[styles.label, { fontFamily: 'Helvetica-Bold', color: '#1e293b' }]}>Total Programme Fee</Text>
+            <Text style={[styles.value, { color: '#1e293b' }]}>{formatPDFAmount(regFee + programTotal)}</Text>
+          </View>
+
+          {/* Permanent deductions (scholarships, offers without deadline, one-off deductions) */}
+          {(permanentOffers.length > 0 || student.scholarships.length > 0 || student.deductions.length > 0) && (
+            <View style={{ marginTop: 12 }}>
+              <Text style={[styles.sectionTitle, { fontSize: 9, marginTop: 4 }]}>Confirmed Benefits</Text>
+
+              {permanentOffers.map((so) => (
+                <View key={so.id} style={styles.row}>
+                  <Text style={styles.label}>Offer: {so.offer.name}</Text>
+                  <Text style={styles.deductionValue}>- {formatPDFAmount(so.waiverAmount)}</Text>
+                </View>
+              ))}
+
+              {student.scholarships.map((ss) => (
+                <View key={ss.id} style={styles.row}>
+                  <Text style={styles.label}>Scholarship: {ss.scholarship.name}</Text>
+                  <Text style={styles.deductionValue}>- {formatPDFAmount(ss.amount)}</Text>
+                </View>
+              ))}
+
+              {student.deductions.map((d) => (
+                <View key={d.id} style={styles.row}>
+                  <Text style={styles.label}>Deduction: {d.description}</Text>
+                  <Text style={styles.deductionValue}>- {formatPDFAmount(d.amount)}</Text>
+                </View>
+              ))}
+            </View>
+          )}
+
+          {/* Net Fee Payable — always shown, computed directly from program fields to avoid
+              double-counting: enroll path stores regFee inside netFee, offer path does not */}
+          <View style={styles.divider} />
           <View style={styles.grandTotalRow}>
             <Text style={styles.grandTotalLabel}>Net Fee Payable</Text>
-            <Text style={styles.grandTotalValue}>{formatPDFAmount(fin.netFee)}</Text>
+            <Text style={styles.grandTotalValue}>{formatPDFAmount(regFee + programTotal - totalConfirmedWaiver)}</Text>
           </View>
+
+          {/* Conditional / time-based offers */}
+          {conditionalOffers.length > 0 && (
+            <View style={{ marginTop: 14, padding: 10, backgroundColor: '#fffbeb', borderRadius: 4, borderWidth: 1, borderColor: '#fcd34d' }}>
+              <Text style={{ fontSize: 9, fontFamily: 'Helvetica-Bold', color: '#92400e', marginBottom: 6 }}>
+                Conditional Offers (applied on confirmation before expiry)
+              </Text>
+              {conditionalOffers.map((so) => (
+                <View key={so.id} style={[styles.row, { marginBottom: 3 }]}>
+                  <Text style={[styles.label, { color: '#78350f' }]}>{so.offer.name}</Text>
+                  <Text style={[styles.deductionValue, { color: '#78350f' }]}>
+                    - {formatPDFAmount(so.waiverAmount)}
+                    {so.offer.deadline
+                      ? `  (valid until ${new Date(so.offer.deadline).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })})`
+                      : ""}
+                  </Text>
+                </View>
+              ))}
+              <Text style={{ fontSize: 8, color: '#92400e', marginTop: 6, lineHeight: 1.5 }}>
+                Note: The above offer(s) will be applied and deducted from the programme fee upon confirmation of admission and payment of the registration amount, provided the offer deadline has not passed.
+              </Text>
+            </View>
+          )}
         </View>
 
         {/* Payment Schedule Table */}
