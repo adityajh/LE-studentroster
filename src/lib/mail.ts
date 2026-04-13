@@ -59,7 +59,7 @@ async function getSmtpConfig(): Promise<SmtpConfig | null> {
 
 function createTransporter(config: SmtpConfig) {
   return nodemailer.createTransport({
-    host: "smtp.gmail.com",
+    host: "smtp.hostinger.com",
     port: 465,
     secure: true,
     auth: { user: config.user, pass: config.pass },
