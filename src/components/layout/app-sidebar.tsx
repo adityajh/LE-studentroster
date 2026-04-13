@@ -58,10 +58,10 @@ export function AppSidebar({ user }: AppSidebarProps) {
   return (
     <Sidebar
       collapsible="offcanvas"
-      className="bg-slate-950 border-slate-800 [&_[data-slot=sidebar]]:bg-slate-950"
+      className="bg-[#160E44] border-white/5 [&_[data-slot=sidebar]]:bg-[#160E44]"
     >
       {/* Header */}
-      <SidebarHeader className="border-b border-slate-800 px-4 py-4">
+      <SidebarHeader className="border-b border-white/5 px-4 py-4">
         <div className="flex items-center gap-2">
           <Image
             src="/Let's-Enterprise-Final-Logo_LightMode.png"
@@ -80,9 +80,9 @@ export function AppSidebar({ user }: AppSidebarProps) {
       </SidebarHeader>
 
       {/* Main nav */}
-      <SidebarContent className="bg-slate-950">
+      <SidebarContent className="bg-[#160E44]">
         <SidebarGroup>
-          <SidebarGroupLabel className="text-[10px] uppercase tracking-widest font-bold text-slate-400 px-3 font-headline">
+          <SidebarGroupLabel className="text-[10px] uppercase tracking-widest font-bold text-white/30 px-3 font-headline">
             Navigation
           </SidebarGroupLabel>
           <SidebarGroupContent>
@@ -99,17 +99,17 @@ export function AppSidebar({ user }: AppSidebarProps) {
                       isActive={isActive}
                       tooltip={item.label}
                       className={cn(
-                        "text-slate-400 hover:text-white hover:bg-slate-800 transition-colors",
-                        isActive && "bg-slate-800 text-white shadow-sm"
+                        "relative text-white/50 hover:text-white hover:bg-white/5 transition-all duration-200 rounded-lg",
+                        isActive && "bg-white/8 text-white before:absolute before:left-0 before:top-1/2 before:-translate-y-1/2 before:h-5 before:w-0.5 before:bg-[#25BCBD] before:rounded-full"
                       )}
                     >
-                      <item.icon className="h-4 w-4" />
-                      <span className="font-medium">{item.label}</span>
+                      <item.icon className={cn("h-4 w-4", isActive && "text-[#25BCBD]")} />
+                      <span className="font-semibold">{item.label}</span>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
                 )
               })}
-              
+
               {/* Conditional nav items */}
               {user?.role === "ADMIN" && (
                 <>
@@ -119,12 +119,12 @@ export function AppSidebar({ user }: AppSidebarProps) {
                       isActive={pathname.startsWith("/reminders")}
                       tooltip="Reminders"
                       className={cn(
-                        "text-slate-400 hover:text-white hover:bg-slate-800 transition-colors",
-                        pathname.startsWith("/reminders") && "bg-slate-800 text-white shadow-sm"
+                        "relative text-white/50 hover:text-white hover:bg-white/5 transition-all duration-200 rounded-lg",
+                        pathname.startsWith("/reminders") && "bg-white/8 text-white before:absolute before:left-0 before:top-1/2 before:-translate-y-1/2 before:h-5 before:w-0.5 before:bg-[#25BCBD] before:rounded-full"
                       )}
                     >
-                      <Bell className="h-4 w-4" />
-                      <span className="font-medium">Reminders</span>
+                      <Bell className={cn("h-4 w-4", pathname.startsWith("/reminders") && "text-[#25BCBD]")} />
+                      <span className="font-semibold">Reminders</span>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
                   <SidebarMenuItem>
@@ -133,12 +133,12 @@ export function AppSidebar({ user }: AppSidebarProps) {
                       isActive={pathname.startsWith("/audit-logs")}
                       tooltip="Changelog"
                       className={cn(
-                        "text-slate-400 hover:text-white hover:bg-slate-800 transition-colors",
-                        pathname.startsWith("/audit-logs") && "bg-slate-800 text-white shadow-sm"
+                        "relative text-white/50 hover:text-white hover:bg-white/5 transition-all duration-200 rounded-lg",
+                        pathname.startsWith("/audit-logs") && "bg-white/8 text-white before:absolute before:left-0 before:top-1/2 before:-translate-y-1/2 before:h-5 before:w-0.5 before:bg-[#25BCBD] before:rounded-full"
                       )}
                     >
-                      <History className="h-4 w-4" />
-                      <span className="font-medium">Changelog</span>
+                      <History className={cn("h-4 w-4", pathname.startsWith("/audit-logs") && "text-[#25BCBD]")} />
+                      <span className="font-semibold">Changelog</span>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
                 </>
@@ -147,7 +147,7 @@ export function AppSidebar({ user }: AppSidebarProps) {
           </SidebarGroupContent>
         </SidebarGroup>
 
-        <SidebarSeparator className="bg-slate-800" />
+        <SidebarSeparator className="bg-white/5" />
 
         <SidebarGroup>
           <SidebarGroupContent>
@@ -161,12 +161,12 @@ export function AppSidebar({ user }: AppSidebarProps) {
                       isActive={isActive}
                       tooltip={item.label}
                       className={cn(
-                        "text-slate-400 hover:text-white hover:bg-slate-800 transition-colors",
-                        isActive && "bg-slate-800 text-white shadow-sm"
+                        "relative text-white/50 hover:text-white hover:bg-white/5 transition-all duration-200 rounded-lg",
+                        isActive && "bg-white/8 text-white before:absolute before:left-0 before:top-1/2 before:-translate-y-1/2 before:h-5 before:w-0.5 before:bg-[#25BCBD] before:rounded-full"
                       )}
                     >
-                      <item.icon className="h-4 w-4" />
-                      <span className="font-medium">{item.label}</span>
+                      <item.icon className={cn("h-4 w-4", isActive && "text-[#25BCBD]")} />
+                      <span className="font-semibold">{item.label}</span>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
                 )
@@ -177,23 +177,23 @@ export function AppSidebar({ user }: AppSidebarProps) {
       </SidebarContent>
 
       {/* Footer — user info + logout */}
-      <SidebarFooter className="border-t border-slate-800 bg-slate-950 p-3">
+      <SidebarFooter className="border-t border-white/5 bg-[#160E44] p-3">
         <div className="flex items-center gap-3">
           <Avatar className="h-8 w-8 shrink-0">
-            <AvatarFallback className="bg-slate-800 text-slate-300 text-xs font-bold">
+            <AvatarFallback className="bg-gradient-to-br from-[#3663AD] to-[#25BCBD] text-white text-xs font-black">
               {initials}
             </AvatarFallback>
           </Avatar>
           <div className="flex-1 min-w-0 group-data-[collapsible=icon]:hidden">
-            <p className="text-sm font-semibold text-slate-200 truncate">
+            <p className="text-sm font-semibold text-white truncate">
               {user?.name ?? user?.email}
             </p>
             <span
               className={cn(
                 "text-[10px] uppercase tracking-wider font-bold px-1.5 py-0.5 rounded",
                 user?.role === "ADMIN"
-                  ? "bg-indigo-500/20 text-indigo-400"
-                  : "bg-slate-800 text-slate-400"
+                  ? "bg-[#25BCBD]/20 text-[#25BCBD]"
+                  : "bg-white/10 text-white/50"
               )}
             >
               {user?.role ?? "STAFF"}
@@ -201,7 +201,7 @@ export function AppSidebar({ user }: AppSidebarProps) {
           </div>
           <button
             onClick={() => signOut({ callbackUrl: "/login" })}
-            className="text-slate-600 hover:text-slate-300 transition-colors group-data-[collapsible=icon]:hidden"
+            className="text-white/30 hover:text-white/70 transition-colors group-data-[collapsible=icon]:hidden"
             title="Sign out"
           >
             <LogOut className="h-4 w-4" />

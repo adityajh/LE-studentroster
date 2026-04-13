@@ -74,15 +74,14 @@ async function getDashboardData() {
 
   const totalNetFee = allFinancials.reduce((s, f) => s + f.netFee.toNumber(), 0)
 
-  // Total collected ever (across all active students)
-  const allPaid = await prisma.installment.aggregate({
-    where: {
-      status: { in: ["PAID", "PARTIAL"] },
-      student: { status: "ACTIVE" },
-    },
-    _sum: { paidAmount: true, amount: true },
+  // Total collected ever — use Payment table (source of truth).
+  // The installment.paidAmount field is only populated for PARTIAL payments,
+  // so aggregating it misses fully-paid installments entirely.
+  const paymentAgg = await prisma.payment.aggregate({
+    where: { student: { status: "ACTIVE" } },
+    _sum: { amount: true },
   })
-  const totalCollected = allPaid._sum.paidAmount?.toNumber() ?? 0
+  const totalCollected = paymentAgg._sum.amount?.toNumber() ?? 0
   const collectionRate = totalNetFee > 0 ? Math.round((totalCollected / totalNetFee) * 100) : 0
 
   return {
@@ -149,11 +148,11 @@ export default async function DashboardPage() {
   ]
 
   const accentStyles = {
-    indigo:  { icon: "bg-indigo-500/10 text-indigo-600",   value: "text-indigo-600" },
-    violet:  { icon: "bg-violet-500/10 text-violet-600",   value: "text-violet-600" },
-    rose:    { icon: "bg-rose-500/10 text-rose-600",       value: "text-rose-600" },
-    amber:   { icon: "bg-amber-500/10 text-amber-600",     value: "text-amber-600" },
-    emerald: { icon: "bg-emerald-500/10 text-emerald-600", value: "text-emerald-600" },
+    indigo:  { icon: "bg-[#3663AD]/10 text-[#3663AD]",   value: "text-[#3663AD]" },
+    violet:  { icon: "bg-[#160E44]/10 text-[#160E44]",   value: "text-[#160E44]" },
+    rose:    { icon: "bg-rose-500/10 text-rose-600",      value: "text-rose-600" },
+    amber:   { icon: "bg-amber-500/10 text-amber-600",    value: "text-amber-600" },
+    emerald: { icon: "bg-emerald-500/10 text-emerald-600",value: "text-emerald-600" },
   }
 
   const today = new Date()
@@ -162,7 +161,7 @@ export default async function DashboardPage() {
     <div className="space-y-8 max-w-[1200px]">
       <div>
         <Eyebrow>Overview</Eyebrow>
-        <h1 className="text-2xl font-extrabold text-slate-900 mt-0.5 font-headline">Dashboard</h1>
+        <h1 className="text-3xl font-black text-slate-900 mt-0.5 font-headline tracking-tight">Dashboard</h1>
       </div>
 
       {/* Stat cards */}
@@ -205,10 +204,13 @@ export default async function DashboardPage() {
             <span className="text-2xl font-black text-emerald-600">{d.collectionRate}%</span>
           </div>
         </div>
-        <div className="w-full bg-slate-100 rounded-full h-2.5">
+        <div className="w-full bg-slate-100 rounded-full h-3 overflow-hidden">
           <div
-            className="bg-emerald-500 h-2.5 rounded-full transition-all"
-            style={{ width: `${Math.min(d.collectionRate, 100)}%` }}
+            className="h-3 rounded-full transition-all duration-700"
+            style={{
+              width: `${Math.min(d.collectionRate, 100)}%`,
+              background: "linear-gradient(90deg, #3663AD 0%, #25BCBD 100%)",
+            }}
           />
         </div>
       </SoftCard>
@@ -224,7 +226,7 @@ export default async function DashboardPage() {
               <h2 className="text-base font-extrabold text-slate-900 mt-0.5 font-headline">Overdue Payments</h2>
             </div>
             {d.overdueCount > 0 && (
-              <Link href="/students?tab=overdue" className="text-xs font-bold text-indigo-600 hover:text-indigo-800">
+              <Link href="/students?tab=overdue" className="text-xs font-bold text-[#3663AD] hover:text-[#160E44] transition-colors">
                 View all →
               </Link>
             )}

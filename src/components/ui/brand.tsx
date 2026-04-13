@@ -7,7 +7,7 @@ import { cn } from "@/lib/utils"
  */
 export function SoftCard({ children, className }: { children: React.ReactNode, className?: string }) {
   return (
-    <div className={cn("bg-white border border-slate-200/60 p-8 rounded-[1.25rem] shadow-[0_2px_8px_-2px_rgba(0,0,0,0.05),0_1px_4px_-1px_rgba(0,0,0,0.02)] transition-all duration-300", className)}>
+    <div className={cn("bg-white border border-slate-200/60 p-8 rounded-[1.25rem] shadow-[0_2px_8px_-2px_rgba(0,0,0,0.05),0_1px_4px_-1px_rgba(0,0,0,0.02)] hover:shadow-[0_8px_24px_-4px_rgba(0,0,0,0.08),0_2px_8px_-2px_rgba(0,0,0,0.04)] hover:-translate-y-0.5 transition-all duration-300", className)}>
       {children}
     </div>
   )

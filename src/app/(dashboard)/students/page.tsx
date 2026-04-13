@@ -51,7 +51,7 @@ export default async function StudentsPage({
       <div className="flex items-start justify-between gap-4">
         <div>
           <Eyebrow>Master Roster</Eyebrow>
-          <h1 className="text-2xl font-extrabold text-slate-900 mt-0.5 font-headline">Students</h1>
+          <h1 className="text-3xl font-black text-slate-900 mt-0.5 font-headline tracking-tight">Students</h1>
           <p className="text-sm font-medium text-slate-500 mt-1">
             {students.length} student{students.length !== 1 ? "s" : ""}
             {isOverdueTab ? " with overdue payments" : isOfferedTab ? " with pending offers" : " total"}
@@ -59,11 +59,11 @@ export default async function StudentsPage({
         </div>
         {isAdmin && (
           <div className="flex items-center gap-2">
-            <Link href="/students/offer/new" className={cn(buttonVariants(), "bg-violet-600 hover:bg-violet-700 text-white")}>
+            <Link href="/students/offer/new" className={cn(buttonVariants(), "bg-[#160E44] hover:bg-[#3663AD] text-white transition-colors duration-200")}>
               <Send className="h-4 w-4 mr-2" />
               Create Offer
             </Link>
-            <Link href="/students/new" className={cn(buttonVariants(), "bg-indigo-600 hover:bg-indigo-700 text-white")}>
+            <Link href="/students/new" className={cn(buttonVariants(), "bg-[#3663AD] hover:bg-[#25BCBD] text-white transition-colors duration-200")}>
               <UserPlus className="h-4 w-4 mr-2" />
               Enroll Directly
             </Link>
@@ -182,7 +182,12 @@ export default async function StudentsPage({
                   : null
 
                 return (
-                  <tr key={s.id} className="border-b border-slate-50 hover:bg-slate-50/70 transition-colors">
+                  <tr key={s.id} className={cn(
+                    "border-b border-slate-50 transition-all duration-150 group",
+                    overdueCount > 0
+                      ? "border-l-2 border-l-rose-400 bg-rose-50/30 hover:bg-rose-50/50"
+                      : "hover:bg-slate-50/80 hover:border-l-2 hover:border-l-[#3663AD]"
+                  )}>
                     <td className="px-5 py-3.5">
                       <span className="text-xs font-mono font-bold text-slate-400">
                         {s.rollNo ?? <span className="text-violet-400 font-sans">—</span>}
@@ -252,7 +257,7 @@ export default async function StudentsPage({
                       </span>
                     </td>
                     <td className="px-5 py-3.5 text-right">
-                      <Link href={`/students/${s.id}`} className="text-xs font-semibold text-indigo-600 hover:text-indigo-800 transition-colors whitespace-nowrap">
+                      <Link href={`/students/${s.id}`} className="text-xs font-semibold text-[#3663AD] hover:text-[#160E44] transition-colors whitespace-nowrap">
                         View →
                       </Link>
                     </td>

@@ -185,14 +185,14 @@ export default async function StudentDetailPage({
             {photo ? (
               <img src={photo.fileUrl} alt={student.name} className="w-14 h-14 rounded-full object-cover border-2 border-slate-200 shrink-0" />
             ) : (
-              <div className="w-14 h-14 rounded-full bg-indigo-100 border-2 border-indigo-200 flex items-center justify-center shrink-0">
-                <span className="text-lg font-black text-indigo-500">
+              <div className="w-14 h-14 rounded-full bg-gradient-to-br from-[#160E44] to-[#3663AD] border-2 border-[#3663AD]/30 flex items-center justify-center shrink-0 shadow-md">
+                <span className="text-lg font-black text-white">
                   {student.name.split(" ").map((n: string) => n[0]).slice(0, 2).join("")}
                 </span>
               </div>
             )}
             <div>
-              <h1 className="text-2xl font-extrabold text-slate-900">{student.name}</h1>
+              <h1 className="text-2xl font-extrabold text-slate-900 font-headline">{student.name}</h1>
               <div className="flex items-center gap-3 mt-1.5 flex-wrap">
                 <span className={cn(
                   "inline-flex items-center text-[10px] uppercase tracking-wider font-bold px-2.5 py-1 rounded-lg border",
@@ -200,7 +200,7 @@ export default async function StudentDetailPage({
                 )}>
                   {statusStyle.label}
                 </span>
-                <span className="bg-indigo-500/10 text-indigo-700 border border-indigo-500/20 text-[10px] uppercase tracking-wider font-bold px-2.5 py-1 rounded-lg">
+                <span className="bg-[#3663AD]/10 text-[#3663AD] border border-[#3663AD]/20 text-[10px] uppercase tracking-wider font-bold px-2.5 py-1 rounded-lg">
                   {student.program.name}
                 </span>
                 {student.rollNo && (
@@ -284,8 +284,8 @@ export default async function StudentDetailPage({
                 className={cn(
                   "flex items-center gap-1.5 h-9 px-4 rounded-xl text-sm font-bold transition-all shrink-0",
                   student.onboardingEmailSentAt
-                    ? "border-2 border-slate-200 text-slate-600 hover:border-indigo-300 hover:text-indigo-600 hover:bg-indigo-50"
-                    : "bg-indigo-600 text-white hover:bg-indigo-700"
+                    ? "border-2 border-slate-200 text-slate-600 hover:border-[#3663AD]/40 hover:text-[#3663AD] hover:bg-[#3663AD]/5"
+                    : "bg-[#3663AD] text-white hover:bg-[#25BCBD]"
                 )}
               >
                 <GraduationCap className="h-4 w-4" />
@@ -303,7 +303,7 @@ export default async function StudentDetailPage({
             {canRecord && (
               <Link
                 href={`/students/${student.id}/edit`}
-                className="flex items-center gap-1.5 h-9 px-4 rounded-xl border-2 border-slate-200 text-sm font-bold text-slate-600 hover:border-indigo-300 hover:text-indigo-600 hover:bg-indigo-50 transition-all shrink-0"
+                className="flex items-center gap-1.5 h-9 px-4 rounded-xl border-2 border-slate-200 text-sm font-bold text-slate-600 hover:border-[#3663AD]/40 hover:text-[#3663AD] hover:bg-[#3663AD]/5 transition-all shrink-0"
               >
                 <Pencil className="h-3.5 w-3.5" />
                 Edit
