@@ -91,10 +91,10 @@ export async function POST(req: NextRequest) {
 
   // Split scholarships into spread vs one-time
   const spreadScholarshipWaiver = selectedScholarships
-    .filter(s => scholarshipRecords.find(r => r.id === s.scholarshipId)?.spreadAcrossYears !== false)
+    .filter(s => (scholarshipRecords.find(r => r.id === s.scholarshipId) as { spreadAcrossYears?: boolean } | undefined)?.spreadAcrossYears !== false)
     .reduce((sum, s) => sum + s.amount, 0)
   const onetimeScholarshipWaiver = selectedScholarships
-    .filter(s => scholarshipRecords.find(r => r.id === s.scholarshipId)?.spreadAcrossYears === false)
+    .filter(s => (scholarshipRecords.find(r => r.id === s.scholarshipId) as { spreadAcrossYears?: boolean } | undefined)?.spreadAcrossYears === false)
     .reduce((sum, s) => sum + s.amount, 0)
 
   const spreadPerYear = Math.round((spreadOfferWaiver + spreadScholarshipWaiver) / 3)

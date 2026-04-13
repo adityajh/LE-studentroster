@@ -263,10 +263,10 @@ export async function PATCH(
                   ? await tx.scholarship.findMany({ where: { id: { in: schIds } } })
                   : []
                 spreadSchWaiver = newScholarships
-                  .filter(s => schRecords.find(r => r.id === s.scholarshipId)?.spreadAcrossYears !== false)
+                  .filter(s => (schRecords.find(r => r.id === s.scholarshipId) as { spreadAcrossYears?: boolean } | undefined)?.spreadAcrossYears !== false)
                   .reduce((s, sc) => s + sc.amount, 0)
                 onetimeSchWaiver = newScholarships
-                  .filter(s => schRecords.find(r => r.id === s.scholarshipId)?.spreadAcrossYears === false)
+                  .filter(s => (schRecords.find(r => r.id === s.scholarshipId) as { spreadAcrossYears?: boolean } | undefined)?.spreadAcrossYears === false)
                   .reduce((s, sc) => s + sc.amount, 0)
               } else {
                 spreadSchWaiver = student.scholarships
