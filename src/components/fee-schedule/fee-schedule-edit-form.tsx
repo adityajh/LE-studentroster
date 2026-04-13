@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Loader2, Save } from "lucide-react"
+import { Loader2, Save, Trash2 } from "lucide-react"
 
 interface Program {
   id: string
@@ -57,7 +57,6 @@ export function FeeScheduleEditForm({ batch }: { batch: Batch }) {
     batch.programs.map((p) => ({
       id: p.id,
       name: p.name,
-      totalFee: p.totalFee.toString(),
       registrationFee: p.registrationFee.toString(),
       year1Fee: p.year1Fee.toString(),
       year2Fee: p.year2Fee.toString(),
@@ -89,56 +88,62 @@ export function FeeScheduleEditForm({ batch }: { batch: Batch }) {
 
   const [deletedOfferIds, setDeletedOfferIds] = useState<string[]>([])
   const [deletedScholarshipIds, setDeletedScholarshipIds] = useState<string[]>([])
+  const [deletedProgramIds, setDeletedProgramIds] = useState<string[]>([])
 
-  const updateProgram = (id: string, field: string, value: string) => {
+  // ── Program handlers ──────────────────────────────────────────────────────
+  const updateProgram = (id: string, field: string, value: string) =>
     setPrograms((prev) => prev.map((p) => (p.id === id ? { ...p, [field]: value } : p)))
+
+  const addProgram = () =>
+    setPrograms((prev) => [
+      ...prev,
+      {
+        id: `new-${Date.now()}`,
+        name: "",
+        registrationFee: "50000",
+        year1Fee: "",
+        year2Fee: "",
+        year3Fee: "",
+        targetStudents: "",
+      },
+    ])
+
+  const removeProgram = (id: string) => {
+    setPrograms((prev) => prev.filter((p) => p.id !== id))
+    if (!id.startsWith("new-")) setDeletedProgramIds((prev) => [...prev, id])
   }
 
-  const updateOffer = (id: string, field: string, value: string | boolean) => {
+  // ── Offer handlers ────────────────────────────────────────────────────────
+  const updateOffer = (id: string, field: string, value: string | boolean) =>
     setOffers((prev) => prev.map((o) => (o.id === id ? { ...o, [field]: value } : o)))
-  }
 
   const removeOffer = (id: string) => {
     setOffers((prev) => prev.filter((o) => o.id !== id))
     if (!id.startsWith("new-")) setDeletedOfferIds((prev) => [...prev, id])
   }
 
-  const addOffer = () => {
+  const addOffer = () =>
     setOffers((prev) => [
       ...prev,
-      {
-        id: `new-${Date.now()}`,
-        name: "",
-        type: "FULL_PAYMENT",
-        waiverAmount: "0",
-        deadline: "",
-        spreadAcrossYears: true,
-      },
+      { id: `new-${Date.now()}`, name: "", type: "FULL_PAYMENT", waiverAmount: "0", deadline: "", spreadAcrossYears: true },
     ])
-  }
 
-  const updateScholarship = (id: string, field: string, value: string) => {
+  // ── Scholarship handlers ──────────────────────────────────────────────────
+  const updateScholarship = (id: string, field: string, value: string) =>
     setScholarships((prev) => prev.map((s) => (s.id === id ? { ...s, [field]: value } : s)))
-  }
 
   const removeScholarship = (id: string) => {
     setScholarships((prev) => prev.filter((s) => s.id !== id))
     if (!id.startsWith("new-")) setDeletedScholarshipIds((prev) => [...prev, id])
   }
 
-  const addScholarship = (category: string) => {
+  const addScholarship = (category: string) =>
     setScholarships((prev) => [
       ...prev,
-      {
-        id: `new-${Date.now()}-${category}`,
-        name: "",
-        category,
-        minAmount: "0",
-        maxAmount: "0",
-      },
+      { id: `new-${Date.now()}-${category}`, name: "", category, minAmount: "0", maxAmount: "0" },
     ])
-  }
 
+  // ── Save ──────────────────────────────────────────────────────────────────
   const handleSave = async () => {
     setSaving(true)
     try {
@@ -153,14 +158,18 @@ export function FeeScheduleEditForm({ batch }: { batch: Batch }) {
           scholarships,
           deletedOfferIds,
           deletedScholarshipIds,
+          deletedProgramIds,
         }),
       })
-      if (!res.ok) throw new Error("Failed")
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}))
+        throw new Error(data.error || "Failed to save")
+      }
       toast.success("Fee schedule saved")
       router.push(`/fee-schedule/${batch.year}`)
       router.refresh()
-    } catch {
-      toast.error("Failed to save. Please try again.")
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to save. Please try again.")
     } finally {
       setSaving(false)
     }
@@ -170,7 +179,7 @@ export function FeeScheduleEditForm({ batch }: { batch: Batch }) {
     <div className="space-y-6">
       <Tabs defaultValue="programs">
         <TabsList>
-          <TabsTrigger value="programs">Programs</TabsTrigger>
+          <TabsTrigger value="programs">Programs ({programs.length})</TabsTrigger>
           <TabsTrigger value="offers">Offers</TabsTrigger>
           <TabsTrigger value="scholarships">Scholarships</TabsTrigger>
         </TabsList>
@@ -179,10 +188,39 @@ export function FeeScheduleEditForm({ batch }: { batch: Batch }) {
         <TabsContent value="programs" className="mt-4 space-y-4">
           {programs.map((program) => (
             <Card key={program.id} className="shadow-sm">
-              <CardHeader className="pb-3">
-                <CardTitle className="text-base">{program.name}</CardTitle>
+              <CardHeader className="pb-2 flex flex-row items-center justify-between">
+                <CardTitle className="text-sm font-semibold text-slate-700">
+                  {program.name || "New Program"}
+                </CardTitle>
+                {programs.length > 1 && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="text-red-500 hover:text-red-700 hover:bg-red-50 h-7 px-2"
+                    onClick={() => removeProgram(program.id)}
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </Button>
+                )}
               </CardHeader>
               <CardContent className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                <div className="space-y-1 md:col-span-2">
+                  <Label className="text-xs">Program Name</Label>
+                  <Input
+                    value={program.name}
+                    onChange={(e) => updateProgram(program.id, "name", e.target.value)}
+                    placeholder="e.g. Entrepreneurial Jobs"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs">Target Students</Label>
+                  <Input
+                    type="number"
+                    value={program.targetStudents}
+                    onChange={(e) => updateProgram(program.id, "targetStudents", e.target.value)}
+                    placeholder="Optional"
+                  />
+                </div>
                 <div className="space-y-1">
                   <Label className="text-xs">Registration Fee (₹)</Label>
                   <Input
@@ -215,17 +253,12 @@ export function FeeScheduleEditForm({ batch }: { batch: Batch }) {
                     onChange={(e) => updateProgram(program.id, "year3Fee", e.target.value)}
                   />
                 </div>
-                <div className="space-y-1">
-                  <Label className="text-xs">Target Students</Label>
-                  <Input
-                    type="number"
-                    value={program.targetStudents}
-                    onChange={(e) => updateProgram(program.id, "targetStudents", e.target.value)}
-                  />
-                </div>
               </CardContent>
             </Card>
           ))}
+          <Button variant="outline" size="sm" onClick={addProgram}>
+            + Add Program
+          </Button>
         </TabsContent>
 
         {/* Offers */}
