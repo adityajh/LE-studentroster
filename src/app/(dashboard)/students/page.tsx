@@ -15,8 +15,9 @@ export default async function StudentsPage({
   searchParams: Promise<{ search?: string; status?: string; batch?: string; tab?: string }>
 }) {
   const { search, status, batch, tab } = await searchParams
-  const isOverdueTab = tab === "overdue"
-  const isOfferedTab = tab === "offered"
+  const isOverdueTab     = tab === "overdue"
+  const isOfferedTab     = tab === "offered"
+  const isOnboardingTab  = tab === "onboarding"
 
   const session = await auth()
   const dbUser = await prisma.user.findUnique({
@@ -25,14 +26,23 @@ export default async function StudentsPage({
   })
   const isAdmin = dbUser?.role === "ADMIN"
 
-  // Count pending offers for tab badge
-  const offeredCount = await prisma.student.count({ where: { status: "OFFERED" } })
+  // Count badges for tabs
+  const [offeredCount, onboardingCount] = await Promise.all([
+    prisma.student.count({ where: { status: "OFFERED" } }),
+    prisma.student.count({ where: { status: "ONBOARDING" } }),
+  ])
 
   const batches = await prisma.batch.findMany({ orderBy: { year: "desc" }, select: { year: true, name: true } })
 
   const students = await getStudents({
     search,
-    status: isOverdueTab ? undefined : isOfferedTab ? "OFFERED" : status,
+    status: isOverdueTab
+      ? undefined
+      : isOfferedTab
+      ? "OFFERED"
+      : isOnboardingTab
+      ? "ONBOARDING"
+      : status,
     batchYear: batch ? parseInt(batch) : undefined,
     overdueOnly: isOverdueTab,
   })
@@ -42,6 +52,7 @@ export default async function StudentsPage({
   const tabs = [
     { label: "All Students", value: undefined },
     { label: `Offers${offeredCount > 0 ? ` (${offeredCount})` : ""}`, value: "offered" },
+    { label: `Onboarding${onboardingCount > 0 ? ` (${onboardingCount})` : ""}`, value: "onboarding" },
     { label: "Overdue", value: "overdue" },
   ]
 
@@ -54,7 +65,7 @@ export default async function StudentsPage({
           <h1 className="text-3xl font-black text-slate-900 mt-0.5 font-headline tracking-tight">Students</h1>
           <p className="text-sm font-medium text-slate-500 mt-1">
             {students.length} student{students.length !== 1 ? "s" : ""}
-            {isOverdueTab ? " with overdue payments" : isOfferedTab ? " with pending offers" : " total"}
+            {isOverdueTab ? " with overdue payments" : isOfferedTab ? " with pending offers" : isOnboardingTab ? " in onboarding" : " total"}
           </p>
         </div>
         {isAdmin && (
@@ -74,7 +85,13 @@ export default async function StudentsPage({
       {/* Tabs */}
       <div className="flex gap-1 bg-slate-100 rounded-xl p-1 w-fit">
         {tabs.map((t) => {
-          const active = isOfferedTab ? t.value === "offered" : isOverdueTab ? t.value === "overdue" : !t.value
+          const active = isOfferedTab
+            ? t.value === "offered"
+            : isOnboardingTab
+            ? t.value === "onboarding"
+            : isOverdueTab
+            ? t.value === "overdue"
+            : !t.value
           const href = t.value ? `/students?tab=${t.value}` : "/students"
           return (
             <Link
@@ -94,7 +111,7 @@ export default async function StudentsPage({
       </div>
 
       {/* Filters — only on All tab */}
-      {!isOverdueTab && !isOfferedTab && (
+      {!isOverdueTab && !isOfferedTab && !isOnboardingTab && (
         <form method="GET" className="flex gap-3 flex-wrap">
           <input
             name="search"
@@ -109,6 +126,7 @@ export default async function StudentsPage({
           >
             <option value="">All Statuses</option>
             <option value="ACTIVE">Active</option>
+            <option value="ONBOARDING">Onboarding</option>
             <option value="ALUMNI">Alumni</option>
             <option value="WITHDRAWN">Withdrawn</option>
           </select>

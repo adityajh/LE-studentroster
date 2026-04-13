@@ -2,7 +2,9 @@
 
 import React, { useState, useCallback } from "react"
 import Image from "next/image"
-import { CheckCircle, ChevronRight, ChevronLeft, Upload, Trash2, Loader2, User, Users, FileText, Eye } from "lucide-react"
+import { CheckCircle, ChevronRight, ChevronLeft, Upload, Trash2, Loader2, User, Users, FileText, Eye, CheckSquare, Square } from "lucide-react"
+
+const MAX_FILE_SIZE = 1 * 1024 * 1024 // 1 MB
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -114,10 +116,17 @@ function DocumentUploadCard({
 }) {
   const [uploading, setUploading] = useState(false)
   const [deleting, setDeleting] = useState(false)
+  const [sizeError, setSizeError] = useState("")
 
   const handleFileChange = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
+    setSizeError("")
+    if (file.size > MAX_FILE_SIZE) {
+      setSizeError(`"${file.name}" is ${(file.size / (1024 * 1024)).toFixed(1)} MB — max 1 MB.`)
+      e.target.value = ""
+      return
+    }
     setUploading(true)
     const fd = new FormData()
     fd.append("file", file)
@@ -144,42 +153,63 @@ function DocumentUploadCard({
   }, [existing, token, onDeleted])
 
   return (
-    <div className="bg-white/90 backdrop-blur-sm border border-slate-200/60 rounded-2xl p-4 flex items-center justify-between gap-3 transition-all hover:shadow-sm">
-      <div className="flex-1 min-w-0">
-        <p className="text-xs font-bold text-slate-700">{DOC_LABELS[docType] ?? docType}</p>
-        {existing ? (
-          <a href={existing.fileUrl} target="_blank" rel="noopener noreferrer"
-            className="text-[11px] text-[#3663AD] hover:underline truncate block">
-            {existing.fileName}
-          </a>
-        ) : (
-          <p className="text-[11px] text-slate-400">Not uploaded</p>
-        )}
-      </div>
-      <div className="flex items-center gap-2 shrink-0">
-        {existing ? (
-          <>
+    <div className="space-y-1">
+      <div className="bg-white/90 backdrop-blur-sm border border-slate-200/60 rounded-2xl p-4 flex items-center gap-3 transition-all hover:shadow-sm">
+        {/* Status square */}
+        <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 transition-all ${
+          existing ? "bg-emerald-500 shadow-sm shadow-emerald-200" : "bg-slate-100"
+        }`}>
+          {existing
+            ? <CheckSquare className="h-4 w-4 text-white" />
+            : <Square className="h-4 w-4 text-slate-400" />
+          }
+        </div>
+
+        {/* File info */}
+        <div className="flex-1 min-w-0">
+          <p className="text-xs font-bold text-slate-700">{DOC_LABELS[docType] ?? docType}</p>
+          {existing ? (
             <a href={existing.fileUrl} target="_blank" rel="noopener noreferrer"
-              className="p-1.5 rounded-lg text-slate-400 hover:text-[#3663AD] hover:bg-slate-100 transition-all">
-              <Eye className="h-4 w-4" />
+              className="text-[11px] text-[#3663AD] hover:underline truncate block">
+              {existing.fileName}
             </a>
-            {!disabled && (
-              <button onClick={handleDelete} disabled={deleting}
-                className="p-1.5 rounded-lg text-slate-400 hover:text-rose-500 hover:bg-rose-50 transition-all disabled:opacity-50">
-                {deleting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
-              </button>
-            )}
-          </>
-        ) : (
-          !disabled && (
-            <label className="cursor-pointer flex items-center gap-1.5 bg-[#3663AD]/10 hover:bg-[#3663AD]/20 text-[#3663AD] text-xs font-bold px-3 py-1.5 rounded-lg transition-all">
+          ) : (
+            <p className="text-[11px] text-slate-400">Not uploaded · max 1 MB</p>
+          )}
+        </div>
+
+        {/* Actions */}
+        <div className="flex items-center gap-1.5 shrink-0">
+          {existing && (
+            <>
+              <a href={existing.fileUrl} target="_blank" rel="noopener noreferrer"
+                className="p-1.5 rounded-lg text-slate-400 hover:text-[#3663AD] hover:bg-[#3663AD]/5 transition-all">
+                <Eye className="h-4 w-4" />
+              </a>
+              {!disabled && (
+                <button onClick={handleDelete} disabled={deleting}
+                  className="p-1.5 rounded-lg text-slate-400 hover:text-rose-500 hover:bg-rose-50 transition-all disabled:opacity-50">
+                  {deleting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+                </button>
+              )}
+            </>
+          )}
+          {!disabled && (
+            <label className={`cursor-pointer flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-lg border-2 transition-all ${
+              existing
+                ? "border-slate-200 text-slate-500 hover:border-[#3663AD]/40 hover:text-[#3663AD] hover:bg-[#3663AD]/5"
+                : "border-[#3663AD]/30 text-[#3663AD] bg-[#3663AD]/5 hover:bg-[#3663AD]/10"
+            }`}>
               {uploading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Upload className="h-3.5 w-3.5" />}
-              {uploading ? "Uploading…" : "Upload"}
+              {uploading ? "Uploading…" : existing ? "Replace" : "Upload"}
               <input type="file" className="hidden" onChange={handleFileChange} accept=".pdf,.jpg,.jpeg,.png" />
             </label>
-          )
-        )}
+          )}
+        </div>
       </div>
+      {sizeError && (
+        <p className="text-[11px] text-rose-600 font-medium px-1">{sizeError}</p>
+      )}
     </div>
   )
 }

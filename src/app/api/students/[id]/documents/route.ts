@@ -37,6 +37,9 @@ export async function POST(
   if (!ALLOWED_TYPES.includes(docType as typeof ALLOWED_TYPES[number])) {
     return NextResponse.json({ error: "Invalid document type" }, { status: 400 })
   }
+  if (file.size > 1 * 1024 * 1024) {
+    return NextResponse.json({ error: "File exceeds 1 MB limit" }, { status: 413 })
+  }
 
   // Delete existing document of same type if present
   const existing = await prisma.studentDocument.findFirst({

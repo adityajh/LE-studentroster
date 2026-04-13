@@ -5,7 +5,7 @@ import { formatInstallmentStatus, formatStudentStatus } from "@/lib/students"
 import { formatINR } from "@/lib/fee-schedule"
 import { splitWaivers } from "@/lib/fee-calc"
 import { RecordPaymentDialog } from "@/components/students/record-payment-dialog"
-import { DocumentUpload } from "@/components/students/document-upload"
+import { DocumentUpload, DocumentStatusStrip } from "@/components/students/document-upload"
 import { RemindersTab } from "@/components/students/reminders-tab"
 import { ProposalTab } from "@/components/students/proposal-tab"
 import { HistoryTab } from "@/components/students/history-tab"
@@ -316,6 +316,12 @@ export default async function StudentDetailPage({
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Left column */}
         <div className="lg:col-span-1 space-y-4">
+
+          {/* Document status strip */}
+          <div className="bg-white border border-slate-200/50 rounded-2xl shadow-sm p-5 space-y-3">
+            <p className="text-[10px] uppercase tracking-widest font-bold text-slate-400">Documents</p>
+            <DocumentStatusStrip documents={student.documents} />
+          </div>
 
           {/* Contact */}
           <div className="bg-white border border-slate-200/50 rounded-2xl shadow-sm p-5 space-y-3">

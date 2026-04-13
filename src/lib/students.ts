@@ -110,10 +110,11 @@ export function formatInstallmentStatus(status: string) {
 
 export function formatStudentStatus(status: string) {
   const map: Record<string, { label: string; classes: string }> = {
-    OFFERED:   { label: "Offered",   classes: "bg-violet-500/10 text-violet-700 border-violet-500/20" },
-    ACTIVE:    { label: "Active",    classes: "bg-emerald-500/10 text-emerald-700 border-emerald-500/20" },
-    ALUMNI:    { label: "Alumni",    classes: "bg-indigo-500/10 text-indigo-700 border-indigo-500/20" },
-    WITHDRAWN: { label: "Withdrawn", classes: "bg-slate-500/10 text-slate-600 border-slate-500/20" },
+    OFFERED:    { label: "Offered",    classes: "bg-violet-500/10 text-violet-700 border-violet-500/20" },
+    ACTIVE:     { label: "Active",     classes: "bg-emerald-500/10 text-emerald-700 border-emerald-500/20" },
+    ONBOARDING: { label: "Onboarding", classes: "bg-[#25BCBD]/10 text-[#25BCBD] border-[#25BCBD]/30" },
+    ALUMNI:     { label: "Alumni",     classes: "bg-[#3663AD]/10 text-[#3663AD] border-[#3663AD]/20" },
+    WITHDRAWN:  { label: "Withdrawn",  classes: "bg-slate-500/10 text-slate-600 border-slate-500/20" },
   }
   return map[status] ?? { label: status, classes: "bg-slate-500/10 text-slate-600 border-slate-500/20" }
 }

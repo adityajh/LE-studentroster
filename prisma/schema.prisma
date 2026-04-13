@@ -72,6 +72,7 @@ enum Role {
 enum StudentStatus {
   OFFERED
   ACTIVE
+  ONBOARDING
   ALUMNI
   WITHDRAWN
 }
