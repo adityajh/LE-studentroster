@@ -3,7 +3,7 @@
 import { useState, useTransition } from "react"
 import { updateSetting } from "@/app/actions/settings"
 import { useRouter } from "next/navigation"
-import { Loader2, Save, Mail, Eye, EyeOff } from "lucide-react"
+import { Loader2, Save, Mail, Eye, EyeOff, Send } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -23,6 +23,29 @@ export function EmailTab({ initial }: { initial: EmailConfig }) {
   const [showPass, setShowPass] = useState(false)
 
   const [form, setForm] = useState(initial)
+  const [testTo, setTestTo] = useState("")
+  const [testLoading, setTestLoading] = useState(false)
+  const [testResult, setTestResult] = useState<{ ok: boolean; message: string } | null>(null)
+
+  async function handleTestEmail() {
+    if (!testTo) return
+    setTestLoading(true)
+    setTestResult(null)
+    try {
+      const res = await fetch("/api/settings/test-email", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ to: testTo }),
+      })
+      const data = await res.json()
+      if (!res.ok) setTestResult({ ok: false, message: data.error ?? "Failed" })
+      else setTestResult({ ok: true, message: `Sent to ${data.sentTo} from ${data.from}` })
+    } catch {
+      setTestResult({ ok: false, message: "Request failed" })
+    } finally {
+      setTestLoading(false)
+    }
+  }
 
   function handleSave() {
     startTransition(async () => {
@@ -133,6 +156,43 @@ export function EmailTab({ initial }: { initial: EmailConfig }) {
             <p className="text-xs text-slate-400">Appended at the bottom of every reminder email as payment instructions.</p>
           </div>
         </div>
+      </div>
+
+      {/* Test email */}
+      <div className="bg-white border border-slate-200 rounded-2xl p-6 space-y-4 shadow-sm">
+        <p className="text-[10px] uppercase font-bold tracking-widest text-slate-400">Send Test Email</p>
+        <div className="flex gap-3 items-end">
+          <div className="flex-1 space-y-1.5">
+            <Label htmlFor="testTo">Recipient</Label>
+            <Input
+              id="testTo"
+              type="email"
+              placeholder="you@example.com"
+              value={testTo}
+              onChange={(e) => setTestTo(e.target.value)}
+            />
+          </div>
+          <Button
+            type="button"
+            onClick={handleTestEmail}
+            disabled={testLoading || !testTo}
+            className="bg-slate-800 hover:bg-slate-900 text-white"
+          >
+            {testLoading
+              ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Sending...</>
+              : <><Send className="h-4 w-4 mr-2" />Send Test</>
+            }
+          </Button>
+        </div>
+        {testResult && (
+          <p className={`text-xs font-semibold px-3 py-2 rounded-lg border ${
+            testResult.ok
+              ? "bg-emerald-50 border-emerald-200 text-emerald-700"
+              : "bg-rose-50 border-rose-200 text-rose-600"
+          }`}>
+            {testResult.ok ? "✓ " : "✗ "}{testResult.message}
+          </p>
+        )}
       </div>
 
       <div className="flex justify-end">
