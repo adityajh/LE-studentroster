@@ -63,7 +63,11 @@ export async function POST(
     blob = await put(
       `students/${studentId}/${docType}/${safeName}`,
       fileBuffer,
-      { access: "public", contentType: file.type || "application/octet-stream" }
+      {
+        access: "public",
+        contentType: file.type || "application/octet-stream",
+        token: process.env.BLOB_READ_WRITE_TOKEN_READ_WRITE_TOKEN ?? process.env.BLOB_READ_WRITE_TOKEN,
+      }
     )
   } catch (err) {
     console.error("[blob upload error]", err)
