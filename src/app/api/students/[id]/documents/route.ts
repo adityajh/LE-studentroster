@@ -4,6 +4,7 @@ import { auth } from "@/auth"
 import { prisma } from "@/lib/prisma"
 
 const ALLOWED_TYPES = [
+  "STUDENT_PHOTO",
   "TENTH_MARKSHEET",
   "TWELFTH_MARKSHEET",
   "ACCEPTANCE_LETTER",
