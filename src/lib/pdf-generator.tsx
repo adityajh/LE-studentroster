@@ -1,4 +1,4 @@
-import { Document, Page, Text, View, StyleSheet, Font, Image, Link } from '@react-pdf/renderer'
+import { Document, Page, Text, View, StyleSheet } from '@react-pdf/renderer'
 import { formatINR } from './fee-schedule'
 import { Prisma } from '@prisma/client'
 
@@ -14,14 +14,7 @@ type FullStudent = Prisma.StudentGetPayload<{
   }
 }>
 
-// Register standard fonts
-// Note: We use standard fonts to avoid Vercel 50MB edge limit issues with custom fonts in PDF generation
-Font.register({
-  family: 'Helvetica',
-  fonts: [
-    { src: 'https://fonts.gstatic.com/s/helveticaneue/v70/1Ptsg8zYS_SKigQIvdW0g40.ttf' } // optional custom mapping if needed, else PDF viewer default is fine
-  ]
-})
+// Helvetica is a react-pdf built-in font — no Font.register needed.
 
 const styles = StyleSheet.create({
   page: {
