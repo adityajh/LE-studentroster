@@ -176,46 +176,53 @@ export default async function FeeScheduleYearPage({
         </TabsContent>
 
         {/* Scholarships */}
-        <TabsContent value="scholarships" className="mt-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {["A", "B"].map((cat) => {
-              const items = batch.feeSchedule?.scholarships.filter((s) => s.category === cat) ?? []
-              return (
-                <div key={cat} className="bg-white border border-slate-200/50 p-6 rounded-2xl shadow-sm">
-                  <p className="text-[10px] uppercase tracking-widest font-bold text-slate-400 mb-1">
-                    Scholarship
-                  </p>
-                  <h3 className="text-base font-extrabold text-slate-900 mb-1">Category {cat}</h3>
-                  <p className="text-xs font-medium text-slate-400 mb-4">
-                    {cat === "A"
-                      ? "Merit-based · ₹15K to ₹50K"
-                      : "Equity-based · ₹25K flat"}
-                  </p>
-                  <div className="space-y-2">
-                    {items.map((s) => (
-                      <div key={s.id} className="flex items-center justify-between gap-3">
-                        <div className="flex items-center gap-2 min-w-0">
-                          <span className="text-sm font-medium text-slate-600 truncate">{s.name}</span>
-                          {!(s as { spreadAcrossYears?: boolean }).spreadAcrossYears && (
-                            <span className="shrink-0 bg-amber-500/10 text-amber-700 border border-amber-500/20 text-[10px] uppercase tracking-wider font-bold px-1.5 py-0.5 rounded">
-                              Year 1
-                            </span>
-                          )}
-                        </div>
-                        <span className="text-sm font-bold text-indigo-600 shrink-0">
-                          {s.minAmount.toString() === s.maxAmount.toString()
-                            ? formatINR(s.minAmount)
-                            : `${formatINR(s.minAmount)} – ${formatINR(s.maxAmount)}`}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
+        <TabsContent value="scholarships" className="mt-4 space-y-4">
+          {["A", "B"].map((cat) => {
+            const items = batch.feeSchedule?.scholarships.filter((s) => s.category === cat) ?? []
+            return (
+              <div key={cat} className="bg-white border border-slate-200/50 rounded-2xl shadow-sm overflow-hidden">
+                <div className="px-5 py-3 border-b border-slate-100 flex items-center gap-2">
+                  <span className="text-[10px] uppercase tracking-widest font-bold text-slate-400">Category {cat}</span>
+                  <span className="text-[10px] font-medium text-slate-400">·</span>
+                  <span className="text-[10px] font-medium text-slate-400">
+                    {cat === "A" ? "Merit-based" : "Equity-based"}
+                  </span>
                 </div>
-              )
-            })}
-          </div>
-          <p className="text-xs font-medium text-slate-400 mt-3">
-            Students may apply for 1 scholarship per category. Distributed across 3 program years.
+                <Table>
+                  <TableHeader>
+                    <TableRow className="border-slate-100 hover:bg-transparent">
+                      <TableHead className="text-[10px] uppercase tracking-widest font-bold text-slate-400">Scholarship</TableHead>
+                      <TableHead className="text-[10px] uppercase tracking-widest font-bold text-slate-400">Amount</TableHead>
+                      <TableHead className="text-[10px] uppercase tracking-widest font-bold text-slate-400">Spread</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {items.map((s) => {
+                      const isSpread = (s as { spreadAcrossYears?: boolean }).spreadAcrossYears !== false
+                      return (
+                        <TableRow key={s.id} className="border-slate-100">
+                          <TableCell className="font-semibold text-slate-800">{s.name}</TableCell>
+                          <TableCell className="font-extrabold text-emerald-600">
+                            {s.minAmount.toString() === s.maxAmount.toString()
+                              ? formatINR(s.minAmount)
+                              : `${formatINR(s.minAmount)} – ${formatINR(s.maxAmount)}`}
+                          </TableCell>
+                          <TableCell>
+                            {isSpread
+                              ? <span className="bg-emerald-500/10 text-emerald-700 border border-emerald-500/20 text-[10px] uppercase tracking-wider font-bold px-2 py-1 rounded">Yes</span>
+                              : <span className="bg-amber-500/10 text-amber-700 border border-amber-500/20 text-[10px] uppercase tracking-wider font-bold px-2 py-1 rounded">Year 1 Only</span>
+                            }
+                          </TableCell>
+                        </TableRow>
+                      )
+                    })}
+                  </TableBody>
+                </Table>
+              </div>
+            )
+          })}
+          <p className="text-xs font-medium text-slate-400">
+            Students may apply for 1 scholarship per category. Spread scholarships are distributed across 3 program years.
           </p>
         </TabsContent>
       </Tabs>
