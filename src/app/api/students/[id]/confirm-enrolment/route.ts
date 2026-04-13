@@ -65,6 +65,19 @@ export async function POST(
     ? await prisma.offer.findMany({ where: { id: { in: offerIds } } })
     : []
 
+  // Server-side deadline guard — reject expired offers
+  const enrolmentDate = new Date(date)
+  enrolmentDate.setHours(23, 59, 59, 999) // use end of enrolment day as cutoff
+  const expiredOffers = selectedOffers.filter(
+    (o) => o.deadline !== null && new Date(o.deadline) < enrolmentDate
+  )
+  if (expiredOffers.length > 0) {
+    return NextResponse.json(
+      { error: `The following offers have expired and cannot be applied: ${expiredOffers.map((o) => o.name).join(", ")}` },
+      { status: 400 }
+    )
+  }
+
   const selectedScholarships: { scholarshipId: string; amount: number }[] = scholarships ?? []
   const scholarshipIds = selectedScholarships.map((s: { scholarshipId: string }) => s.scholarshipId)
   const scholarshipRecords = scholarshipIds.length

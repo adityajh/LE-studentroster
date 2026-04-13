@@ -50,7 +50,16 @@ export async function getStudentById(id: string) {
   return prisma.student.findUnique({
     where: { id },
     include: {
-      batch: true,
+      batch: {
+        include: {
+          feeSchedule: {
+            include: {
+              offers: { orderBy: { waiverAmount: "desc" } },
+              scholarships: { orderBy: [{ category: "asc" }, { minAmount: "asc" }] },
+            },
+          },
+        },
+      },
       program: true,
       financial: true,
       offers: { include: { offer: { select: { id: true, name: true, type: true, waiverAmount: true, conditions: true } } } },

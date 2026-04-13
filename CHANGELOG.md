@@ -4,6 +4,30 @@ All notable changes to the LE Student Roster system are documented here.
 
 ---
 
+## [1.5.0] — 2026-04-13
+
+### PDF Redesign, Workflow Restructure & LE Branding
+
+#### Added
+- **Onboard workflow page** (`/students/[id]/onboard`) — 3-step journey for ACTIVE students: (1) profile completion by team member, (2) document uploads (Aadhaar, PAN, 10th/12th marksheets, signature stored on Vercel Blob), (3) send onboarding email with proposal PDF attached
+- **`OnboardWizard` component** — multi-step wizard with profile fields, file upload/delete per document type, and onboarding email trigger; shown only for ACTIVE students without `onboardingEmailSentAt`
+- **`POST /api/students/[id]/send-onboarding`** — generates proposal PDF, stamps `onboardingEmailSentAt`, sends email to student + parent
+- **LE logo in all emails** — `EMAIL_HEADER` (logo + "Work is the Curriculum" tagline, brand-blue divider) and `EMAIL_FOOTER` (address, website, phone) injected into every outbound email template: offer, offer reminder, onboarding, fee reminder, and receipt emails
+
+#### Changed
+- **Confirm Enrolment dialog** restructured as 4-step wizard: (1) Benefits (confirm offers + scholarships, add one-off deductions), (2) Payment Plan (choose annual/semester/trimester/custom), (3) Registration Payment, (4) Review & Confirm
+- **Offer workflow** — payment plan and final fee confirmation removed; now only captures offer eligibility (indicative); final fee locked at enrolment
+- **PDF fee schedule** — logo header (`le-logo-light.png`, base64-embedded), "Work is the Curriculum" tagline, full address footer; `Rs.` replacing `₹` for Helvetica compatibility; grey deductions column; placeholder row when no installments exist; filename pattern `LE-{Program}-{Student}-FeeDetails.pdf`
+- **Offer letter PDF** — same logo/footer treatment; `Rs.` instead of `₹`; `"use client"` directive removed (server-side only)
+- **Email attachment filenames** standardised — `LE-{Program}-{Student}-OfferLetter-{Date}.pdf` and `LE-{Program}-{Student}-FeeDetails.pdf`
+
+#### Fixed
+- **`₹` rendering as `¹`** in PDFs — Helvetica built-in font lacks the rupee glyph; replaced with `Rs.` in both PDF generators
+- **Template variables appearing literally in offer letter PDF** — `{{studentName}}` etc. were not substituted before passing `bodyText` to the PDF renderer; substitution now happens in the route before PDF render
+- **`"use client"` in `offer-letter-generator.tsx`** causing null-prop errors in react-pdf — directive removed; file is server-side only
+
+---
+
 ## [1.4.0] — 2026-04-13
 
 ### Full FIFO Payment Engine, Installment Schedule Editor & UX Fixes

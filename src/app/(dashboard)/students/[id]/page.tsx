@@ -241,6 +241,21 @@ export default async function StudentDetailPage({
                     amount: Number(s.amount),
                     spreadAcrossYears: (s.scholarship as { spreadAcrossYears: boolean }).spreadAcrossYears,
                   }))}
+                  allBatchOffers={student.batch.feeSchedule?.offers.map((o) => ({
+                    id: o.id,
+                    name: o.name,
+                    waiverAmount: Number(o.waiverAmount),
+                    deadline: o.deadline ? o.deadline.toISOString() : null,
+                    conditions: o.conditions,
+                  })) ?? []}
+                  allBatchScholarships={student.batch.feeSchedule?.scholarships.map((s) => ({
+                    id: s.id,
+                    name: s.name,
+                    category: s.category,
+                    minAmount: Number(s.minAmount),
+                    maxAmount: Number(s.maxAmount),
+                    spreadAcrossYears: s.spreadAcrossYears,
+                  })) ?? []}
                 />
               </>
             )}

@@ -71,7 +71,7 @@ export async function POST(
   // Load logo as base64
   let logoSrc: string | undefined
   try {
-    const logoBuf = fs.readFileSync(path.join(process.cwd(), "public", "le-logo-dark.png"))
+    const logoBuf = fs.readFileSync(path.join(process.cwd(), "public", "le-logo-light.png"))
     logoSrc = `data:image/png;base64,${logoBuf.toString("base64")}`
   } catch {
     // logo missing — PDF will fall back to text

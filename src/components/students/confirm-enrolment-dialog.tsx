@@ -18,6 +18,8 @@ const YEAR_OPTIONS = [
 
 type OfferedOffer = { id: string; offerId: string; name: string; waiverAmount: number }
 type OfferedScholarship = { id: string; scholarshipId: string; name: string; category: string; amount: number; spreadAcrossYears: boolean }
+type BatchOffer = { id: string; name: string; waiverAmount: number; deadline: string | null; conditions: unknown }
+type BatchScholarship = { id: string; name: string; category: string; minAmount: number; maxAmount: number; spreadAcrossYears: boolean }
 type CustomInstallment = { label: string; dueDate: string; amount: number; year: number; yearOption: string }
 type Deduction = { description: string; amount: number }
 
@@ -32,6 +34,8 @@ export function ConfirmEnrolmentDialog({
   batchYear,
   offeredOffers,
   offeredScholarships,
+  allBatchOffers = [],
+  allBatchScholarships = [],
 }: {
   studentId: string
   studentName: string
@@ -43,6 +47,8 @@ export function ConfirmEnrolmentDialog({
   batchYear: number
   offeredOffers: OfferedOffer[]
   offeredScholarships: OfferedScholarship[]
+  allBatchOffers?: BatchOffer[]
+  allBatchScholarships?: BatchScholarship[]
 }) {
   const router = useRouter()
   const [open, setOpen] = useState(false)
@@ -51,8 +57,31 @@ export function ConfirmEnrolmentDialog({
   const [step, setStep] = useState(1) // 1: Benefits, 2: Payment Plan, 3: Registration, 4: Review
   const [done, setDone] = useState<{ rollNo: string } | null>(null)
 
+  // Use fee-schedule offers as the source of truth; fall back to offered offers if no fee schedule attached
+  const offerSource: BatchOffer[] = allBatchOffers.length > 0
+    ? allBatchOffers
+    : offeredOffers.map((o) => ({ id: o.offerId, name: o.name, waiverAmount: o.waiverAmount, deadline: null, conditions: null }))
+
+  // Use fee-schedule scholarships as source; fall back to offered scholarships if none
+  const scholarshipSource: BatchScholarship[] = allBatchScholarships.length > 0
+    ? allBatchScholarships
+    : offeredScholarships.map((s) => ({ id: s.scholarshipId, name: s.name, category: s.category, minAmount: s.amount, maxAmount: s.amount, spreadAcrossYears: s.spreadAcrossYears }))
+
+  const todayDate = new Date()
+  todayDate.setHours(0, 0, 0, 0)
+  const isOfferValid = (o: BatchOffer) => o.deadline === null || new Date(o.deadline) >= todayDate
+
+  // Default checked = all valid (deadline not passed) offers from the fee schedule.
+  // Enrolment date is when offer validity is determined; expired offers are shown but disabled.
+  const defaultCheckedOfferIds = (): string[] => {
+    if (allBatchOffers.length > 0) {
+      return allBatchOffers.filter(isOfferValid).map((o) => o.id)
+    }
+    return offeredOffers.map((o) => o.offerId)
+  }
+
   // Step 1 — confirmed benefits
-  const [confirmedOfferIds, setConfirmedOfferIds] = useState<string[]>(offeredOffers.map((o) => o.offerId))
+  const [confirmedOfferIds, setConfirmedOfferIds] = useState<string[]>(defaultCheckedOfferIds)
   const [confirmedScholarships, setConfirmedScholarships] = useState<{ scholarshipId: string; name: string; amount: number; spreadAcrossYears: boolean }[]>(
     offeredScholarships.map((s) => ({ scholarshipId: s.scholarshipId, name: s.name, amount: s.amount, spreadAcrossYears: s.spreadAcrossYears }))
   )
@@ -80,8 +109,8 @@ export function ConfirmEnrolmentDialog({
 
   // ── Fee calculations ──────────────────────────────────────────────────────
 
-  const confirmedOfferWaiver = offeredOffers
-    .filter((o) => confirmedOfferIds.includes(o.offerId))
+  const confirmedOfferWaiver = offerSource
+    .filter((o) => confirmedOfferIds.includes(o.id))
     .reduce((s, o) => s + o.waiverAmount, 0)
   const confirmedScholarshipWaiver = confirmedScholarships.reduce((s, sc) => s + sc.amount, 0)
   const confirmedDeductionTotal = deductions.reduce((s, d) => s + d.amount, 0)
@@ -93,8 +122,8 @@ export function ConfirmEnrolmentDialog({
     const spreadWaiver = confirmedScholarships
       .filter((s) => s.spreadAcrossYears)
       .reduce((sum, s) => sum + s.amount, 0)
-    const onetimeOfferWaiver = offeredOffers
-      .filter((o) => confirmedOfferIds.includes(o.offerId))
+    const onetimeOfferWaiver = offerSource
+      .filter((o) => confirmedOfferIds.includes(o.id))
       .reduce((sum, o) => sum + o.waiverAmount, 0)
     const spreadPerYear = Math.round(spreadWaiver / 3)
 
@@ -119,7 +148,7 @@ export function ConfirmEnrolmentDialog({
     return customInstallments.map((i) => ({ label: i.label, amount: i.amount, due: i.dueDate, year: i.year }))
   }, [installmentType, confirmedOfferIds, confirmedScholarships, deductions, customInstallments,
       year1Fee, year2Fee, year3Fee, registrationFee, baseFee, batchYear,
-      offeredOffers, totalWaiver, confirmedDeductionTotal])
+      offerSource, totalWaiver, confirmedDeductionTotal])
 
   // ── Custom schedule helpers ───────────────────────────────────────────────
 
@@ -192,8 +221,8 @@ export function ConfirmEnrolmentDialog({
   }
 
   function handleOpen() {
-    // Reset to latest offered data each time dialog opens
-    setConfirmedOfferIds(offeredOffers.map((o) => o.offerId))
+    // Reset to latest data each time dialog opens
+    setConfirmedOfferIds(defaultCheckedOfferIds())
     setConfirmedScholarships(offeredScholarships.map((s) => ({ scholarshipId: s.scholarshipId, name: s.name, amount: s.amount, spreadAcrossYears: s.spreadAcrossYears })))
     setDeductions([])
     setInstallmentType("ANNUAL")
@@ -266,45 +295,110 @@ export function ConfirmEnrolmentDialog({
                     <div className="space-y-4">
                       <p className="text-sm text-slate-500">Confirm which offered benefits the student is claiming. Uncheck any that don&apos;t apply.</p>
 
-                      {offeredOffers.length === 0 && offeredScholarships.length === 0 ? (
-                        <p className="text-xs text-slate-400 italic">No offers or scholarships were included in this offer.</p>
+                      {offerSource.length === 0 && scholarshipSource.length === 0 ? (
+                        <p className="text-xs text-slate-400 italic">No offers or scholarships in the fee schedule for this batch.</p>
                       ) : (
-                        <div className="space-y-2">
-                          {offeredOffers.map((o) => (
-                            <label key={o.offerId} className={cn(
-                              "flex items-center gap-3 p-3 rounded-lg border cursor-pointer",
-                              confirmedOfferIds.includes(o.offerId) ? "border-emerald-400 bg-emerald-50" : "border-slate-200"
-                            )}>
-                              <input type="checkbox"
-                                checked={confirmedOfferIds.includes(o.offerId)}
-                                onChange={() => setConfirmedOfferIds((prev) =>
-                                  prev.includes(o.offerId) ? prev.filter((x) => x !== o.offerId) : [...prev, o.offerId]
-                                )}
-                                className="rounded border-slate-300"
-                              />
-                              <span className="flex-1 text-sm">{o.name}</span>
-                              <span className="text-sm font-semibold text-emerald-600">- {formatINR(o.waiverAmount)}</span>
-                            </label>
-                          ))}
-                          {offeredScholarships.map((s) => (
-                            <label key={s.scholarshipId} className={cn(
-                              "flex items-center gap-3 p-3 rounded-lg border cursor-pointer",
-                              confirmedScholarships.some((cs) => cs.scholarshipId === s.scholarshipId)
-                                ? "border-emerald-400 bg-emerald-50" : "border-slate-200"
-                            )}>
-                              <input type="checkbox"
-                                checked={confirmedScholarships.some((cs) => cs.scholarshipId === s.scholarshipId)}
-                                onChange={() => setConfirmedScholarships((prev) =>
-                                  prev.some((cs) => cs.scholarshipId === s.scholarshipId)
-                                    ? prev.filter((cs) => cs.scholarshipId !== s.scholarshipId)
-                                    : [...prev, { scholarshipId: s.scholarshipId, name: s.name, amount: s.amount, spreadAcrossYears: s.spreadAcrossYears }]
-                                )}
-                                className="rounded border-slate-300"
-                              />
-                              <span className="flex-1 text-sm">{s.name} Scholarship</span>
-                              <span className="text-sm font-semibold text-emerald-600">- {formatINR(s.amount)}</span>
-                            </label>
-                          ))}
+                        <div className="space-y-4">
+                          {/* ── Offers ── */}
+                          {offerSource.length > 0 && (
+                            <div>
+                              <p className="text-xs font-semibold text-slate-600 mb-2">Offers</p>
+                              <div className="space-y-2">
+                                {offerSource.map((o) => {
+                                  const valid = isOfferValid(o)
+                                  const checked = confirmedOfferIds.includes(o.id)
+                                  const deadlineLabel = o.deadline
+                                    ? new Date(o.deadline).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })
+                                    : null
+                                  return (
+                                    <label key={o.id} className={cn(
+                                      "flex items-center gap-3 p-3 rounded-lg border",
+                                      !valid ? "border-slate-200 bg-slate-50 opacity-60 cursor-not-allowed" :
+                                      checked ? "border-emerald-400 bg-emerald-50 cursor-pointer" : "border-slate-200 cursor-pointer"
+                                    )}>
+                                      <input type="checkbox"
+                                        disabled={!valid}
+                                        checked={checked}
+                                        onChange={() => {
+                                          if (!valid) return
+                                          setConfirmedOfferIds((prev) =>
+                                            prev.includes(o.id) ? prev.filter((x) => x !== o.id) : [...prev, o.id]
+                                          )
+                                        }}
+                                        className="rounded border-slate-300"
+                                      />
+                                      <span className="flex-1 text-sm">{o.name}</span>
+                                      {!valid && deadlineLabel && (
+                                        <span className="text-[10px] text-slate-400 bg-slate-100 border border-slate-200 rounded px-1.5 py-0.5 mr-1">
+                                          Expired {deadlineLabel}
+                                        </span>
+                                      )}
+                                      {valid && deadlineLabel && (
+                                        <span className="text-[10px] text-amber-600 bg-amber-50 border border-amber-200 rounded px-1.5 py-0.5 mr-1">
+                                          Until {deadlineLabel}
+                                        </span>
+                                      )}
+                                      <span className={cn("text-sm font-semibold", valid ? "text-emerald-600" : "text-slate-400")}>
+                                        - {formatINR(o.waiverAmount)}
+                                      </span>
+                                    </label>
+                                  )
+                                })}
+                              </div>
+                            </div>
+                          )}
+
+                          {/* ── Scholarships ── */}
+                          {scholarshipSource.length > 0 && (
+                            <div>
+                              <p className="text-xs font-semibold text-slate-600 mb-2">Scholarships</p>
+                              <div className="space-y-2">
+                                {scholarshipSource.map((s) => {
+                                  const confirmed = confirmedScholarships.find((cs) => cs.scholarshipId === s.id)
+                                  const isChecked = !!confirmed
+                                  return (
+                                    <div key={s.id} className={cn(
+                                      "flex items-center gap-3 p-3 rounded-lg border",
+                                      isChecked ? "border-emerald-400 bg-emerald-50" : "border-slate-200"
+                                    )}>
+                                      <input type="checkbox"
+                                        checked={isChecked}
+                                        onChange={() => setConfirmedScholarships((prev) =>
+                                          prev.some((cs) => cs.scholarshipId === s.id)
+                                            ? prev.filter((cs) => cs.scholarshipId !== s.id)
+                                            : [...prev, { scholarshipId: s.id, name: s.name, amount: s.maxAmount, spreadAcrossYears: s.spreadAcrossYears }]
+                                        )}
+                                        className="rounded border-slate-300 cursor-pointer"
+                                      />
+                                      <span className="flex-1 text-sm">{s.name}</span>
+                                      {isChecked && (
+                                        <div className="flex items-center gap-1.5">
+                                          <span className="text-xs text-slate-400">₹</span>
+                                          <input
+                                            type="number"
+                                            min={s.minAmount}
+                                            max={s.maxAmount}
+                                            className="w-24 border border-slate-200 rounded px-2 py-1 text-xs text-right focus:outline-none focus:ring-2 focus:ring-emerald-400"
+                                            value={confirmed!.amount}
+                                            onChange={(e) => setConfirmedScholarships((prev) =>
+                                              prev.map((cs) => cs.scholarshipId === s.id
+                                                ? { ...cs, amount: Math.min(s.maxAmount, Math.max(0, Number(e.target.value))) }
+                                                : cs
+                                              )
+                                            )}
+                                          />
+                                          <span className="text-[10px] text-slate-400">max {formatINR(s.maxAmount)}</span>
+                                        </div>
+                                      )}
+                                      {!isChecked && (
+                                        <span className="text-sm font-semibold text-slate-400">up to {formatINR(s.maxAmount)}</span>
+                                      )}
+                                    </div>
+                                  )
+                                })}
+                              </div>
+                            </div>
+                          )}
                         </div>
                       )}
 

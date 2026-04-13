@@ -110,10 +110,12 @@ function reminderHtml(payload: ReminderEmailPayload) {
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 </head>
 <body style="margin:0;padding:24px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:#333;font-size:15px;line-height:1.6;background:#ffffff;">
+  ${EMAIL_HEADER}
   <div>
     ${htmlMessage}
     ${pmInstructions}
   </div>
+  ${EMAIL_FOOTER}
   ${trackingPixel}
 </body>
 </html>
@@ -180,20 +182,24 @@ export async function sendReceiptEmail(payload: ReceiptEmailPayload): Promise<Se
     style: "currency", currency: "INR", maximumFractionDigits: 0,
   }).format(payload.amount)
 
-  const html = `
-    <div style="font-family: sans-serif; line-height: 1.6; color: #333;">
-      <p>Dear ${payload.studentName},</p>
-      <p>This is to confirm that we have received your payment of <strong>${formattedAmount}</strong> on ${formattedDate}.</p>
-      <p><strong>Payment Details:</strong></p>
-      <ul>
-        <li><strong>Receipt No:</strong> ${payload.receiptNo}</li>
-        <li><strong>Mode:</strong> ${payload.paymentMode}</li>
-        <li><strong>For:</strong> ${payload.installmentLabel}</li>
-      </ul>
-      <p>Please find the official payment receipt attached to this email.</p>
-      <p>Regards,<br/><strong>Let's Enterprise Team</strong></p>
-    </div>
-  `
+  const html = `<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8" /></head>
+<body style="margin:0;padding:24px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:#333;font-size:15px;line-height:1.6;background:#fff;">
+  ${EMAIL_HEADER}
+  <p>Dear ${payload.studentName},</p>
+  <p>This is to confirm that we have received your payment of <strong>${formattedAmount}</strong> on ${formattedDate}.</p>
+  <p><strong>Payment Details:</strong></p>
+  <ul>
+    <li><strong>Receipt No:</strong> ${payload.receiptNo}</li>
+    <li><strong>Mode:</strong> ${payload.paymentMode}</li>
+    <li><strong>For:</strong> ${payload.installmentLabel}</li>
+  </ul>
+  <p>Please find the official payment receipt attached to this email.</p>
+  <p>Regards,<br/><strong>Let's Enterprise Team</strong></p>
+  ${EMAIL_FOOTER}
+</body>
+</html>`
 
   try {
     const info = await transporter.sendMail({
@@ -234,6 +240,22 @@ export type OfferEmailPayload = {
   proposalPdf?: Buffer      // optional fee breakdown proposal PDF
 }
 
+// Logo URL for email headers — uses the light-mode (dark-text) logo served from /public
+const LOGO_URL = `${process.env.NEXT_PUBLIC_APP_URL ?? "https://le-student-roster.vercel.app"}/le-logo-light.png`
+
+const EMAIL_HEADER = `
+  <div style="padding:24px 0 20px;border-bottom:2px solid #3663AD;margin-bottom:24px;">
+    <img src="${LOGO_URL}" alt="Let's Enterprise" height="40" style="display:block;max-width:200px;height:40px;object-fit:contain;" />
+    <p style="margin:6px 0 0;font-size:11px;color:#64748b;letter-spacing:0.04em;">Work is the Curriculum</p>
+  </div>`
+
+const EMAIL_FOOTER = `
+  <div style="margin-top:32px;padding-top:16px;border-top:1px solid #e2e8f0;font-size:11px;color:#94a3b8;line-height:1.6;">
+    <strong style="color:#475569;">Let's Enterprise</strong><br/>
+    6th Floor, Trimurty Honeygold, 44 Range Hill Road, Sinchan Nagar, Ashok Nagar, Pune, Maharashtra 411016<br/>
+    <a href="https://www.letsenterprise.in" style="color:#3663AD;text-decoration:none;">www.letsenterprise.in</a> &nbsp;·&nbsp; +91 84472 84008
+  </div>`
+
 function offerEmailHtml(payload: OfferEmailPayload) {
   const expiry = payload.offerExpiryDate.toLocaleDateString("en-IN", {
     day: "numeric", month: "long", year: "numeric",
@@ -254,11 +276,13 @@ function offerEmailHtml(payload: OfferEmailPayload) {
 <html>
 <head><meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1.0" /></head>
 <body style="margin:0;padding:24px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:#333;font-size:15px;line-height:1.6;background:#fff;">
+  ${EMAIL_HEADER}
   <div>${body}</div>
   <div style="margin-top:20px;padding:16px;background:#f4f7fc;border-radius:6px;font-size:14px;">
     <strong>Payment Details:</strong><br/>${bankHtml}
   </div>
   <p style="margin-top:20px;font-size:13px;color:#555;">Your official Offer Letter is attached to this email.</p>
+  ${EMAIL_FOOTER}
 </body>
 </html>`
 }
@@ -323,7 +347,9 @@ function offerReminderHtml(payload: OfferReminderPayload) {
 <html>
 <head><meta charset="utf-8" /></head>
 <body style="margin:0;padding:24px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:#333;font-size:15px;line-height:1.6;background:#fff;">
+  ${EMAIL_HEADER}
   <div>${body}</div>
+  ${EMAIL_FOOTER}
 </body>
 </html>`
 }
@@ -413,9 +439,11 @@ function onboardingEmailHtml(payload: OnboardingEmailPayload) {
 <html>
 <head><meta charset="utf-8" /></head>
 <body style="margin:0;padding:24px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:#333;font-size:15px;line-height:1.6;background:#fff;">
+  ${EMAIL_HEADER}
   <div>${body}</div>
   ${links ? `<ul style="margin-top:16px;">${links}</ul>` : ""}
   <p style="margin-top:16px;font-size:13px;color:#555;">Your personalised fee structure document is attached.</p>
+  ${EMAIL_FOOTER}
 </body>
 </html>`
 }
