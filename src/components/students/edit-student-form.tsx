@@ -40,6 +40,7 @@ type Student = {
     customTerms: string | null
     isLocked: boolean
     installmentType: string
+    registrationFeeOverride: number | null
   } | null
   offers: { id: string; offerId: string; waiverAmount: any; offer: { id: string; name: string; type: string; waiverAmount: any } }[]
   scholarships: { id: string; scholarshipId: string; amount: any; scholarship: { id: string; name: string; category: string } }[]
@@ -108,7 +109,11 @@ export function EditStudentForm({
   const [email, setEmail] = useState(student.email ?? "")
   const [contact, setContact] = useState(student.contact ?? "")
   const [bloodGroup, setBloodGroup] = useState(student.bloodGroup ?? "")
-  const [feeReg, setFeeReg] = useState("")
+  const [feeReg, setFeeReg] = useState(
+    student.financial?.registrationFeeOverride != null
+      ? String(student.financial.registrationFeeOverride)
+      : ""
+  )
   const [feeY1, setFeeY1] = useState("")
   const [feeY2, setFeeY2] = useState("")
   const [feeY3, setFeeY3] = useState("")
@@ -126,6 +131,9 @@ export function EditStudentForm({
   const baseFee = String(computedY1 + computedY2 + computedY3)
 
   const initialBaseFee = student.financial?.baseFee?.toString() ?? "0"
+  const initialFeeReg = student.financial?.registrationFeeOverride != null
+    ? String(student.financial.registrationFeeOverride)
+    : ""
   const initialCustomTerms = student.financial?.customTerms ?? ""
 
   // ── Address ──
@@ -175,7 +183,7 @@ export function EditStudentForm({
 
   const isFinancialChanged =
     baseFee !== initialBaseFee ||
-    feeReg !== "" ||
+    feeReg !== initialFeeReg ||
     customTerms !== initialCustomTerms ||
     JSON.stringify(selectedOfferIds.sort()) !== JSON.stringify(student.offers.map(o => o.offerId).sort()) ||
     JSON.stringify(selectedScholarships) !== JSON.stringify(student.scholarships.map(ss => ({ scholarshipId: ss.scholarshipId, amount: Number(ss.amount) }))) ||
@@ -249,7 +257,7 @@ export function EditStudentForm({
           instagramHandle:    instagramHandle    || null,
           universityChoice:   universityChoice   || null,
           universityStatus:   universityStatus   || null,
-          baseFee:            isAdmin ? baseFee : undefined,
+          baseFee:            isAdmin && (feeY1 !== "" || feeY2 !== "" || feeY3 !== "") ? baseFee : undefined,
           registrationFee:    isAdmin && feeReg !== "" ? computedReg : undefined,
           customTerms:        isAdmin ? customTerms : undefined,
           offers:             isAdmin && isFinancialChanged ? selectedOfferIds : undefined,

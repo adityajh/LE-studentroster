@@ -48,9 +48,9 @@ export default async function StudentDetailPage({
 
   // Use payments journal as source of truth for total paid
   const totalPaid = (student.payments || []).reduce((s, p) => s + Number(p.amount), 0)
-  const totalDue = student.installments
-    .filter((i) => i.status !== "PAID")
-    .reduce((s, i) => s + Math.round(i.amount.toNumber()), 0)
+  // Outstanding = netFee minus what's been paid (netFee already incorporates deductions)
+  const netFeeAmount = fin ? Number(fin.netFee) : 0
+  const outstanding = Math.max(0, netFeeAmount - totalPaid)
 
   const yearFees: Record<number, number> = {
     1: student.program.year1Fee.toNumber(),
@@ -94,12 +94,16 @@ export default async function StudentDetailPage({
     }))
   )
 
+  // Total manual deductions (reduce year 1 installment)
+  const totalDeductionAmount = student.deductions.reduce((s, d) => s + Number(d.amount), 0)
+
   // Expected fee for a given installment year under the current scheme
   const expectedInstFee = (year: number, instAmount: number): number => {
     if (year === 0) return regFeeAmount
     if (fin?.installmentType === "ANNUAL") {
       const base = yearFees[year] ?? 0
-      return Math.max(0, Math.round(base - schemeSpreadPerYear - (year === 1 ? schemeOnetimeTotal : 0)))
+      const deductionForYear = year === 1 ? totalDeductionAmount : 0
+      return Math.max(0, Math.round(base - schemeSpreadPerYear - (year === 1 ? schemeOnetimeTotal : 0) - deductionForYear))
     }
     // ONE_TIME or CUSTOM: use stored amount (custom plans are admin-set)
     return instAmount
@@ -421,7 +425,7 @@ export default async function StudentDetailPage({
                 </div>
                 <div className="flex justify-between text-sm">
                   <span className="font-medium text-slate-500">Outstanding</span>
-                  <span className="font-bold text-slate-800">{formatINR(totalDue)}</span>
+                  <span className="font-bold text-slate-800">{formatINR(outstanding)}</span>
                 </div>
               </div>
 
@@ -563,7 +567,7 @@ export default async function StudentDetailPage({
                       // Build breakdown lines for ANNUAL years only
                       const isAnnualYear = fin?.installmentType === "ANNUAL" && inst.year > 0 && yearFees[inst.year]
                       const totalWaiverForYear = isAnnualYear
-                        ? schemeSpreadPerYear + (inst.year === 1 ? schemeOnetimeTotal : 0)
+                        ? schemeSpreadPerYear + (inst.year === 1 ? schemeOnetimeTotal + totalDeductionAmount : 0)
                         : 0
                       return (
                         <tr key={inst.id}>

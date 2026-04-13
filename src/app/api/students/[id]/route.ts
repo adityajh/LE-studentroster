@@ -286,7 +286,7 @@ export async function PATCH(
 
               for (const inst of remainingInstallments) {
                 const yearFee = programYearFees[inst.year] ?? 0
-                const amt = Math.max(0, Math.round(yearFee - spreadPerYear - (inst.year === 1 ? onetimeTotal : 0)))
+                const amt = Math.max(0, Math.round(yearFee - spreadPerYear - (inst.year === 1 ? onetimeTotal + (newTotalDeduction ?? 0) : 0)))
                 await tx.installment.update({ where: { id: inst.id }, data: { amount: amt } })
               }
             } else {
