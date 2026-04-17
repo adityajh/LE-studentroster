@@ -1,6 +1,6 @@
 # Architecture — LE Student Roster
 
-> Last updated: 2026-04-13 (v1.7.0)
+> Last updated: 2026-04-17 (v1.8.0)
 
 ---
 
@@ -22,8 +22,7 @@ A Next.js 16 App Router web application for Let's Enterprise (LE) to manage stud
 | Auth | NextAuth v5 — magic link via Gmail SMTP (nodemailer) |
 | Email | Nodemailer (Gmail App Password, configurable via DB settings) |
 | PDF | `@react-pdf/renderer` |
-| Word | `docx` |
-| File storage | Vercel Blob (student documents, **Public** store) |
+| File storage | Vercel Blob (student documents + fee letters, **Public** store) |
 | Hosting | Vercel (auto-deploy from `main`) |
 | Cron | Vercel Cron (daily 03:00 UTC) |
 
@@ -56,14 +55,14 @@ src/
   lib/
     prisma.ts             — Prisma client singleton (Neon adapter)
     students.ts           — getStudents, getStudentById, getEnrollmentFormData, formatters
-    mail.ts               — All email send functions (SMTP via SystemSetting or env)
+    mail.ts               — All email send functions (Hostinger SMTP for student/parent emails)
     fee-schedule.ts       — formatINR, fee calculation helpers
     fee-calc.ts           — Shared fee helpers: isSpreadCondition, splitWaivers
     fifo.ts               — Payment FIFO engine: computeFifo, computePaymentAllocation, syncFifoToDb
-    pdf-generator.tsx     — Proposal PDF (react-pdf)
+    fee-letter.ts         — saveFeeLetterVersion(), getActiveFeeLetterVersion() — Blob + DB helpers
+    pdf-generator.tsx     — Proposal/fee letter PDF (react-pdf)
     receipt-pdf.tsx       — Payment receipt PDF (react-pdf)
     offer-letter-generator.tsx — Offer letter PDF (react-pdf)
-    docx-generator.ts     — Proposal Word document (docx)
     button-variants.ts    — Shared button style helper
     utils.ts              — cn() tailwind merge
   components/
@@ -119,6 +118,7 @@ Student (rollNo?, name, firstName?, lastName?, email, contact, batchId, programI
   │     ├── Payment[] (date, amount, paymentMode, referenceNo)
   │     └── ReminderLog[] (type, sentAt, readAt, emailStatus)
   ├── StudentDocument[] (type, fileName, fileUrl, fileSize, uploadedById — Vercel Blob)
+  ├── FeeLetterVersion[] (fileUrl, fileName, source, isActive, createdAt, createdById — Vercel Blob)
   ├── OnboardingToken[] (tokenHash, expiresAt) ← self-onboarding secure link tokens
   └── StudentAuditLog[] (field, oldValue, newValue, reason, changedBy)
 ```
@@ -144,6 +144,7 @@ Student (rollNo?, name, firstName?, lastName?, email, contact, batchId, programI
 | `Role` | `ADMIN`, `STAFF` |
 | `PaymentMode` | `CASH`, `CHEQUE`, `NEFT`, `UPI`, `RTGS`, `OTHER` |
 | `DocumentType` | `STUDENT_PHOTO`, `TENTH_MARKSHEET`, `TWELFTH_MARKSHEET`, `ACCEPTANCE_LETTER`, `AADHAR_CARD`, `DRIVERS_LICENSE` |
+| `FeeLetterSource` | `GENERATED` (auto-saved at enrolment), `UPLOADED` (manual admin upload) |
 
 ---
 
@@ -263,7 +264,9 @@ Direct enrolment path (`/students/new`) still exists for retroactive entries —
 | POST | `/api/students/[id]/pay` | Record payment (runs FIFO write-back) |
 | PATCH | `/api/students/[id]/installments` | Admin: edit installment schedule |
 | GET | `/api/students/[id]/pay/[paymentId]/receipt` | Generate receipt PDF |
-| GET | `/api/students/[id]/proposal` | Generate proposal PDF or DOCX |
+| GET | `/api/students/[id]/proposal` | Serve stored fee letter PDF (or generate fresh if none stored) |
+| GET | `/api/students/[id]/fee-letter` | Return active fee letter metadata + history |
+| POST | `/api/students/[id]/fee-letter` | Admin upload — replace active fee letter (archives old) |
 | POST | `/api/students/[id]/documents` | Upload document to Vercel Blob (public store) |
 | DELETE | `/api/students/[id]/documents` | Delete document from Vercel Blob + DB |
 | POST | `/api/students/[id]/send-onboarding-link` | Generate OnboardingToken + send self-onboard link email |

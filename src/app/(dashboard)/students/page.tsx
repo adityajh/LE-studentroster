@@ -47,8 +47,6 @@ export default async function StudentsPage({
     overdueOnly: isOverdueTab,
   })
 
-  const now = new Date()
-
   const tabs = [
     { label: "All Students", value: undefined },
     { label: `Offers${offeredCount > 0 ? ` (${offeredCount})` : ""}`, value: "offered" },
@@ -181,28 +179,29 @@ export default async function StudentsPage({
                 <th className="text-left px-5 py-3 text-[10px] uppercase tracking-widest font-bold text-slate-400">Net Fee</th>
                 <th className="text-left px-5 py-3 text-[10px] uppercase tracking-widest font-bold text-slate-400">Received</th>
                 <th className="text-left px-5 py-3 text-[10px] uppercase tracking-widest font-bold text-slate-400">Pending</th>
-                <th className="text-left px-5 py-3 text-[10px] uppercase tracking-widest font-bold text-slate-400">Installments</th>
+                <th className="text-left px-5 py-3 text-[10px] uppercase tracking-widest font-bold text-slate-400">Next Due Amt</th>
+                <th className="text-left px-5 py-3 text-[10px] uppercase tracking-widest font-bold text-slate-400">Next Due Date</th>
                 <th className="text-left px-5 py-3 text-[10px] uppercase tracking-widest font-bold text-slate-400">Status</th>
                 <th className="px-5 py-3" />
               </tr>
             </thead>
             <tbody>
               {students.map((s) => {
-                const isOffered = s.status === "OFFERED"
                 const totalReceived = (s.payments || []).reduce((sum, p) => sum + Number(p.amount), 0)
                 const netFeeNum = s.financial ? Number(s.financial.netFee) : 0
                 const totalPending = Math.max(0, netFeeNum - totalReceived)
                 const overdueCount = s.installments.filter((i) => i.status === "OVERDUE").length
-                const partialCount = s.installments.filter((i) => i.status === "PARTIAL").length
-                const paidCount = s.installments.filter((i) => i.status === "PAID" || i.status === "PARTIAL").length
-                const totalCount = s.installments.length
-                const statusStyle = formatStudentStatus(s.status)
-
-                // Offer expiry countdown
-                const offerExpiry = s.offerExpiresAt ? new Date(s.offerExpiresAt) : null
-                const daysLeft = offerExpiry
-                  ? Math.ceil((offerExpiry.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
+                const nextDue = s.installments.find((i) => i.status === "OVERDUE" || i.status === "PARTIAL" || i.status === "UPCOMING") ?? null
+                const nextDueAmt = nextDue
+                  ? (nextDue.status === "PARTIAL" && nextDue.paidAmount
+                    ? Number(nextDue.amount) - Number(nextDue.paidAmount)
+                    : Number(nextDue.amount))
                   : null
+                const nextDueDateStr = nextDue?.dueDate
+                  ? new Date(nextDue.dueDate).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })
+                  : null
+                const isNextDueOverdue = nextDue?.status === "OVERDUE"
+                const statusStyle = formatStudentStatus(s.status)
 
                 return (
                   <tr key={s.id} className={cn(
@@ -239,46 +238,21 @@ export default async function StudentsPage({
                       </span>
                     </td>
                     <td className="px-5 py-3.5">
-                      {isOffered ? (
-                        <div className="flex items-center gap-1.5">
-                          {daysLeft === null ? (
-                            <span className="text-xs font-medium text-slate-400">No email sent</span>
-                          ) : daysLeft < 0 ? (
-                            <span className={`inline-flex items-center gap-1 ${s.offerRevised ? "bg-orange-500/10 text-orange-700 border-orange-500/20" : "bg-slate-500/10 text-slate-600 border-slate-500/20"} border text-[10px] uppercase tracking-wider font-bold px-2 py-0.5 rounded`}>
-                              {s.offerRevised ? "Lapsed" : "Expired"}
-                            </span>
-                          ) : daysLeft <= 1 ? (
-                            <span className="inline-flex items-center gap-1 bg-rose-500/10 text-rose-700 border border-rose-500/20 text-[10px] uppercase tracking-wider font-bold px-2 py-0.5 rounded">
-                              Expires today
-                            </span>
-                          ) : daysLeft <= 3 ? (
-                            <span className="inline-flex items-center gap-1 bg-amber-500/10 text-amber-700 border border-amber-500/20 text-[10px] uppercase tracking-wider font-bold px-2 py-0.5 rounded">
-                              {daysLeft}d left
-                            </span>
-                          ) : (
-                            <span className="inline-flex items-center gap-1 bg-violet-500/10 text-violet-700 border border-violet-500/20 text-[10px] uppercase tracking-wider font-bold px-2 py-0.5 rounded">
-                              {daysLeft}d left
-                            </span>
-                          )}
-                        </div>
+                      {nextDueAmt !== null ? (
+                        <span className={`text-sm font-bold whitespace-nowrap ${isNextDueOverdue ? "text-rose-600" : "text-slate-800"}`}>
+                          {formatINR(nextDueAmt)}
+                        </span>
                       ) : (
-                        <div className="flex items-center gap-1.5 flex-wrap">
-                          {overdueCount > 0 && (
-                            <span className="inline-flex items-center gap-1 bg-rose-500/10 text-rose-700 border border-rose-500/20 text-[10px] uppercase tracking-wider font-bold px-2 py-0.5 rounded">
-                              {overdueCount} overdue
-                            </span>
-                          )}
-                          {partialCount > 0 && (
-                            <span className="inline-flex items-center gap-1 bg-orange-500/10 text-orange-700 border border-orange-500/20 text-[10px] uppercase tracking-wider font-bold px-2 py-0.5 rounded">
-                              {partialCount} partial
-                            </span>
-                          )}
-                          {overdueCount === 0 && partialCount === 0 && (
-                            <span className="text-xs font-medium text-slate-400">
-                              {paidCount}/{totalCount} paid
-                            </span>
-                          )}
-                        </div>
+                        <span className="text-sm text-slate-400">—</span>
+                      )}
+                    </td>
+                    <td className="px-5 py-3.5">
+                      {nextDueDateStr ? (
+                        <span className={`text-sm font-medium whitespace-nowrap ${isNextDueOverdue ? "text-rose-600" : "text-slate-600"}`}>
+                          {nextDueDateStr}
+                        </span>
+                      ) : (
+                        <span className="text-sm text-slate-400">—</span>
                       )}
                     </td>
                     <td className="px-5 py-3.5">

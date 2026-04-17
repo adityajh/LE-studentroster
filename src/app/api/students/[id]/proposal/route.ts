@@ -2,14 +2,14 @@ import { NextRequest, NextResponse } from "next/server"
 import { auth } from "@/auth"
 import { prisma } from "@/lib/prisma"
 import { ProposalDocument } from "@/lib/pdf-generator"
-import { generateDocxProposal } from "@/lib/docx-generator"
 import { renderToStream } from "@react-pdf/renderer"
 import { getSetting } from "@/app/actions/settings"
+import { getActiveFeeLetterVersion } from "@/lib/fee-letter"
 import fs from "fs"
 import path from "path"
 
 export async function GET(
-  req: NextRequest,
+  _req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   const session = await auth()
@@ -18,8 +18,23 @@ export async function GET(
   }
 
   const { id } = await params
-  const format = req.nextUrl.searchParams.get("format") || "pdf"
 
+  // Serve stored letter if one exists
+  const activeLetter = await getActiveFeeLetterVersion(id)
+  if (activeLetter) {
+    const upstream = await fetch(activeLetter.fileUrl)
+    if (upstream.ok) {
+      const disposition = `attachment; filename="${activeLetter.fileName}"`
+      return new NextResponse(upstream.body, {
+        headers: {
+          "Content-Type": "application/pdf",
+          "Content-Disposition": disposition,
+        },
+      })
+    }
+  }
+
+  // No stored letter — generate fresh (older students, or Blob fetch failed)
   const student = await prisma.student.findUnique({
     where: { id },
     include: {
@@ -53,25 +68,11 @@ export async function GET(
     // logo missing — PDF will fall back to text
   }
 
-  if (format === "pdf") {
-    // Return PDF
-    const stream = await renderToStream(ProposalDocument({ student, terms, logoSrc }))
-    return new NextResponse(stream as unknown as ReadableStream, {
-      headers: {
-        "Content-Type": "application/pdf",
-        "Content-Disposition": `attachment; filename="${filename}.pdf"`,
-      },
-    })
-  } else if (format === "docx") {
-    // Return Word Document
-    const buffer = await generateDocxProposal(student, terms)
-    return new NextResponse(buffer as unknown as BodyInit, {
-      headers: {
-        "Content-Type": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-        "Content-Disposition": `attachment; filename="${filename}.docx"`,
-      },
-    })
-  }
-
-  return NextResponse.json({ error: "Invalid format" }, { status: 400 })
+  const stream = await renderToStream(ProposalDocument({ student, terms, logoSrc }))
+  return new NextResponse(stream as unknown as ReadableStream, {
+    headers: {
+      "Content-Type": "application/pdf",
+      "Content-Disposition": `attachment; filename="${filename}.pdf"`,
+    },
+  })
 }

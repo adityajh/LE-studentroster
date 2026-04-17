@@ -3,6 +3,11 @@ import { auth } from "@/auth"
 import { prisma } from "@/lib/prisma"
 import { generateRollNo } from "@/lib/students"
 import { splitWaivers } from "@/lib/fee-calc"
+import { saveFeeLetterVersion } from "@/lib/fee-letter"
+import { renderToBuffer } from "@react-pdf/renderer"
+import { createElement } from "react"
+import fs from "fs"
+import path from "path"
 
 export async function POST(req: NextRequest) {
   const session = await auth()
@@ -264,6 +269,43 @@ export async function POST(req: NextRequest) {
 
     return s
   })
+
+  // Generate and save fee letter for directly enrolled students
+  try {
+    const studentFull = await prisma.student.findUnique({
+      where: { id: student.id },
+      include: {
+        program: true,
+        batch: true,
+        financial: true,
+        installments: { orderBy: { dueDate: "asc" } },
+        offers: { include: { offer: true } },
+        scholarships: { include: { scholarship: true } },
+        deductions: true,
+      },
+    })
+    if (studentFull) {
+      const { ProposalDocument } = await import("@/lib/pdf-generator")
+      const { getSetting } = await import("@/app/actions/settings")
+      const dbUser = await prisma.user.findUnique({
+        where: { email: session.user!.email! },
+        select: { id: true },
+      })
+      const terms = studentFull.financial?.customTerms
+        || await getSetting("PROPOSAL_TERMS", "All fees must be paid on or before the due date.")
+      let logoSrc: string | undefined
+      try {
+        const logoBuf = fs.readFileSync(path.join(process.cwd(), "public", "le-logo-light.png"))
+        logoSrc = `data:image/png;base64,${logoBuf.toString("base64")}`
+      } catch { /* logo missing */ }
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const pdfBuffer = await renderToBuffer(createElement(ProposalDocument, { student: studentFull, terms, logoSrc }) as any)
+      await saveFeeLetterVersion(student.id, Buffer.from(pdfBuffer), "GENERATED", dbUser?.id)
+    }
+  } catch (err) {
+    console.error("[fee-letter generation]", err)
+    // Non-fatal — student is enrolled, letter can be uploaded manually
+  }
 
   return NextResponse.json({ id: student.id, rollNo: student.rollNo })
 }

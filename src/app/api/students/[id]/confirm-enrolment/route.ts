@@ -10,6 +10,7 @@ import { createElement } from "react"
 import crypto from "crypto"
 import fs from "fs"
 import path from "path"
+import { saveFeeLetterVersion } from "@/lib/fee-letter"
 
 export async function POST(
   req: NextRequest,
@@ -277,6 +278,9 @@ export async function POST(
       ])
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const pdfBuffer = await renderToBuffer(createElement(ProposalDocument, { student: studentFull, terms, logoSrc }) as any)
+
+      // Save fee letter as the official stored version
+      await saveFeeLetterVersion(id, Buffer.from(pdfBuffer), "GENERATED", dbUser?.id)
 
       // Create onboarding token
       const rawToken = crypto.randomBytes(32).toString("hex")

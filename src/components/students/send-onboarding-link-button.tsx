@@ -36,7 +36,11 @@ export function SendOnboardingLinkButton({ studentId, currentStatus, isAdmin }: 
       setGeneratedUrl(data.onboardingUrl)
       setShowLinkModal(true)
       if (sendEmail) {
-        toast.success("Onboarding link sent to student's email")
+        if (data.emailSent === false) {
+          toast.warning(data.emailSkipReason ?? "Email could not be sent — copy the link manually")
+        } else {
+          toast.success("Onboarding link sent to student's email")
+        }
       }
     } finally {
       setLoading(false)

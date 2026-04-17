@@ -4,6 +4,34 @@ All notable changes to the LE Student Roster system are documented here.
 
 ---
 
+## [1.8.0] — 2026-04-17
+
+### Stored Fee Letters, Students List Improvements, Audit Log Search & Email Fixes
+
+#### Added
+- **Stored fee letters** — `FeeLetterVersion` model (Vercel Blob + DB record) stores the official fee letter per student; auto-generated and saved at enrolment (both confirm-enrolment and direct-enrol paths); serves stored copy on subsequent downloads; falls back to fresh generation for older students with no stored letter
+- **Fee letter version history** — every replaced letter is archived with its date, source, and who created it; visible in the Fee Letter tab with direct "View" links to Blob URLs
+- **Admin fee letter upload** — admins can upload a PDF to replace the active letter; confirmation dialog warns the current letter will be archived before proceeding; Upload/Replace button is admin-only
+- **Fee letter date + source display** — Fee Letter tab now shows when the active letter was created/uploaded and whether it was auto-generated or manually uploaded
+- **`src/lib/fee-letter.ts`** — shared utility: `saveFeeLetterVersion()` (uploads to Blob, deactivates old versions, inserts DB record) and `getActiveFeeLetterVersion()`
+- **`GET/POST /api/students/[id]/fee-letter`** — `GET` returns active letter metadata + history; `POST` (admin only) accepts a PDF upload and replaces the active letter
+- **Audit log search** — search bar queries the full DB (`OR` filter across student name, roll no, field, old/new value, reason, moderator name/email); results count shown; Clear link when query active
+- **Audit log pagination** — 50 rows per page; numbered page links with ellipsis; Previous/Next; all via URL search params (`?search=…&page=…`) — no client JS required
+- **Payment reminder email drafts** — proper copy written for all 3 reminder types (1 month before, 1 week before, on due date) with escalating urgency; updated in `prisma/seed-reminders.ts` with `update:` so re-running the seed applies them; merge fields: `{{studentName}}`, `{{installmentLabel}}`, `{{amount}}`, `{{dueDate}}`
+- **Students list: Next Due Amt + Next Due Date columns** — replace the old Installments column; show the first unpaid installment's amount and due date; red text for overdue; PARTIAL installments show remaining balance (`amount − paidAmount`); `—` for students with no outstanding installments
+
+#### Changed
+- **`getStudents`** — installments select now includes `dueDate`, `amount`, `paidAmount` (ordered by `dueDate asc`) to power the new columns
+- **`proposal/route.ts`** — checks for active `FeeLetterVersion` first and proxies the stored Blob PDF; falls back to fresh generation only when no stored letter exists; Word (`docx`) branch removed entirely
+- **Fee Letter tab** — redesigned to show letter date/source, admin Replace button, version history, and a single Download PDF button; no longer shows a Word download button
+- **Email separation** — student/parent-facing emails (offers, reminders, onboarding, confirmations) use the Hostinger SMTP account configured in Settings → Emails (`hi@letsenterprise.in`); admin login magic links use the separate Gmail account (`GMAIL_USER`); the `GMAIL_USER`/`GMAIL_APP_PASSWORD` env vars are no longer used as a fallback for student emails
+- **Onboarding link route** — now checks and surfaces email send failures: returns `emailSent: false` + `emailSkipReason` when SMTP is not configured; `SendOnboardingLinkButton` shows a warning toast instead of a false "Sent" success
+
+#### Removed
+- **Word document download** — "Download Word" button removed from the Fee Letter tab; `docx` import and the `format=docx` branch removed from `proposal/route.ts`
+
+---
+
 ## [1.7.0] — 2026-04-13
 
 ### Staff Roles, Settings Redesign, Email Templates & PDF Attachment Library

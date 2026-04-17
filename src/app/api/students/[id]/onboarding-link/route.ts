@@ -46,9 +46,10 @@ export async function POST(
   // Optionally email the student
   const sendEmail = (await req.json().catch(() => ({}))).sendEmail !== false
 
+  let emailResult: { ok: boolean; skipped?: boolean; reason?: string } = { ok: true }
   if (sendEmail && student.email) {
     const selfOnboardingLinkEmailBody = await getSetting("SELF_ONBOARDING_LINK_EMAIL_BODY", "")
-    await sendOnboardingLinkEmail({
+    emailResult = await sendOnboardingLinkEmail({
       to: [student.email],
       studentName: student.name,
       programName: student.program.name,
@@ -58,5 +59,10 @@ export async function POST(
     })
   }
 
-  return NextResponse.json({ ok: true, onboardingUrl })
+  return NextResponse.json({
+    ok: true,
+    onboardingUrl,
+    emailSent: sendEmail && student.email ? emailResult.ok : null,
+    emailSkipReason: emailResult.skipped ? emailResult.reason : undefined,
+  })
 }

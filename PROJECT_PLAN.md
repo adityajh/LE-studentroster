@@ -409,6 +409,29 @@ New entries in **Settings → Email** tab:
 
 ---
 
+## Phase 18: Stored Fee Letters, Audit Log Search & UX Improvements ✅ COMPLETE
+
+> Goal: Fee letters are persisted and version-controlled; audit log is searchable; students list shows actionable payment info
+
+- [x] **18.1** `FeeLetterVersion` model — stores PDF Blob URL, filename, source (`GENERATED`/`UPLOADED`), `isActive`, `createdAt`, `createdById`; indexed on `(studentId, isActive)`
+- [x] **18.2** `FeeLetterSource` enum — `GENERATED` (auto-saved at enrolment) / `UPLOADED` (manual admin upload)
+- [x] **18.3** `src/lib/fee-letter.ts` — `saveFeeLetterVersion()` uploads to Vercel Blob under `fee-letters/{studentId}/`, deactivates old versions, creates DB record; `getActiveFeeLetterVersion()` returns active letter with uploader name
+- [x] **18.4** Auto-save at enrolment — `confirm-enrolment/route.ts` saves the generated PDF to Blob immediately after rendering it for the email attachment; `enroll/route.ts` (direct enroll) generates + saves post-transaction
+- [x] **18.5** `proposal/route.ts` — serves active stored letter (proxies from Blob) before regenerating; falls back to fresh generation for students with no stored letter
+- [x] **18.6** `GET /api/students/[id]/fee-letter` — returns active letter metadata + full version history
+- [x] **18.7** `POST /api/students/[id]/fee-letter` — admin-only PDF upload; validates `.pdf` extension and 10 MB limit; archives previous active letter
+- [x] **18.8** Fee Letter tab redesigned — shows letter date, source badge ("Auto-generated at enrolment" / "Manually uploaded"), uploader name, Download PDF button; admin Replace/Upload button; confirmation dialog warns current letter will be archived; version history with direct View links
+- [x] **18.9** Word document download removed — "Download Word" button removed from Fee Letter tab; `docx` branch and `generateDocxProposal` import removed from `proposal/route.ts`
+- [x] **18.10** Audit log search — URL-param search (`?search=…`) queries DB with `OR` across student name, roll no, field, old value, new value, reason, moderator name and email; empty query = no filter
+- [x] **18.11** Audit log pagination — 50 rows per page; `?page=N` URL param; numbered page links with ellipsis; Previous/Next; results count / page count shown
+- [x] **18.12** Students list NEXT DUE AMT + NEXT DUE DATE columns — replace old Installments column; first non-PAID installment (OVERDUE → PARTIAL → UPCOMING priority); PARTIAL shows `amount − paidAmount`; both cells red for OVERDUE; `—` when all paid
+- [x] **18.13** `getStudents` — installments select extended to include `dueDate`, `amount`, `paidAmount` (ordered by `dueDate asc`)
+- [x] **18.14** Payment reminder email bodies — proper 3-paragraph drafts for all 3 types; updated in `seed-reminders.ts` with `update:` so re-seeding applies them without manual UI entry
+- [x] **18.15** SMTP email separation — student/parent emails use Hostinger account configured in Settings; admin login magic links use Gmail (`GMAIL_USER`); `GMAIL_USER`/`GMAIL_APP_PASSWORD` no longer fallback for student emails
+- [x] **18.16** Onboarding link email failure now surfaced — route returns `emailSent: false` + `emailSkipReason`; `SendOnboardingLinkButton` shows warning toast instead of false success when SMTP not configured
+
+---
+
 ## Pending (owner: Aditya)
 
 - [ ] Upload LE Logo / Letterhead for Proposal PDF (currently placeholder)

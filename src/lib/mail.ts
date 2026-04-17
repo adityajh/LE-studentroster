@@ -1,16 +1,22 @@
 import nodemailer from "nodemailer"
 import { prisma } from "./prisma"
 
-// ── Reminder email config ─────────────────────────────────────────────────────
+// ── Student/parent email config ───────────────────────────────────────────────
+//
+// All student- and parent-facing emails use the Hostinger SMTP account
+// configured in Settings → Emails (hi@letsenterprise.in by default).
 //
 // Priority order for SMTP credentials:
-//   1. SystemSetting in DB (set via /settings → Email tab)
+//   1. SystemSetting in DB (set via /settings → Emails tab)
 //   2. Environment variables (REMINDER_GMAIL_USER / REMINDER_GMAIL_APP_PASSWORD)
 //
-// SystemSetting keys used:
-//   SMTP_USER         — Gmail address to send from
-//   SMTP_PASSWORD     — Gmail App Password
-//   SMTP_FROM_NAME    — Display name, e.g. "Let's Enterprise Fees"
+// The admin login magic link is separate — it uses GMAIL_USER / GMAIL_APP_PASSWORD
+// via NextAuth (auth.ts) and should never be mixed with student-facing emails.
+//
+// SystemSetting keys:
+//   SMTP_USER         — Hostinger email address (hi@letsenterprise.in)
+//   SMTP_PASSWORD     — Hostinger email password
+//   SMTP_FROM_NAME    — Display name, e.g. "Let's Enterprise"
 //   SMTP_FROM_EMAIL   — Override "from" address (defaults to SMTP_USER)
 
 export type ReminderEmailPayload = {

@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation"
 import Link from "next/link"
+import { getActiveFeeLetterVersion } from "@/lib/fee-letter"
 import { getStudentById } from "@/lib/students"
 import { formatInstallmentStatus, formatStudentStatus } from "@/lib/students"
 import { formatINR } from "@/lib/fee-schedule"
@@ -36,6 +37,24 @@ export default async function StudentDetailPage({
     select: { role: true },
   })
   const canRecord = !!dbUser
+  const isAdmin = dbUser?.role === "ADMIN"
+
+  // Fee letter
+  const [activeFeeLetterRaw, feeLetterHistory] = await Promise.all([
+    getActiveFeeLetterVersion(id),
+    prisma.feeLetterVersion.findMany({
+      where: { studentId: id, isActive: false },
+      include: { createdBy: { select: { name: true } } },
+      orderBy: { createdAt: "desc" },
+    }),
+  ])
+  const activeFeeLetterVersion = activeFeeLetterRaw
+    ? { ...activeFeeLetterRaw, createdAt: activeFeeLetterRaw.createdAt.toISOString() }
+    : null
+  const feeLetterHistorySerialized = feeLetterHistory.map((v) => ({
+    ...v,
+    createdAt: v.createdAt.toISOString(),
+  }))
 
   // Fetch reminder logs for this student's installments
   const reminderLogs = await prisma.reminderLog.findMany({
@@ -698,7 +717,12 @@ export default async function StudentDetailPage({
 
             {/* Proposal tab */}
             {tab === "proposal" && (
-              <ProposalTab studentId={student.id} />
+              <ProposalTab
+                studentId={student.id}
+                isAdmin={isAdmin}
+                initialLetter={activeFeeLetterVersion}
+                initialHistory={feeLetterHistorySerialized}
+              />
             )}
 
             {/* History tab */}
