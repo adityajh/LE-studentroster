@@ -2,6 +2,11 @@ import { NextRequest, NextResponse } from "next/server"
 import { auth } from "@/auth"
 import { prisma } from "@/lib/prisma"
 import { saveFeeLetterVersion, getActiveFeeLetterVersion } from "@/lib/fee-letter"
+import { renderToBuffer } from "@react-pdf/renderer"
+import { createElement } from "react"
+import { getSetting } from "@/app/actions/settings"
+import fs from "fs"
+import path from "path"
 
 export async function GET(
   _req: NextRequest,
@@ -51,6 +56,55 @@ export async function POST(
 
   const buffer = Buffer.from(await file.arrayBuffer())
   const version = await saveFeeLetterVersion(id, buffer, "UPLOADED", dbUser.id, file.name)
+
+  return NextResponse.json({ ok: true, version })
+}
+
+export async function PUT(
+  _req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const session = await auth()
+  if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+
+  const dbUser = await prisma.user.findUnique({
+    where: { email: session.user.email! },
+    select: { id: true, role: true },
+  })
+  if (dbUser?.role !== "ADMIN") {
+    return NextResponse.json({ error: "Admin only" }, { status: 403 })
+  }
+
+  const { id } = await params
+
+  const student = await prisma.student.findUnique({
+    where: { id },
+    include: {
+      program: true,
+      batch: true,
+      financial: true,
+      installments: { orderBy: { dueDate: "asc" } },
+      offers: { include: { offer: true } },
+      scholarships: { include: { scholarship: true } },
+      deductions: true,
+    },
+  })
+  if (!student) return NextResponse.json({ error: "Student not found" }, { status: 404 })
+
+  const globalTerms = await getSetting("PROPOSAL_TERMS", "All fees must be paid on or before the due date.")
+  const terms = student.financial?.customTerms || globalTerms
+
+  let logoSrc: string | undefined
+  try {
+    const logoBuf = fs.readFileSync(path.join(process.cwd(), "public", "le-logo-light.png"))
+    logoSrc = `data:image/png;base64,${logoBuf.toString("base64")}`
+  } catch { /* logo missing */ }
+
+  const { ProposalDocument } = await import("@/lib/pdf-generator")
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const pdfBuffer = await renderToBuffer(createElement(ProposalDocument, { student, terms, logoSrc }) as any)
+
+  const version = await saveFeeLetterVersion(id, Buffer.from(pdfBuffer), "GENERATED", dbUser.id)
 
   return NextResponse.json({ ok: true, version })
 }

@@ -1,6 +1,6 @@
 "use client"
 
-import { Download, FileText, Loader2, Upload, Clock, History, ShieldAlert } from "lucide-react"
+import { Download, FileText, Loader2, Upload, Clock, History, ShieldAlert, RefreshCw } from "lucide-react"
 import { useState, useRef } from "react"
 import { toast } from "sonner"
 
@@ -36,7 +36,9 @@ export function ProposalTab({ studentId, isAdmin, initialLetter, initialHistory 
   const [history, setHistory] = useState<LetterVersion[]>(initialHistory)
   const [downloading, setDownloading] = useState(false)
   const [uploading, setUploading] = useState(false)
+  const [regenerating, setRegenerating] = useState(false)
   const [showConfirm, setShowConfirm] = useState(false)
+  const [showRegenerateConfirm, setShowRegenerateConfirm] = useState(false)
   const [pendingFile, setPendingFile] = useState<File | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
@@ -76,6 +78,25 @@ export function ProposalTab({ studentId, isAdmin, initialLetter, initialHistory 
     setShowConfirm(true)
     // reset input so the same file can be re-selected
     e.target.value = ""
+  }
+
+  const regenerate = async () => {
+    setRegenerating(true)
+    try {
+      const res = await fetch(`/api/students/${studentId}/fee-letter`, { method: "PUT" })
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}))
+        throw new Error(data.error ?? "Regeneration failed")
+      }
+      const data = await res.json()
+      if (letter) setHistory((h) => [{ ...letter, isActive: false }, ...h])
+      setLetter(data.version)
+      toast.success("Fee letter regenerated from current data")
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Regeneration failed")
+    } finally {
+      setRegenerating(false)
+    }
   }
 
   const confirmUpload = async () => {
@@ -154,14 +175,26 @@ export function ProposalTab({ studentId, isAdmin, initialLetter, initialHistory 
                 </button>
               </>
             )}
-            <button
-              onClick={downloadPdf}
-              disabled={downloading}
-              className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-red-600 hover:bg-red-700 text-white text-xs font-bold transition-colors disabled:opacity-50"
-            >
-              {downloading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5" />}
-              Download PDF
-            </button>
+            {isAdmin && (
+              <button
+                onClick={() => setShowRegenerateConfirm(true)}
+                disabled={regenerating || uploading}
+                className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-slate-200 text-slate-600 text-xs font-bold hover:bg-slate-50 transition-colors disabled:opacity-50"
+              >
+                {regenerating ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
+                {letter ? "Regenerate" : "Generate"}
+              </button>
+            )}
+            {letter && (
+              <button
+                onClick={downloadPdf}
+                disabled={downloading}
+                className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-red-600 hover:bg-red-700 text-white text-xs font-bold transition-colors disabled:opacity-50"
+              >
+                {downloading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5" />}
+                Download PDF
+              </button>
+            )}
           </div>
         </div>
       </div>
@@ -194,6 +227,52 @@ export function ProposalTab({ studentId, isAdmin, initialLetter, initialHistory 
                 </a>
               </div>
             ))}
+          </div>
+        </div>
+      )}
+
+      {/* Confirm regenerate dialog */}
+      {showRegenerateConfirm && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm"
+          onClick={() => setShowRegenerateConfirm(false)}
+        >
+          <div
+            className="bg-white rounded-3xl shadow-2xl w-full max-w-sm p-8 space-y-4"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-amber-50 flex items-center justify-center">
+                <ShieldAlert className="h-5 w-5 text-amber-600" />
+              </div>
+              <div>
+                <h2 className="text-base font-black text-slate-900">
+                  {letter ? "Regenerate Fee Letter?" : "Generate Fee Letter?"}
+                </h2>
+                <p className="text-xs text-slate-500">
+                  {letter ? "The current letter will be archived" : "Generated from current financial data"}
+                </p>
+              </div>
+            </div>
+            <p className="text-sm text-slate-600">
+              {letter
+                ? "A new fee letter will be generated from the student's current financial data. The existing letter will be moved to version history."
+                : "A fee letter will be generated from the student's current financial data and saved as the active letter."}
+            </p>
+            <div className="flex gap-3 pt-2">
+              <button
+                onClick={() => setShowRegenerateConfirm(false)}
+                className="flex-1 h-10 rounded-xl border-2 border-slate-200 text-slate-600 text-sm font-bold hover:bg-slate-50 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => { setShowRegenerateConfirm(false); regenerate() }}
+                className="flex-1 h-10 rounded-xl bg-amber-600 hover:bg-amber-700 text-white text-sm font-bold transition-colors"
+              >
+                {letter ? "Regenerate" : "Generate"}
+              </button>
+            </div>
           </div>
         </div>
       )}
