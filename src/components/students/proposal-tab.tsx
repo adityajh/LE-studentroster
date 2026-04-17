@@ -11,7 +11,7 @@ type LetterVersion = {
   source: "GENERATED" | "UPLOADED"
   isActive: boolean
   createdAt: string
-  createdBy: { name: string } | null
+  createdBy: { name: string | null } | null
 }
 
 type Props = {
