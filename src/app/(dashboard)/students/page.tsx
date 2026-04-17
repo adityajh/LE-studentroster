@@ -47,6 +47,14 @@ export default async function StudentsPage({
     overdueOnly: isOverdueTab,
   })
 
+  function abbrevProgram(name: string): string {
+    const dashMatch = name.match(/Working BBA\s*[-–]\s*(.+)/i)
+    if (dashMatch) return dashMatch[1].trim()
+    const parenMatch = name.match(/^(.+?)\s*\(/)
+    if (parenMatch) return parenMatch[1].trim()
+    return name
+  }
+
   const tabs = [
     { label: "All Students", value: undefined },
     { label: `Offers${offeredCount > 0 ? ` (${offeredCount})` : ""}`, value: "offered" },
@@ -173,16 +181,16 @@ export default async function StudentsPage({
           <table className="w-full">
             <thead>
               <tr className="border-b border-slate-100">
-                <th className="text-left px-5 py-3 text-[10px] uppercase tracking-widest font-bold text-slate-400">Roll No</th>
-                <th className="text-left px-5 py-3 text-[10px] uppercase tracking-widest font-bold text-slate-400">Student</th>
-                <th className="text-left px-5 py-3 text-[10px] uppercase tracking-widest font-bold text-slate-400">Program</th>
-                <th className="text-left px-5 py-3 text-[10px] uppercase tracking-widest font-bold text-slate-400">Net Fee</th>
-                <th className="text-left px-5 py-3 text-[10px] uppercase tracking-widest font-bold text-slate-400">Received</th>
-                <th className="text-left px-5 py-3 text-[10px] uppercase tracking-widest font-bold text-slate-400">Pending</th>
-                <th className="text-left px-5 py-3 text-[10px] uppercase tracking-widest font-bold text-slate-400">Next Due Amt</th>
-                <th className="text-left px-5 py-3 text-[10px] uppercase tracking-widest font-bold text-slate-400">Next Due Date</th>
-                <th className="text-left px-5 py-3 text-[10px] uppercase tracking-widest font-bold text-slate-400">Status</th>
-                <th className="px-5 py-3" />
+                <th className="text-left px-3 py-3 text-[10px] uppercase tracking-widest font-bold text-slate-400">Roll No</th>
+                <th className="text-left px-3 py-3 text-[10px] uppercase tracking-widest font-bold text-slate-400">Student</th>
+                <th className="text-left px-3 py-3 text-[10px] uppercase tracking-widest font-bold text-slate-400">Prog</th>
+                <th className="text-left px-3 py-3 text-[10px] uppercase tracking-widest font-bold text-slate-400">Net Fee</th>
+                <th className="text-left px-3 py-3 text-[10px] uppercase tracking-widest font-bold text-slate-400">Received</th>
+                <th className="text-left px-3 py-3 text-[10px] uppercase tracking-widest font-bold text-slate-400">Pending</th>
+                <th className="text-left px-3 py-3 text-[10px] uppercase tracking-widest font-bold text-slate-400">Next Due Amt</th>
+                <th className="text-left px-3 py-3 text-[10px] uppercase tracking-widest font-bold text-slate-400">Next Due Date</th>
+                <th className="text-left px-3 py-3 text-[10px] uppercase tracking-widest font-bold text-slate-400">Status</th>
+                <th className="px-3 py-3" />
               </tr>
             </thead>
             <tbody>
@@ -210,34 +218,34 @@ export default async function StudentsPage({
                       ? "border-l-2 border-l-rose-400 bg-rose-50/30 hover:bg-rose-50/50"
                       : "hover:bg-slate-50/80 hover:border-l-2 hover:border-l-[#3663AD]"
                   )}>
-                    <td className="px-5 py-3.5">
+                    <td className="px-3 py-3">
                       <span className="text-xs font-mono font-bold text-slate-400">
                         {s.rollNo ?? <span className="text-violet-400 font-sans">—</span>}
                       </span>
                     </td>
-                    <td className="px-5 py-3.5">
-                      <p className="text-sm font-bold text-slate-900 whitespace-nowrap">{s.name}</p>
-                      <p className="text-xs font-medium text-slate-400">{s.email}</p>
+                    <td className="px-3 py-3 max-w-[160px]">
+                      <p className="text-sm font-bold text-slate-900 truncate">{s.name}</p>
+                      <p className="text-[11px] font-medium text-slate-400 truncate">{s.email}</p>
                     </td>
-                    <td className="px-5 py-3.5">
-                      <span className="text-sm font-medium text-slate-600 whitespace-nowrap">{s.program.name}</span>
+                    <td className="px-3 py-3">
+                      <span className="text-xs font-semibold text-slate-600 whitespace-nowrap">{abbrevProgram(s.program.name)}</span>
                     </td>
-                    <td className="px-5 py-3.5">
+                    <td className="px-3 py-3">
                       <span className="text-sm font-bold text-slate-800 whitespace-nowrap">
                         {s.financial ? formatINR(s.financial.netFee) : "—"}
                       </span>
                     </td>
-                    <td className="px-5 py-3.5">
+                    <td className="px-3 py-3">
                       <span className="text-sm font-semibold text-emerald-700 whitespace-nowrap">
                         {s.financial ? formatINR(totalReceived) : "—"}
                       </span>
                     </td>
-                    <td className="px-5 py-3.5">
+                    <td className="px-3 py-3">
                       <span className={`text-sm font-semibold whitespace-nowrap ${totalPending > 0 ? "text-rose-600" : "text-slate-400"}`}>
                         {s.financial ? formatINR(totalPending) : "—"}
                       </span>
                     </td>
-                    <td className="px-5 py-3.5">
+                    <td className="px-3 py-3">
                       {nextDueAmt !== null ? (
                         <span className={`text-sm font-bold whitespace-nowrap ${isNextDueOverdue ? "text-rose-600" : "text-slate-800"}`}>
                           {formatINR(nextDueAmt)}
@@ -246,7 +254,7 @@ export default async function StudentsPage({
                         <span className="text-sm text-slate-400">—</span>
                       )}
                     </td>
-                    <td className="px-5 py-3.5">
+                    <td className="px-3 py-3">
                       {nextDueDateStr ? (
                         <span className={`text-sm font-medium whitespace-nowrap ${isNextDueOverdue ? "text-rose-600" : "text-slate-600"}`}>
                           {nextDueDateStr}
@@ -255,7 +263,7 @@ export default async function StudentsPage({
                         <span className="text-sm text-slate-400">—</span>
                       )}
                     </td>
-                    <td className="px-5 py-3.5">
+                    <td className="px-3 py-3">
                       <span className={cn(
                         "inline-flex items-center text-[10px] uppercase tracking-wider font-bold px-2 py-0.5 rounded border",
                         statusStyle.classes
@@ -263,7 +271,7 @@ export default async function StudentsPage({
                         {statusStyle.label}
                       </span>
                     </td>
-                    <td className="px-5 py-3.5 text-right">
+                    <td className="px-3 py-3 text-right">
                       <Link href={`/students/${s.id}`} className="text-xs font-semibold text-[#3663AD] hover:text-[#160E44] transition-colors whitespace-nowrap">
                         View →
                       </Link>
