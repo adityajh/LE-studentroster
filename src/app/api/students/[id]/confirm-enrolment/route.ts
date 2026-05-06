@@ -110,7 +110,7 @@ export async function POST(
   const year2 = Number(program.year2Fee)
   const year3 = Number(program.year3Fee)
 
-  const { spreadPerYear, onetimeTotal: onetimeWaiver } = splitWaivers(
+  const { spreadY1, spreadY2, spreadY3, onetimeTotal: onetimeWaiver } = splitWaivers(
     selectedOffers.map((o) => ({ conditions: o.conditions, waiverAmount: Number(o.waiverAmount) })),
     selectedScholarships.map((s: { scholarshipId: string; amount: number }) => ({
       amount: s.amount,
@@ -133,9 +133,9 @@ export async function POST(
     }
   } else if (installmentType === "ANNUAL") {
     installments.push(
-      { year: 1, label: "Year 1 — Growth", dueDate: year1Due, amount: Math.max(0, Math.round(year1 - spreadPerYear - onetimeWaiver - totalDeduction)), status: year1Due <= today ? "DUE" : "UPCOMING" },
-      { year: 2, label: "Year 2 — Projects", dueDate: year2Due, amount: Math.max(0, Math.round(year2 - spreadPerYear)), status: "UPCOMING" },
-      { year: 3, label: "Year 3 — Work", dueDate: year3Due, amount: Math.max(0, Math.round(year3 - spreadPerYear)), status: "UPCOMING" },
+      { year: 1, label: "Year 1 — Growth", dueDate: year1Due, amount: Math.max(0, Math.round(year1 - spreadY1 - onetimeWaiver - totalDeduction)), status: year1Due <= today ? "DUE" : "UPCOMING" },
+      { year: 2, label: "Year 2 — Projects", dueDate: year2Due, amount: Math.max(0, Math.round(year2 - spreadY2)), status: "UPCOMING" },
+      { year: 3, label: "Year 3 — Work", dueDate: year3Due, amount: Math.max(0, Math.round(year3 - spreadY3)), status: "UPCOMING" },
     )
   } else {
     // ONE_TIME

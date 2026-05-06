@@ -4,6 +4,33 @@ All notable changes to the LE Student Roster system are documented here.
 
 ---
 
+## [1.9.0] — 2026-05-06
+
+### Outstanding/Schedule Reconciliation Fixes
+
+The Fee Summary "Outstanding" and the Schedule tab "pending" totals were diverging for some students. Three distinct causes identified and addressed.
+
+#### Fixed
+- **Pattern A1 (CUSTOM plan validation gaps)** — when staff entered a CUSTOM installment schedule whose rows didn't sum to the net fee, the schedule pending sum diverged from the summary outstanding. Both entry points now hard-block submission until totals reconcile:
+  - **Confirm Enrolment dialog**: [confirm-enrolment-dialog.tsx](src/components/students/confirm-enrolment-dialog.tsx) now refuses submit when `customTotal !== netFee + registrationFee` (was a silent amber warning).
+  - **Admin Installment Editor**: [installment-editor.tsx](src/components/students/installment-editor.tsx) now refuses save when total ≠ expected (Net Fee + Registration if a year=0 row is present, else Net Fee). Save button is disabled with a tooltip; the footer shows the expected total. The `regFee` prop is now wired through from [edit-student-form.tsx](src/components/students/edit-student-form.tsx).
+- **Pattern A2 (baseFee missing registration)** — two students (LE2025003 Advait Suresh Babu, LE2025005 Archit Gupta) had `StudentFinancial.baseFee` stored as `Y1+Y2+Y3` only (without the ₹50K registration fee), causing their summary outstanding to under-report by exactly that amount. Backfilled both records via [scratch/backfill-a2.ts](scratch/backfill-a2.ts) — `baseFee` and `netFee` each incremented by ₹50,000.
+- **Pattern C (1–2 rupee rounding drift across all ANNUAL students with spread waivers)** — `splitWaivers` rounded `totalSpread / 3` once and applied that to every year, so `spreadY1+spreadY2+spreadY3` could be ±1–2 rupees off from the true total spread, leaving the summary and schedule disagreeing on the last rupee.
+
+#### Changed
+- **`splitWaivers`** ([src/lib/fee-calc.ts](src/lib/fee-calc.ts)) — now returns explicit `spreadY1`, `spreadY2`, `spreadY3` fields that sum **exactly** to total spread waiver. Uses floor division and absorbs the 0–2 rupee remainder into Year 1 (then Year 2). The legacy `spreadPerYear` field is kept (now equal to `floor(totalSpread / 3)`) for backwards compatibility but new code should use the per-year fields.
+- **All four `splitWaivers` callers** migrated to use the per-year fields:
+  - [src/app/(dashboard)/students/[id]/page.tsx](src/app/(dashboard)/students/[id]/page.tsx) — `expectedInstFee` and the schedule waiver-breakdown line.
+  - [src/app/api/students/enroll/route.ts](src/app/api/students/enroll/route.ts) — direct enrol installment generation.
+  - [src/app/api/students/[id]/confirm-enrolment/route.ts](src/app/api/students/[id]/confirm-enrolment/route.ts) — confirm enrolment installment generation.
+  - [src/app/api/students/[id]/route.ts](src/app/api/students/[id]/route.ts) — financial-plan PATCH installment redistribution.
+- **`annualInstallmentAmounts` helper** updated to take a `split` object (matching the new `splitWaivers` shape) and an optional `deductionY1` argument; previously inlined by every caller.
+
+#### Verified
+After the fixes, **36 of 40** active students now reconcile exactly between Summary outstanding and Schedule pending. The remaining **4 students** (LE2023005 Angad Singh Dheeman, LE2023010 Shardul Gupta, LE2023011 Zainab Ezzi, LE2024011 Zuveriya Zaheer Sayyed) are legacy CUSTOM-plan records whose stored `Installment.amount` rows were imported at gross program fees with no waiver/deduction propagation. The new UI guards prevent any future student from reproducing this state; the legacy records can be reconciled via a one-off data fix when convenient.
+
+---
+
 ## [1.8.0] — 2026-04-17
 
 ### Stored Fee Letters, Students List Improvements, Audit Log Search & Email Fixes

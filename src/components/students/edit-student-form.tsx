@@ -735,6 +735,7 @@ export function EditStudentForm({
               <InstallmentEditor
                 installments={student.installments}
                 financial={student.financial}
+                regFee={computedReg}
                 isAdmin={isAdmin}
                 studentId={student.id}
               />

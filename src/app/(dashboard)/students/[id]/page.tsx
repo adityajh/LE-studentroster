@@ -103,7 +103,7 @@ export default async function StudentDetailPage({
   const offerExpired = daysLeft !== null && daysLeft < 0
 
   // Compute per-installment fees from current fee scheme (not stale inst.amount)
-  const { spreadPerYear: schemeSpreadPerYear, onetimeTotal: schemeOnetimeTotal } = splitWaivers(
+  const { spreadY1, spreadY2, spreadY3, onetimeTotal: schemeOnetimeTotal } = splitWaivers(
     student.offers.map(o => ({
       conditions: (o.offer as { conditions: unknown }).conditions,
       waiverAmount: Number(o.waiverAmount),
@@ -113,6 +113,7 @@ export default async function StudentDetailPage({
       spreadAcrossYears: (sc.scholarship as { spreadAcrossYears: boolean }).spreadAcrossYears,
     }))
   )
+  const spreadByYear: Record<number, number> = { 1: spreadY1, 2: spreadY2, 3: spreadY3 }
 
   // Total manual deductions (reduce year 1 installment)
   const totalDeductionAmount = student.deductions.reduce((s, d) => s + Number(d.amount), 0)
@@ -122,8 +123,9 @@ export default async function StudentDetailPage({
     if (year === 0) return regFeeAmount
     if (fin?.installmentType === "ANNUAL") {
       const base = yearFees[year] ?? 0
+      const yearSpread = spreadByYear[year] ?? 0
       const deductionForYear = year === 1 ? totalDeductionAmount : 0
-      return Math.max(0, Math.round(base - schemeSpreadPerYear - (year === 1 ? schemeOnetimeTotal : 0) - deductionForYear))
+      return Math.max(0, Math.round(base - yearSpread - (year === 1 ? schemeOnetimeTotal : 0) - deductionForYear))
     }
     // ONE_TIME or CUSTOM: use stored amount (custom plans are admin-set)
     return instAmount
@@ -665,7 +667,7 @@ export default async function StudentDetailPage({
                       // Build breakdown lines for ANNUAL years only
                       const isAnnualYear = fin?.installmentType === "ANNUAL" && inst.year > 0 && yearFees[inst.year]
                       const totalWaiverForYear = isAnnualYear
-                        ? schemeSpreadPerYear + (inst.year === 1 ? schemeOnetimeTotal + totalDeductionAmount : 0)
+                        ? (spreadByYear[inst.year] ?? 0) + (inst.year === 1 ? schemeOnetimeTotal + totalDeductionAmount : 0)
                         : 0
                       return (
                         <tr key={inst.id}>

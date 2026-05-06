@@ -88,7 +88,7 @@ export async function POST(req: NextRequest) {
   const year3 = program.year3Fee.toNumber()
   const regFee = program.registrationFee.toNumber()
 
-  const { spreadPerYear, onetimeTotal: onetimeWaiver } = splitWaivers(
+  const { spreadY1, spreadY2, spreadY3, onetimeTotal: onetimeWaiver } = splitWaivers(
     selectedOffers.map(o => ({ conditions: o.conditions, waiverAmount: Number(o.waiverAmount) })),
     selectedScholarships.map(s => ({
       amount: s.amount,
@@ -151,21 +151,21 @@ export async function POST(req: NextRequest) {
           year: 1,
           label: "Year 1 — Growth",
           dueDate: year1Due,
-          amount: Math.max(0, Math.round(year1 - spreadPerYear - onetimeWaiver)),
+          amount: Math.max(0, Math.round(year1 - spreadY1 - onetimeWaiver)),
           status: year1Due <= today ? "DUE" : "UPCOMING",
         },
         {
           year: 2,
           label: "Year 2 — Projects",
           dueDate: year2Due,
-          amount: Math.max(0, Math.round(year2 - spreadPerYear)),
+          amount: Math.max(0, Math.round(year2 - spreadY2)),
           status: "UPCOMING",
         },
         {
           year: 3,
           label: "Year 3 — Work",
           dueDate: year3Due,
-          amount: Math.max(0, Math.round(year3 - spreadPerYear)),
+          amount: Math.max(0, Math.round(year3 - spreadY3)),
           status: "UPCOMING",
         }
       )

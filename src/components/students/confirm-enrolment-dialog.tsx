@@ -192,7 +192,14 @@ export function ConfirmEnrolmentDialog({
 
   async function handleConfirm() {
     if (!amount || !date || !paymentMode) { setError("Amount, date, and mode are required."); return }
-    if (installmentType === "CUSTOM" && customTotal === 0) { setError("Custom schedule total cannot be zero."); return }
+    if (installmentType === "CUSTOM") {
+      const expected = netFee + registrationFee
+      if (customTotal === 0) { setError("Custom schedule total cannot be zero."); return }
+      if (Math.abs(customTotal - expected) >= 1) {
+        setError(`Custom installments must total ${formatINR(expected)} (Net Fee + Registration). Currently ${formatINR(customTotal)} — adjust the rows before confirming.`)
+        return
+      }
+    }
     setLoading(true)
     setError("")
     try {

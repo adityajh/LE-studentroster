@@ -272,7 +272,7 @@ export async function PATCH(
                   spreadAcrossYears: (sc.scholarship as { spreadAcrossYears?: boolean }).spreadAcrossYears ?? true,
                 }))
               }
-              const { spreadPerYear, onetimeTotal } = splitWaivers(
+              const { spreadY1, spreadY2, spreadY3, onetimeTotal } = splitWaivers(
                 currentOffers.map(o => ({ conditions: o.conditions, waiverAmount: Number(o.waiverAmount) })),
                 schsForCalc
               )
@@ -283,10 +283,12 @@ export async function PATCH(
                 2: Number(student.program!.year2Fee),
                 3: Number(student.program!.year3Fee),
               }
+              const spreadByYear: Record<number, number> = { 1: spreadY1, 2: spreadY2, 3: spreadY3 }
 
               for (const inst of remainingInstallments) {
                 const yearFee = programYearFees[inst.year] ?? 0
-                const amt = Math.max(0, Math.round(yearFee - spreadPerYear - (inst.year === 1 ? onetimeTotal + (newTotalDeduction ?? 0) : 0)))
+                const yearSpread = spreadByYear[inst.year] ?? 0
+                const amt = Math.max(0, Math.round(yearFee - yearSpread - (inst.year === 1 ? onetimeTotal + (newTotalDeduction ?? 0) : 0)))
                 await tx.installment.update({ where: { id: inst.id }, data: { amount: amt } })
               }
             } else {

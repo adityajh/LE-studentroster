@@ -60,11 +60,13 @@ const inputLockedCls = "h-9 rounded-lg border-2 border-slate-100 bg-slate-50 px-
 export function InstallmentEditor({
   installments,
   financial,
+  regFee,
   isAdmin,
   studentId,
 }: {
   installments: ExistingInstallment[]
   financial: Financial
+  regFee: number
   isAdmin: boolean
   studentId: string
 }) {
@@ -93,7 +95,9 @@ export function InstallmentEditor({
   // ── Derived ──
   const activeRows = rows.filter(r => !r._delete)
   const total = activeRows.reduce((s, r) => s + (parseFloat(r.amount) || 0), 0)
-  const totalMatchesNet = Math.abs(total - netFee) < 1
+  const hasRegRow = activeRows.some(r => r.year === 0)
+  const expectedTotal = netFee + (hasRegRow ? regFee : 0)
+  const totalMatchesNet = Math.abs(total - expectedTotal) < 1
   const hasChanges = rows.some(
     r => r._delete || r._isNew ||
       (() => {
@@ -137,6 +141,12 @@ export function InstallmentEditor({
   // ── Submit ──
   const handleSave = async () => {
     if (!isAdmin) return
+    if (!totalMatchesNet) {
+      setError(
+        `Schedule total ${formatINR(total)} does not match expected ${formatINR(expectedTotal)} (Net Fee${hasRegRow ? " + Registration" : ""}). Adjust the rows so they reconcile before saving.`
+      )
+      return
+    }
     if (showReasonField && !changeReason.trim()) {
       setError("Reason for change is required for locked records.")
       return
@@ -339,7 +349,7 @@ export function InstallmentEditor({
           <span>{formatINR(total)}</span>
           {!totalMatchesNet && (
             <p className="text-[10px] font-semibold opacity-80">
-              Net fee: {formatINR(netFee)} — custom plans may differ
+              Expected: {formatINR(expectedTotal)} (Net Fee{hasRegRow ? " + Registration" : ""}) — must match before saving
             </p>
           )}
         </div>
@@ -376,8 +386,9 @@ export function InstallmentEditor({
         <button
           type="button"
           onClick={handleSave}
-          disabled={loading}
-          className="flex items-center gap-2 h-10 px-6 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white text-sm font-bold rounded-xl transition-all"
+          disabled={loading || !totalMatchesNet}
+          title={!totalMatchesNet ? `Schedule must total ${formatINR(expectedTotal)} before saving` : undefined}
+          className="flex items-center gap-2 h-10 px-6 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed text-white text-sm font-bold rounded-xl transition-all"
         >
           {loading && <Loader2 className="h-4 w-4 animate-spin" />}
           {loading ? "Saving…" : "Save Schedule"}
