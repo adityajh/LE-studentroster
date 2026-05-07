@@ -99,6 +99,8 @@ const DOC_LABELS: Record<string, string> = {
   DRIVERS_LICENSE: "Driver's License / ID Proof",
 }
 
+const REQUIRED_DOC_TYPES: string[] = ["STUDENT_PHOTO", "AADHAR_CARD", "TWELFTH_MARKSHEET"]
+
 function DocumentUploadCard({
   docType,
   existing,
@@ -106,6 +108,7 @@ function DocumentUploadCard({
   onUploaded,
   onDeleted,
   disabled,
+  required,
 }: {
   docType: string
   existing?: DocumentEntry
@@ -113,6 +116,7 @@ function DocumentUploadCard({
   onUploaded: (doc: DocumentEntry) => void
   onDeleted: (id: string) => void
   disabled: boolean
+  required?: boolean
 }) {
   const [uploading, setUploading] = useState(false)
   const [deleting, setDeleting] = useState(false)
@@ -167,14 +171,19 @@ function DocumentUploadCard({
 
         {/* File info */}
         <div className="flex-1 min-w-0">
-          <p className="text-xs font-bold text-slate-700">{DOC_LABELS[docType] ?? docType}</p>
+          <p className="text-xs font-bold text-slate-700">
+            {DOC_LABELS[docType] ?? docType}
+            {required && <span className="text-rose-400 ml-0.5">*</span>}
+          </p>
           {existing ? (
             <a href={existing.fileUrl} target="_blank" rel="noopener noreferrer"
               className="text-[11px] text-[#3663AD] hover:underline truncate block">
               {existing.fileName}
             </a>
           ) : (
-            <p className="text-[11px] text-slate-400">Not uploaded · max 1 MB</p>
+            <p className={`text-[11px] ${required ? "text-rose-500 font-medium" : "text-slate-400"}`}>
+              {required ? "Required · max 1 MB" : "Not uploaded · max 1 MB"}
+            </p>
           )}
         </div>
 
@@ -315,7 +324,27 @@ export function SelfOnboardForm({ token, initialData }: { token: string; initial
 
   const handleBack = () => setStep((s) => Math.max(s - 1, 1))
 
+  const validateBeforeSubmit = (): string | null => {
+    const missing: string[] = []
+    if (!form.parent1Name.trim()) missing.push("Parent / Guardian 1 name")
+    if (!form.parent1Phone.trim()) missing.push("Parent / Guardian 1 phone")
+    if (!form.parent2Name.trim()) missing.push("Parent / Guardian 2 name")
+    if (!form.parent2Phone.trim()) missing.push("Parent / Guardian 2 phone")
+    for (const docType of REQUIRED_DOC_TYPES) {
+      if (!documents.find((d) => d.type === docType)) {
+        missing.push(DOC_LABELS[docType] ?? docType)
+      }
+    }
+    if (missing.length === 0) return null
+    return `Please complete the following before submitting: ${missing.join(", ")}.`
+  }
+
   const handleSubmit = async () => {
+    const validationError = validateBeforeSubmit()
+    if (validationError) {
+      setSaveError(validationError)
+      return
+    }
     setSaving(true)
     setSaveError("")
     const res = await fetch(`/api/onboard/${token}`, {
@@ -488,19 +517,19 @@ export function SelfOnboardForm({ token, initialData }: { token: string; initial
                     <Field label="Full Name" name="parent1Name" value={form.parent1Name} onChange={setField("parent1Name")} required disabled={isReadOnly} />
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <Field label="Email" name="parent1Email" value={form.parent1Email} onChange={setField("parent1Email")} type="email" disabled={isReadOnly} />
-                      <Field label="Phone" name="parent1Phone" value={form.parent1Phone} onChange={setField("parent1Phone")} type="tel" disabled={isReadOnly} />
+                      <Field label="Phone" name="parent1Phone" value={form.parent1Phone} onChange={setField("parent1Phone")} type="tel" required disabled={isReadOnly} />
                     </div>
                   </div>
                 </div>
 
                 {/* Parent 2 */}
                 <div className="bg-white/90 backdrop-blur-md border border-slate-200/50 rounded-3xl p-6 shadow-sm">
-                  <p className="text-[10px] uppercase tracking-[0.2em] font-bold text-slate-400 mb-4">Parent / Guardian 2 <span className="text-slate-300 normal-case tracking-normal font-medium">(optional)</span></p>
+                  <p className="text-[10px] uppercase tracking-[0.2em] font-bold text-[#3663AD] mb-4">Parent / Guardian 2</p>
                   <div className="space-y-4">
-                    <Field label="Full Name" name="parent2Name" value={form.parent2Name} onChange={setField("parent2Name")} disabled={isReadOnly} />
+                    <Field label="Full Name" name="parent2Name" value={form.parent2Name} onChange={setField("parent2Name")} required disabled={isReadOnly} />
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <Field label="Email" name="parent2Email" value={form.parent2Email} onChange={setField("parent2Email")} type="email" disabled={isReadOnly} />
-                      <Field label="Phone" name="parent2Phone" value={form.parent2Phone} onChange={setField("parent2Phone")} type="tel" disabled={isReadOnly} />
+                      <Field label="Phone" name="parent2Phone" value={form.parent2Phone} onChange={setField("parent2Phone")} type="tel" required disabled={isReadOnly} />
                     </div>
                   </div>
                 </div>
@@ -533,6 +562,7 @@ export function SelfOnboardForm({ token, initialData }: { token: string; initial
                     existing={documents.find((d) => d.type === docType)}
                     token={token}
                     disabled={isReadOnly}
+                    required={REQUIRED_DOC_TYPES.includes(docType)}
                     onUploaded={(doc) => setDocuments((prev) => [...prev.filter((d) => d.type !== docType), doc])}
                     onDeleted={(id) => setDocuments((prev) => prev.filter((d) => d.id !== id))}
                   />
@@ -576,12 +606,20 @@ export function SelfOnboardForm({ token, initialData }: { token: string; initial
                   <div className="space-y-2">
                     {Object.keys(DOC_LABELS).map((docType) => {
                       const doc = documents.find((d) => d.type === docType)
+                      const required = REQUIRED_DOC_TYPES.includes(docType)
                       return (
                         <div key={docType} className="flex items-center justify-between">
-                          <span className="text-xs font-medium text-slate-600">{DOC_LABELS[docType]}</span>
+                          <span className="text-xs font-medium text-slate-600">
+                            {DOC_LABELS[docType]}
+                            {required && <span className="text-rose-400 ml-0.5">*</span>}
+                          </span>
                           {doc ? (
                             <span className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-emerald-700 bg-emerald-50 border border-emerald-200 rounded px-2 py-0.5">
                               <CheckCircle className="h-3 w-3" /> Uploaded
+                            </span>
+                          ) : required ? (
+                            <span className="inline-flex items-center text-[10px] font-bold uppercase tracking-wider text-rose-700 bg-rose-50 border border-rose-200 rounded px-2 py-0.5">
+                              Required — missing
                             </span>
                           ) : (
                             <span className="text-[10px] text-slate-400 font-medium">Not uploaded</span>

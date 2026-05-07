@@ -10,7 +10,7 @@ import { cn } from "@/lib/utils"
 type DocumentType = "STUDENT_PHOTO" | "TENTH_MARKSHEET" | "TWELFTH_MARKSHEET" | "ACCEPTANCE_LETTER" | "AADHAR_CARD" | "DRIVERS_LICENSE"
 
 const DOCUMENT_TYPES: { type: DocumentType; label: string; required: boolean }[] = [
-  { type: "STUDENT_PHOTO",     label: "Student Photo",      required: false },
+  { type: "STUDENT_PHOTO",     label: "Student Photo",      required: true },
   { type: "TENTH_MARKSHEET",   label: "10th Marksheet",     required: true },
   { type: "TWELFTH_MARKSHEET", label: "12th Marksheet",     required: true },
   { type: "AADHAR_CARD",       label: "Aadhar Card",        required: true },
@@ -82,7 +82,22 @@ export function OnboardWizard({
   const [lgPhone, setLgPhone] = useState(initLGPhone ?? "")
   const [lgEmail, setLgEmail] = useState(initLGEmail ?? "")
 
+  function validateProfile(): string | null {
+    const missing: string[] = []
+    if (!p1Name.trim()) missing.push("Parent / Guardian 1 name")
+    if (!p1Phone.trim()) missing.push("Parent / Guardian 1 phone")
+    if (!p2Name.trim()) missing.push("Parent / Guardian 2 name")
+    if (!p2Phone.trim()) missing.push("Parent / Guardian 2 phone")
+    if (missing.length === 0) return null
+    return `Missing required fields: ${missing.join(", ")}.`
+  }
+
   async function saveProfile() {
+    const validation = validateProfile()
+    if (validation) {
+      setError(validation)
+      return
+    }
     setSaving(true)
     setError("")
     try {
@@ -264,12 +279,14 @@ export function OnboardWizard({
             <p className="text-[10px] uppercase font-bold tracking-widest text-slate-400">Parent / Guardian 1</p>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               {[
-                { label: "Name",  value: p1Name,  set: setP1Name,  placeholder: "Parent name" },
-                { label: "Email", value: p1Email, set: setP1Email, placeholder: "parent@example.com" },
-                { label: "Phone", value: p1Phone, set: setP1Phone, placeholder: "+91 98765 43210" },
-              ].map(({ label, value, set, placeholder }) => (
+                { label: "Name",  value: p1Name,  set: setP1Name,  placeholder: "Parent name", required: true },
+                { label: "Email", value: p1Email, set: setP1Email, placeholder: "parent@example.com", required: false },
+                { label: "Phone", value: p1Phone, set: setP1Phone, placeholder: "+91 98765 43210", required: true },
+              ].map(({ label, value, set, placeholder, required }) => (
                 <div key={label}>
-                  <label className="block text-xs font-semibold text-slate-600 mb-1">{label}</label>
+                  <label className="block text-xs font-semibold text-slate-600 mb-1">
+                    {label}{required && <span className="text-rose-500 ml-0.5">*</span>}
+                  </label>
                   <input className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
                     value={value} onChange={(e) => set(e.target.value)} placeholder={placeholder} />
                 </div>
@@ -278,15 +295,17 @@ export function OnboardWizard({
           </div>
 
           <div className="bg-white border border-slate-200 rounded-2xl p-6 space-y-5 shadow-sm">
-            <p className="text-[10px] uppercase font-bold tracking-widest text-slate-400">Parent / Guardian 2 <span className="text-slate-300 font-normal normal-case tracking-normal">(optional)</span></p>
+            <p className="text-[10px] uppercase font-bold tracking-widest text-slate-400">Parent / Guardian 2</p>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               {[
-                { label: "Name",  value: p2Name,  set: setP2Name,  placeholder: "Parent name" },
-                { label: "Email", value: p2Email, set: setP2Email, placeholder: "parent@example.com" },
-                { label: "Phone", value: p2Phone, set: setP2Phone, placeholder: "+91 98765 43210" },
-              ].map(({ label, value, set, placeholder }) => (
+                { label: "Name",  value: p2Name,  set: setP2Name,  placeholder: "Parent name", required: true },
+                { label: "Email", value: p2Email, set: setP2Email, placeholder: "parent@example.com", required: false },
+                { label: "Phone", value: p2Phone, set: setP2Phone, placeholder: "+91 98765 43210", required: true },
+              ].map(({ label, value, set, placeholder, required }) => (
                 <div key={label}>
-                  <label className="block text-xs font-semibold text-slate-600 mb-1">{label}</label>
+                  <label className="block text-xs font-semibold text-slate-600 mb-1">
+                    {label}{required && <span className="text-rose-500 ml-0.5">*</span>}
+                  </label>
                   <input className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
                     value={value} onChange={(e) => set(e.target.value)} placeholder={placeholder} />
                 </div>
@@ -386,8 +405,21 @@ export function OnboardWizard({
               className="flex items-center gap-1.5 px-4 py-2.5 border border-slate-200 text-slate-600 text-sm font-medium rounded-xl hover:bg-slate-50">
               <ChevronLeft className="w-4 h-4" /> Back
             </button>
-            <button type="button" onClick={() => { setError(""); setStep(3) }}
-              className="flex items-center gap-1.5 px-5 py-2.5 bg-indigo-600 text-white text-sm font-semibold rounded-xl hover:bg-indigo-700">
+            <button
+              type="button"
+              onClick={() => {
+                const missing = DOCUMENT_TYPES
+                  .filter((d) => d.required && !uploadedDocs[d.type])
+                  .map((d) => d.label)
+                if (missing.length > 0) {
+                  setError(`Please upload these required documents: ${missing.join(", ")}.`)
+                  return
+                }
+                setError("")
+                setStep(3)
+              }}
+              className="flex items-center gap-1.5 px-5 py-2.5 bg-indigo-600 text-white text-sm font-semibold rounded-xl hover:bg-indigo-700"
+            >
               Continue to Email <ChevronRight className="w-4 h-4" />
             </button>
           </div>

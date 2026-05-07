@@ -4,6 +4,29 @@ All notable changes to the LE Student Roster system are documented here.
 
 ---
 
+## [1.11.0] — 2026-05-07
+
+### Onboarding: stricter required fields
+
+#### Changed
+- **Self-onboard form, admin onboard wizard, and the two onboarding APIs** now enforce a common required-fields rule before submission / completion:
+  - Parent / Guardian 1 — Name + Phone (was Name only)
+  - Parent / Guardian 2 — Name + Phone (was entirely optional)
+  - Documents — **Student Photo**, **Aadhar Card**, **12th Marksheet** (was optional in self-onboard; Aadhar / 12th already required in admin wizard, Student Photo is new).
+- "(optional)" label removed from Parent 2 sections in both flows.
+- Required documents now show a `*` indicator and a red "Required" hint when not yet uploaded.
+- The Step 4 review page in self-onboard shows "Required — missing" pills for unsubmitted required docs.
+
+#### Validation paths
+- **[self-onboard-form.tsx](src/components/onboarding/self-onboard-form.tsx)** — `validateBeforeSubmit()` runs before the PATCH submit; missing items listed in the error.
+- **[onboard-wizard.tsx](src/components/students/onboard-wizard.tsx)** — `validateProfile()` blocks Step 1 → Step 2; document check blocks Step 2 → Step 3.
+- **[api/onboard/[token]/route.ts](src/app/api/onboard/[token]/route.ts)** — `findMissing()` runs on submit; rejects with 400 + missing list.
+- **[api/students/[id]/complete-onboarding/route.ts](src/app/api/students/[id]/complete-onboarding/route.ts)** — same validator; rejects 400 if rules unmet.
+
+10th Marksheet remains required only in the admin wizard (existing behaviour); not added to the universal validator since the owner's request listed only 12th.
+
+---
+
 ## [1.10.1] — 2026-05-07
 
 ### Dashboard outstanding excludes WITHDRAWN students + 2023 batch

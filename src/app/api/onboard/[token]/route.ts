@@ -110,7 +110,40 @@ export async function PATCH(
     }
   }
 
+  // Required-fields rule (matches admin onboard wizard + self-onboard form)
+  const REQUIRED_DOC_TYPES = ["STUDENT_PHOTO", "AADHAR_CARD", "TWELFTH_MARKSHEET"]
+  function findMissing(): string[] {
+    const missing: string[] = []
+    const eff = (k: string) =>
+      ((updateData[k] ?? (record!.student as unknown as Record<string, string | null>)[k]) ?? "")
+        .toString()
+        .trim()
+    if (!eff("parent1Name")) missing.push("Parent / Guardian 1 name")
+    if (!eff("parent1Phone")) missing.push("Parent / Guardian 1 phone")
+    if (!eff("parent2Name")) missing.push("Parent / Guardian 2 name")
+    if (!eff("parent2Phone")) missing.push("Parent / Guardian 2 phone")
+    const docTypes = new Set(record!.student.documents.map((d) => d.type))
+    for (const t of REQUIRED_DOC_TYPES) {
+      if (!docTypes.has(t as typeof docTypes extends Set<infer V> ? V : never)) {
+        const labels: Record<string, string> = {
+          STUDENT_PHOTO: "Student Photo",
+          AADHAR_CARD: "Aadhar Card",
+          TWELFTH_MARKSHEET: "12th Marksheet",
+        }
+        missing.push(labels[t] ?? t)
+      }
+    }
+    return missing
+  }
+
   if (submit) {
+    const missing = findMissing()
+    if (missing.length > 0) {
+      return NextResponse.json(
+        { error: `Cannot submit — missing required: ${missing.join(", ")}.` },
+        { status: 400 }
+      )
+    }
     // Final submit
     await prisma.student.update({
       where: { id: record.studentId },

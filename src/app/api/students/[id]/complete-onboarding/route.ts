@@ -21,12 +21,40 @@ export async function POST(
 
   const student = await prisma.student.findUnique({
     where: { id },
-    select: { status: true },
+    select: {
+      status: true,
+      parent1Name: true, parent1Phone: true,
+      parent2Name: true, parent2Phone: true,
+      documents: { select: { type: true } },
+    },
   })
   if (!student) return NextResponse.json({ error: "Student not found" }, { status: 404 })
 
   if (student.status !== "ONBOARDING") {
     return NextResponse.json({ error: "Student is not in ONBOARDING status" }, { status: 409 })
+  }
+
+  // Required-fields rule (matches onboard wizard + self-onboard form)
+  const REQUIRED_DOC_TYPES = ["STUDENT_PHOTO", "AADHAR_CARD", "TWELFTH_MARKSHEET"] as const
+  const docLabels: Record<string, string> = {
+    STUDENT_PHOTO: "Student Photo",
+    AADHAR_CARD: "Aadhar Card",
+    TWELFTH_MARKSHEET: "12th Marksheet",
+  }
+  const missing: string[] = []
+  if (!student.parent1Name?.trim()) missing.push("Parent / Guardian 1 name")
+  if (!student.parent1Phone?.trim()) missing.push("Parent / Guardian 1 phone")
+  if (!student.parent2Name?.trim()) missing.push("Parent / Guardian 2 name")
+  if (!student.parent2Phone?.trim()) missing.push("Parent / Guardian 2 phone")
+  const docTypeSet = new Set(student.documents.map((d) => d.type))
+  for (const t of REQUIRED_DOC_TYPES) {
+    if (!docTypeSet.has(t)) missing.push(docLabels[t])
+  }
+  if (missing.length > 0) {
+    return NextResponse.json(
+      { error: `Cannot complete onboarding — missing required: ${missing.join(", ")}.` },
+      { status: 400 }
+    )
   }
 
   await prisma.$transaction([
