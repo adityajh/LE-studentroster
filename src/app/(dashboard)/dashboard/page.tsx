@@ -23,23 +23,33 @@ async function getDashboardData() {
     prisma.student.count({ where: { status: "ACTIVE" } }),
     prisma.student.count({ where: { status: "OFFERED" } }),
 
-    // Overdue: full details for list (exclude WITHDRAWN students)
+    // Overdue: full details for list.
+    // Excludes WITHDRAWN students and (one-off, hardcoded) 2023 batch — see
+    // owner request 2026-05-07: 2023 students should not count toward
+    // dashboard outstanding totals. Remove the `batch.year` clause when no
+    // longer needed.
     prisma.installment.findMany({
       where: {
         status: "OVERDUE",
-        student: { status: { not: "WITHDRAWN" } },
+        student: {
+          status: { not: "WITHDRAWN" },
+          batch: { year: { gte: 2024 } },
+        },
       },
       include: { student: { select: { id: true, name: true, rollNo: true } } },
       orderBy: { dueDate: "asc" },
       take: 10,
     }),
 
-    // Due this month (exclude WITHDRAWN students)
+    // Due this month — same student-status / batch-year exclusions as Overdue.
     prisma.installment.findMany({
       where: {
         status: { in: ["DUE", "UPCOMING"] },
         dueDate: { gte: monthStart, lte: monthEnd },
-        student: { status: { not: "WITHDRAWN" } },
+        student: {
+          status: { not: "WITHDRAWN" },
+          batch: { year: { gte: 2024 } },
+        },
       },
     }),
 
