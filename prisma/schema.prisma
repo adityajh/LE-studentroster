@@ -15,6 +15,7 @@ model User {
   emailVerified DateTime?
   image         String?
   role          Role      @default(STAFF)
+  ccOnEmails    Boolean   @default(false)
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 

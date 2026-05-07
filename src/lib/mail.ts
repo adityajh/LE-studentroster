@@ -72,6 +72,29 @@ function createTransporter(config: SmtpConfig) {
   })
 }
 
+/**
+ * Returns email addresses of team members flagged ccOnEmails=true.
+ * These addresses are added to the CC list of every student/parent-facing
+ * email below, so admins / programme staff can monitor outgoing comms.
+ *
+ * The admin login magic link is NOT routed through this file (NextAuth uses
+ * its own nodemailer provider in auth.ts), so login emails are unaffected.
+ */
+async function getTeamCcEmails(): Promise<string[]> {
+  const users = await prisma.user.findMany({
+    where: { ccOnEmails: true },
+    select: { email: true },
+  })
+  return users.map((u) => u.email).filter((e) => e && e.length > 0)
+}
+
+/** Merge team CC list with any existing per-call CC, dedupe, return undefined if empty. */
+async function buildCc(extra?: string[]): Promise<string[] | undefined> {
+  const team = await getTeamCcEmails()
+  const merged = Array.from(new Set([...(extra ?? []), ...team].filter(Boolean)))
+  return merged.length > 0 ? merged : undefined
+}
+
 function reminderSubject(type: ReminderEmailPayload["reminderType"], label: string) {
   switch (type) {
     case "ONE_MONTH": return `Fee Reminder — ${label} due in 1 month`
@@ -151,6 +174,7 @@ export async function sendFeeReminder(payload: ReminderEmailPayload): Promise<Se
     const info = await transporter.sendMail({
       from,
       to: recipients,
+      cc: await buildCc(),
       subject: reminderSubject(payload.reminderType, payload.installmentLabel),
       html: reminderHtml(payload),
     })
@@ -212,7 +236,7 @@ export async function sendReceiptEmail(payload: ReceiptEmailPayload): Promise<Se
     const info = await transporter.sendMail({
       from,
       to: payload.to,
-      cc: payload.cc,
+      cc: await buildCc(payload.cc),
       subject: `Payment Receipt — ${payload.installmentLabel} — ${payload.studentName}`,
       html,
       attachments: [
@@ -318,7 +342,7 @@ export async function sendOfferEmail(payload: OfferEmailPayload): Promise<SendRe
     const info = await transporter.sendMail({
       from: `${config.fromName} <${config.fromEmail}>`,
       to: payload.to,
-      cc: payload.cc,
+      cc: await buildCc(payload.cc),
       subject: `Offer of Admission — ${payload.programName} (${payload.batchYear}) — Confirm by ${expiry}`,
       html: offerEmailHtml(payload),
       attachments,
@@ -376,6 +400,7 @@ export async function sendOfferReminderEmail(payload: OfferReminderPayload): Pro
     const info = await transporter.sendMail({
       from: `${config.fromName} <${config.fromEmail}>`,
       to: recipients,
+      cc: await buildCc(),
       subject: `Reminder: Confirm your ${payload.programName} offer by ${expiry} (${payload.daysLeft} days left)`,
       html: offerReminderHtml(payload),
     })
@@ -407,7 +432,7 @@ export async function sendRevisedOfferEmail(payload: RevisedOfferPayload): Promi
     const info = await transporter.sendMail({
       from: `${config.fromName} <${config.fromEmail}>`,
       to: payload.to,
-      cc: payload.cc,
+      cc: await buildCc(payload.cc),
       subject: `Updated Offer — ${payload.programName} (${payload.batchYear}) — Your seat is still available`,
       html: offerEmailHtml(payload),
       attachments,
@@ -522,7 +547,7 @@ export async function sendEnrolmentConfirmationEmail(payload: EnrolmentConfirmat
     const info = await transporter.sendMail({
       from: `${config.fromName} <${config.fromEmail}>`,
       to: payload.to,
-      cc: payload.cc,
+      cc: await buildCc(payload.cc),
       subject: `Welcome to ${payload.programName} — Enrolment Confirmed`,
       html,
       attachments: [
@@ -594,6 +619,7 @@ export async function sendOnboardingLinkEmail(payload: OnboardingLinkEmailPayloa
     const info = await transporter.sendMail({
       from: `${config.fromName} <${config.fromEmail}>`,
       to: payload.to,
+      cc: await buildCc(),
       subject: `Action Required: Complete Your Profile — ${payload.programName}`,
       html,
     })
@@ -660,7 +686,7 @@ export async function sendOnboardingEmail(payload: OnboardingEmailPayload): Prom
     const info = await transporter.sendMail({
       from: `${config.fromName} <${config.fromEmail}>`,
       to: payload.to,
-      cc: payload.cc,
+      cc: await buildCc(payload.cc),
       subject: `Welcome to ${payload.programName} — Let's Enterprise`,
       html: onboardingEmailHtml(payload),
       attachments: [

@@ -37,6 +37,7 @@ export async function PATCH(
     linkedinHandle, instagramHandle, universityChoice, universityStatus,
     baseFee, customTerms,
     registrationFee, // optional override → updates registrationFeeOverride + year=0 installment
+    status,       // StudentStatus enum (Admin only)
     // Financial plan updates (Admin only)
     offers,       // string[] — offerId list
     scholarships, // { scholarshipId: string; amount: number }[]
@@ -65,6 +66,18 @@ export async function PATCH(
     return NextResponse.json({ error: "Financial data is locked. Only admins can modify it." }, { status: 403 })
   }
 
+  // Status change is admin-only and validated against the enum
+  const VALID_STATUSES = ["OFFERED", "ONBOARDING", "ACTIVE", "ALUMNI", "WITHDRAWN"] as const
+  type ValidStatus = typeof VALID_STATUSES[number]
+  if (status !== undefined) {
+    if (!isAdmin) {
+      return NextResponse.json({ error: "Only admins can change student status." }, { status: 403 })
+    }
+    if (!VALID_STATUSES.includes(status as ValidStatus)) {
+      return NextResponse.json({ error: `Invalid status. Must be one of: ${VALID_STATUSES.join(", ")}` }, { status: 400 })
+    }
+  }
+
   if (isLocked && hasFinancialUpdate && !changeReason) {
     return NextResponse.json({ error: "Reason for change is required for locked records." }, { status: 400 })
   }
@@ -88,6 +101,7 @@ export async function PATCH(
   trackChange("lastName", student.lastName, lastName)
   trackChange("email", student.email, email)
   trackChange("contact", student.contact, contact)
+  trackChange("status", student.status, status)
   trackChange("baseFee", student.financial?.baseFee, baseFee)
   trackChange("registrationFee", student.financial?.registrationFeeOverride, registrationFee)
   trackChange("customTerms", student.financial?.customTerms, customTerms)
@@ -161,6 +175,7 @@ export async function PATCH(
           instagramHandle: instagramHandle ?? undefined,
           universityChoice: universityChoice ?? undefined,
           universityStatus: universityStatus ?? undefined,
+          status: status as ValidStatus | undefined,
         },
       })
 

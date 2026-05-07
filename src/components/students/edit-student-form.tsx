@@ -9,6 +9,8 @@ import { InstallmentEditor } from "./installment-editor"
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
+type StudentStatusValue = "OFFERED" | "ONBOARDING" | "ACTIVE" | "ALUMNI" | "WITHDRAWN"
+
 type Student = {
   id: string
   firstName: string | null
@@ -16,6 +18,7 @@ type Student = {
   name: string
   email: string
   contact: string | null
+  status: StudentStatusValue
   bloodGroup: string | null
   city: string | null
   address: string | null
@@ -119,6 +122,7 @@ export function EditStudentForm({
   const [email, setEmail] = useState(student.email ?? "")
   const [contact, setContact] = useState(student.contact ?? "")
   const [bloodGroup, setBloodGroup] = useState(student.bloodGroup ?? "")
+  const [status, setStatus] = useState<StudentStatusValue>(student.status)
   const [feeReg, setFeeReg] = useState(
     student.financial?.registrationFeeOverride != null
       ? String(student.financial.registrationFeeOverride)
@@ -268,6 +272,7 @@ export function EditStudentForm({
           instagramHandle:    instagramHandle    || null,
           universityChoice:   universityChoice   || null,
           universityStatus:   universityStatus   || null,
+          status:             isAdmin && status !== student.status ? status : undefined,
           baseFee:            isAdmin && (feeY1 !== "" || feeY2 !== "" || feeY3 !== "") ? baseFee : undefined,
           registrationFee:    isAdmin && feeReg !== "" ? computedReg : undefined,
           customTerms:        isAdmin ? customTerms : undefined,
@@ -322,6 +327,41 @@ export function EditStudentForm({
           </Field>
         </div>
       </div>
+
+      {/* Status — Admin only */}
+      {isAdmin && (
+        <div className="bg-amber-50/40 border border-amber-200/60 rounded-2xl shadow-sm p-6 space-y-4">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <p className="text-[10px] uppercase tracking-widest font-bold text-amber-700">Student Status (Admin)</p>
+              <p className="text-xs text-slate-500 mt-1">
+                Changes here are recorded in the audit log. Setting <strong>Withdrawn</strong> stops fee reminders for this student.
+              </p>
+            </div>
+            {status !== student.status && (
+              <span className="inline-flex items-center text-[10px] uppercase tracking-wider font-bold px-2 py-0.5 rounded border bg-amber-100 text-amber-800 border-amber-300 shrink-0">
+                Pending change: {student.status} → {status}
+              </span>
+            )}
+          </div>
+          <Field label="Status">
+            <div className="relative">
+              <select
+                value={status}
+                onChange={(e) => setStatus(e.target.value as StudentStatusValue)}
+                className="w-full h-11 rounded-xl border-2 border-slate-200 bg-white px-4 pr-10 text-sm font-semibold text-slate-800 appearance-none focus:border-amber-500 focus:outline-none transition-all"
+              >
+                <option value="OFFERED">Offered</option>
+                <option value="ONBOARDING">Onboarding</option>
+                <option value="ACTIVE">Active</option>
+                <option value="ALUMNI">Alumni</option>
+                <option value="WITHDRAWN">Withdrawn (Inactive)</option>
+              </select>
+              <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
+            </div>
+          </Field>
+        </div>
+      )}
 
       {/* Section 2 — Social & University */}
       <div className="bg-white border border-slate-200/50 rounded-2xl shadow-sm p-6 space-y-4">

@@ -4,6 +4,21 @@ All notable changes to the LE Student Roster system are documented here.
 
 ---
 
+## [1.10.0] — 2026-05-07
+
+### Team Management, Email CC, and Student Status Editing
+
+#### Added
+- **Inline name edit on team members** — admins can click a team member's name in [team-tab.tsx](src/components/settings/team-tab.tsx) to edit it inline. Pencil icon on hover, Enter to save, Esc to cancel. New `updateUserName` server action in [team.ts](src/app/actions/team.ts).
+- **CC team members on outgoing emails** — new `User.ccOnEmails` boolean field (default `false`); when checked, that user is CC'd on all student/parent-facing emails (offer, offer reminders, revised offer, enrolment confirmation, onboarding, self-onboarding link, fee reminders, payment receipts). New checkbox column in the Team tab, new `updateUserCcOnEmails` server action.
+- **`getTeamCcEmails` + `buildCc` helpers** in [src/lib/mail.ts](src/lib/mail.ts) — fetch CC-flagged users and merge with any per-call CC list. Wired into all 8 student-facing send functions. The internal "onboarding submitted" admin alert deliberately skips this (recipients are already all admins). Magic-link login is unaffected (separate NextAuth nodemailer transport).
+- **Admin can change student status** — new admin-only "Student Status" card on the edit page ([edit-student-form.tsx](src/components/students/edit-student-form.tsx)) with a dropdown for the full `StudentStatus` enum (Offered / Onboarding / Active / Alumni / Withdrawn). Pending changes show a banner pill. Status changes are recorded in the audit log via the existing `trackChange` helper. PATCH route ([api/students/[id]/route.ts](src/app/api/students/[id]/route.ts)) validates the value against the enum and gates on admin role.
+
+#### Schema
+- `User.ccOnEmails Boolean @default(false)` — new field; pushed via `prisma db push` (no migration file needed per project convention).
+
+---
+
 ## [1.9.0] — 2026-05-06
 
 ### Outstanding/Schedule Reconciliation Fixes

@@ -1,9 +1,9 @@
 "use client"
 
 import { useState, useTransition } from "react"
-import { addTeamMember, updateUserRole, removeTeamMember } from "@/app/actions/team"
+import { addTeamMember, updateUserRole, removeTeamMember, updateUserName, updateUserCcOnEmails } from "@/app/actions/team"
 import { useRouter } from "next/navigation"
-import { ShieldCheck, User, Loader2, ChevronDown, Plus, Trash2, X } from "lucide-react"
+import { ShieldCheck, User, Loader2, ChevronDown, Plus, Trash2, X, Pencil, Check } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { ROLES, ROLE_VALUES, type AppRole } from "@/lib/roles"
 
@@ -12,6 +12,7 @@ type TeamMember = {
   name: string | null
   email: string
   role: AppRole
+  ccOnEmails: boolean
   createdAt: Date
 }
 
@@ -25,6 +26,40 @@ export function TeamTab({ members, currentUserId }: { members: TeamMember[], cur
   const [addError, setAddError] = useState("")
   const [addLoading, setAddLoading] = useState(false)
   const [removeConfirmId, setRemoveConfirmId] = useState<string | null>(null)
+  const [editingNameId, setEditingNameId] = useState<string | null>(null)
+  const [nameDraft, setNameDraft] = useState("")
+
+  function startEditName(m: TeamMember) {
+    setEditingNameId(m.id)
+    setNameDraft(m.name ?? "")
+  }
+  function saveName(userId: string) {
+    setLoadingId(userId)
+    startTransition(async () => {
+      try {
+        await updateUserName(userId, nameDraft)
+        setEditingNameId(null)
+        router.refresh()
+      } catch (e) {
+        alert(e instanceof Error ? e.message : "Failed to update name")
+      } finally {
+        setLoadingId(null)
+      }
+    })
+  }
+  function toggleCc(userId: string, next: boolean) {
+    setLoadingId(userId)
+    startTransition(async () => {
+      try {
+        await updateUserCcOnEmails(userId, next)
+        router.refresh()
+      } catch (e) {
+        alert(e instanceof Error ? e.message : "Failed to update CC")
+      } finally {
+        setLoadingId(null)
+      }
+    })
+  }
 
   function changeRole(userId: string, role: AppRole) {
     setLoadingId(userId)
@@ -158,6 +193,7 @@ export function TeamTab({ members, currentUserId }: { members: TeamMember[], cur
             <tr>
               <th className="px-6 py-4 text-left">Member</th>
               <th className="px-6 py-4 text-left">Role</th>
+              <th className="px-6 py-4 text-center" title="When checked, this user is CC'd on all student/parent-facing emails (offer, onboarding, reminders, receipts).">CC Emails</th>
               <th className="px-6 py-4 text-left">Joined</th>
               <th className="px-6 py-4 text-right">Actions</th>
             </tr>
@@ -176,8 +212,51 @@ export function TeamTab({ members, currentUserId }: { members: TeamMember[], cur
                           {(m.name || m.email).charAt(0).toUpperCase()}
                         </span>
                       </div>
-                      <div>
-                        <p className="font-semibold text-slate-800">{m.name || <span className="text-slate-400 italic text-xs">No name yet</span>}</p>
+                      <div className="min-w-0 flex-1">
+                        {editingNameId === m.id ? (
+                          <div className="flex items-center gap-1.5">
+                            <input
+                              autoFocus
+                              type="text"
+                              value={nameDraft}
+                              onChange={(e) => setNameDraft(e.target.value)}
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter") saveName(m.id)
+                                if (e.key === "Escape") setEditingNameId(null)
+                              }}
+                              placeholder="Name"
+                              className="text-sm font-semibold border border-indigo-200 rounded-md px-2 py-1 focus:outline-none focus:ring-2 focus:ring-indigo-500 min-w-0 w-full max-w-[200px]"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => saveName(m.id)}
+                              className="p-1 rounded-md text-emerald-600 hover:bg-emerald-50 transition-colors"
+                              title="Save"
+                            >
+                              <Check className="w-3.5 h-3.5" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setEditingNameId(null)}
+                              className="p-1 rounded-md text-slate-400 hover:bg-slate-50 transition-colors"
+                              title="Cancel"
+                            >
+                              <X className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => startEditName(m)}
+                            className="group flex items-center gap-1.5 text-left hover:text-indigo-600 transition-colors"
+                            title="Click to edit"
+                          >
+                            <p className="font-semibold text-slate-800 group-hover:text-indigo-600">
+                              {m.name || <span className="text-slate-400 italic text-xs">No name yet</span>}
+                            </p>
+                            <Pencil className="w-3 h-3 text-slate-300 group-hover:text-indigo-500 opacity-0 group-hover:opacity-100 transition-opacity" />
+                          </button>
+                        )}
                         <p className="text-xs text-slate-500">{m.email}</p>
                       </div>
                     </div>
@@ -192,6 +271,17 @@ export function TeamTab({ members, currentUserId }: { members: TeamMember[], cur
                       {m.role === "ADMIN" ? <ShieldCheck className="w-3 h-3" /> : <User className="w-3 h-3" />}
                       {ROLES[m.role]?.label ?? m.role}
                     </span>
+                  </td>
+                  <td className="px-6 py-4 text-center">
+                    <label className="inline-flex items-center justify-center cursor-pointer" title={m.ccOnEmails ? "CC'd on all student-facing emails" : "Click to CC on all student-facing emails"}>
+                      <input
+                        type="checkbox"
+                        checked={m.ccOnEmails}
+                        onChange={(e) => toggleCc(m.id, e.target.checked)}
+                        disabled={pending}
+                        className="w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-2 focus:ring-indigo-500 cursor-pointer disabled:opacity-50"
+                      />
+                    </label>
                   </td>
                   <td className="px-6 py-4 text-slate-500">
                     {new Date(m.createdAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
@@ -250,7 +340,7 @@ export function TeamTab({ members, currentUserId }: { members: TeamMember[], cur
             })}
             {members.length === 0 && (
               <tr>
-                <td colSpan={4} className="px-6 py-10 text-center text-sm text-slate-400 italic">No team members yet.</td>
+                <td colSpan={5} className="px-6 py-10 text-center text-sm text-slate-400 italic">No team members yet.</td>
               </tr>
             )}
           </tbody>

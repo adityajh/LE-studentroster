@@ -19,7 +19,7 @@ async function requireAdmin() {
 export async function getTeamMembers() {
   await requireAdmin()
   return prisma.user.findMany({
-    select: { id: true, name: true, email: true, role: true, createdAt: true },
+    select: { id: true, name: true, email: true, role: true, ccOnEmails: true, createdAt: true },
     orderBy: { createdAt: "asc" },
   })
 }
@@ -29,6 +29,24 @@ export async function updateUserRole(userId: string, role: AppRole) {
   if (me.id === userId) throw new Error("Cannot change your own role")
   if (!ROLE_VALUES.includes(role)) throw new Error("Invalid role")
   await prisma.user.update({ where: { id: userId }, data: { role } })
+  revalidatePath("/settings")
+  return { success: true }
+}
+
+export async function updateUserName(userId: string, name: string) {
+  await requireAdmin()
+  const trimmed = name.trim()
+  await prisma.user.update({
+    where: { id: userId },
+    data: { name: trimmed.length > 0 ? trimmed : null },
+  })
+  revalidatePath("/settings")
+  return { success: true }
+}
+
+export async function updateUserCcOnEmails(userId: string, ccOnEmails: boolean) {
+  await requireAdmin()
+  await prisma.user.update({ where: { id: userId }, data: { ccOnEmails } })
   revalidatePath("/settings")
   return { success: true }
 }
