@@ -23,19 +23,23 @@ async function getDashboardData() {
     prisma.student.count({ where: { status: "ACTIVE" } }),
     prisma.student.count({ where: { status: "OFFERED" } }),
 
-    // Overdue: full details for list
+    // Overdue: full details for list (exclude WITHDRAWN students)
     prisma.installment.findMany({
-      where: { status: "OVERDUE" },
+      where: {
+        status: "OVERDUE",
+        student: { status: { not: "WITHDRAWN" } },
+      },
       include: { student: { select: { id: true, name: true, rollNo: true } } },
       orderBy: { dueDate: "asc" },
       take: 10,
     }),
 
-    // Due this month
+    // Due this month (exclude WITHDRAWN students)
     prisma.installment.findMany({
       where: {
         status: { in: ["DUE", "UPCOMING"] },
         dueDate: { gte: monthStart, lte: monthEnd },
+        student: { status: { not: "WITHDRAWN" } },
       },
     }),
 

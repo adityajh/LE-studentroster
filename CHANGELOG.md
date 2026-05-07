@@ -4,6 +4,18 @@ All notable changes to the LE Student Roster system are documented here.
 
 ---
 
+## [1.10.1] — 2026-05-07
+
+### Dashboard outstanding excludes WITHDRAWN students
+
+#### Fixed
+- **Overdue and Due-This-Month dashboard cards** — both queries in [src/app/(dashboard)/dashboard/page.tsx](src/app/(dashboard)/dashboard/page.tsx) now filter out installments belonging to `WITHDRAWN` students. Previously a withdrawn student's lapsed installments still rolled into the dashboard's "outstanding" totals; now they don't.
+
+#### Data
+- Bulk-marked **9 LE2024 students as WITHDRAWN** (LE2024001–LE2024009). LE2024010 Taher Nasikwala and LE2024011 Zuveriya Zaheer Sayyed remain ACTIVE. Each change recorded as a `StudentAuditLog` entry with reason. Script: [scratch/mark-2024-withdrawn.ts](scratch/mark-2024-withdrawn.ts).
+
+---
+
 ## [1.10.0] — 2026-05-07
 
 ### Team Management, Email CC, and Student Status Editing
