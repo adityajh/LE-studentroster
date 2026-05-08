@@ -48,11 +48,17 @@ export default async function OnboardPage({ params }: Props) {
 
   const s = record.student
 
+  // Legacy students often have `name` populated but no firstName/lastName.
+  // Split the full name as a sensible default — the student can correct it.
+  const nameParts = s.name?.trim().split(/\s+/) ?? []
+  const fallbackFirstName = nameParts[0] ?? ""
+  const fallbackLastName = nameParts.slice(1).join(" ")
+
   const initialData = {
     studentId: s.id,
     name: s.name,
-    firstName: s.firstName ?? "",
-    lastName: s.lastName ?? "",
+    firstName: s.firstName ?? fallbackFirstName,
+    lastName: s.lastName ?? fallbackLastName,
     email: s.email ?? "",
     contact: s.contact ?? "",
     bloodGroup: s.bloodGroup ?? "",

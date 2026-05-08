@@ -4,6 +4,24 @@ All notable changes to the LE Student Roster system are documented here.
 
 ---
 
+## [1.12.0] — 2026-05-07
+
+### Onboarding link no longer requires login + self-registration blocked
+
+#### Fixed (security + UX)
+- **Public access for `/onboard/[token]` and `/api/onboard/[token]/*`** — [src/proxy.ts](src/proxy.ts) was redirecting these to `/login`. The token in the URL is the auth (SHA-256 hash + 14-day expiry checked in the route handlers); no session needed. Students now land directly on the form without any login redirect.
+- **Self-registration via magic link is now blocked** — [src/auth.ts](src/auth.ts) gains a `signIn` callback that rejects any email not already in the User table. Without this gate, `PrismaAdapter` was auto-creating User rows with default role `STAFF` for any email that submitted the login form. Net effect: only emails added via Settings → Team can sign in; strangers (and students who tried logging in via redirected onboarding links) cannot.
+
+#### Added
+- **Approve button visible for ACTIVE students too** — the wrapper that renders [SendOnboardingLinkButton](src/components/students/send-onboarding-link-button.tsx) on the student profile was gated on `student.status === "ONBOARDING"`. Now also shows for `ACTIVE` (so admins can approve self-onboard submissions from existing students who got bulk-sent links). Hidden once `selfOnboardingStatus === "APPROVED"`.
+- **Onboarding form pre-fills firstName / lastName** — when a legacy student has `name` set but `firstName` / `lastName` are null, `/onboard/[token]` now splits the full name on the first space as a sensible default. The student can still correct it before submitting.
+
+#### Behaviour confirmed (no code change needed)
+- Re-submission after approval is already blocked — [api/onboard/[token]/route.ts](src/app/api/onboard/[token]/route.ts) returns 409 if `selfOnboardingStatus === "APPROVED"`, and the form goes read-only in that state.
+- Existing onboarding tokens remain valid; no re-issue needed.
+
+---
+
 ## [1.11.0] — 2026-05-07
 
 ### Onboarding: stricter required fields

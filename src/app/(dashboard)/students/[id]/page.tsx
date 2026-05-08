@@ -315,14 +315,18 @@ export default async function StudentDetailPage({
                 Complete Onboarding
               </Link>
             )}
-            {/* Self-onboarding link button — only while ONBOARDING */}
-            {student.status === "ONBOARDING" && canRecord && student.selfOnboardingStatus !== "APPROVED" && (
-              <SendOnboardingLinkButton
-                studentId={student.id}
-                currentStatus={student.selfOnboardingStatus}
-                isAdmin={dbUser?.role === "ADMIN"}
-              />
-            )}
+            {/* Self-onboarding link button — shown while ONBOARDING (first-time
+                enrolment) or ACTIVE (back-fill self-onboarding for existing
+                students). Hidden once selfOnboardingStatus is APPROVED. */}
+            {(student.status === "ONBOARDING" || student.status === "ACTIVE") &&
+              canRecord &&
+              student.selfOnboardingStatus !== "APPROVED" && (
+                <SendOnboardingLinkButton
+                  studentId={student.id}
+                  currentStatus={student.selfOnboardingStatus}
+                  isAdmin={dbUser?.role === "ADMIN"}
+                />
+              )}
             {canRecord && (
               <Link
                 href={`/students/${student.id}/edit`}

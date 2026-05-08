@@ -8,6 +8,10 @@ export default auth((req) => {
   const isAuthRoute = nextUrl.pathname.startsWith("/login")
   const isNextAuthRoute = nextUrl.pathname.startsWith("/api/auth")
   const isPublicApiRoute = nextUrl.pathname.startsWith("/api/v1")
+  // Student self-onboarding — token in URL is the auth; no session required.
+  // Token validation (SHA-256 hash + 14-day expiry) happens in the route handler.
+  const isOnboardPage = nextUrl.pathname.startsWith("/onboard")
+  const isOnboardApi = nextUrl.pathname.startsWith("/api/onboard")
   const isApiRoute = nextUrl.pathname.startsWith("/api")
 
   // NextAuth routes (signin, callback, etc.) — always allow through
@@ -15,6 +19,9 @@ export default auth((req) => {
 
   // Public external API routes use API key auth — skip session check
   if (isPublicApiRoute) return NextResponse.next()
+
+  // Public student self-onboarding routes — token-authenticated by the handlers
+  if (isOnboardPage || isOnboardApi) return NextResponse.next()
 
   // Internal API routes need session
   if (isApiRoute) {
