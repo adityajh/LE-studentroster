@@ -4,6 +4,25 @@ All notable changes to the LE Student Roster system are documented here.
 
 ---
 
+## [1.14.3] — 2026-05-11
+
+### Settings → Emails — reorganise onboarding section
+
+#### Changed
+- Self-onboarding section is now split between **canonical workflow** and **utilities** in [offer-settings.tsx](src/components/settings/offer-settings.tsx):
+  - **Self-Onboarding Workflow** (3 cards, in workflow order):
+    - **O1** — Enrolment Confirmation (with Onboard Link) — auto on ₹50K paid
+    - **O2** — Onboarding Submitted Alert (internal, hardcoded) — auto on submit
+    - **O3** — Onboarding Welcome Email — auto on Approve
+  - **Onboarding Utilities** (no workflow code):
+    - **Resend Onboard Link** — manual button used for recovery (expired tokens) or back-fill (existing students enrolled before self-onboard existed). Not part of the canonical flow.
+- This drops the old `O4` code; `O3` now refers to the Welcome Email. The Manual Resend (formerly `O2`) is unnumbered because it's not a workflow step.
+
+#### Rationale
+The self-onboard happy path is a 3-step pipeline: link delivered → student submits → admin approves. The Manual Resend only fires off-path (recovery / back-fill), so numbering it as a workflow step was misleading. Restructuring puts it in a utilities box and shrinks the canonical flow to its actual 3 steps.
+
+---
+
 ## [1.14.2] — 2026-05-11
 
 ### Fix auto-O4 + complete email numbering scheme

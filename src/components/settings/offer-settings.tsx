@@ -171,34 +171,22 @@ const ADMISSIONS_EMAILS: EmailConfig[] = [
   },
 ]
 
-const ENROLMENT_EMAILS: EmailConfig[] = [
+// ── Self-Onboarding Workflow (canonical 3-step happy path) ────────────────────
+const SELF_ONBOARDING_WORKFLOW: EmailConfig[] = [
   {
     settingKey: "ENROLMENT_CONFIRMATION_EMAIL_BODY",
     code: "O1",
-    label: "Enrolment Confirmation",
-    trigger: "Automatic — sent immediately when registration payment is confirmed (\"Confirm Enrolment\" dialog)",
+    label: "Enrolment Confirmation (with Onboard Link)",
+    trigger: "Automatic — fires immediately when registration payment is confirmed (\"Confirm Enrolment\" dialog). Contains the self-onboard link inline.",
     recipients: "Student (CC parent if set)",
     attachments: ["Fee Structure PDF (full schedule with installments)"],
-    links: ["Onboarding self-service link (valid 14 days)"],
+    links: ["Self-onboard link (valid 14 days)"],
     mergeFields: ["{{studentName}}", "{{programName}}", "{{rollNo}}", "{{onboardingExpiryDate}}"],
-    rows: 10,
-  },
-]
-
-const ONBOARDING_EMAILS: EmailConfig[] = [
-  {
-    settingKey: "SELF_ONBOARDING_LINK_EMAIL_BODY",
-    code: "O2",
-    label: "Self-Onboarding Link",
-    trigger: "Manual — \"Send Onboarding Link\" button on student profile",
-    recipients: "Student",
-    links: ["Onboarding self-service link (valid 14 days)"],
-    mergeFields: ["{{studentName}}", "{{programName}}", "{{onboardingExpiryDate}}"],
     rows: 10,
   },
   {
     settingKey: null,
-    code: "O3",
+    code: "O2",
     label: "Onboarding Submitted Alert (internal)",
     trigger: "Automatic — sent to all admins when a student submits their self-onboarding form",
     recipients: "All admin team members",
@@ -208,14 +196,28 @@ const ONBOARDING_EMAILS: EmailConfig[] = [
   },
   {
     settingKey: "ONBOARDING_EMAIL_BODY",
-    code: "O4",
+    code: "O3",
     label: "Onboarding Welcome Email",
-    trigger: "Automatic — sent when admin clicks \"Approve Profile\" on a SUBMITTED student. Also fired by the admin onboard wizard's final step.",
+    trigger: "Automatic — fires when admin clicks \"Approve Profile\" on a SUBMITTED student",
     recipients: "Student (CC parent if set)",
     attachments: ["Fee Structure PDF"],
     links: ["All resource links (auto-listed)"],
     mergeFields: ["{{studentName}}", "{{programName}}"],
     rows: 12,
+  },
+]
+
+// ── Onboarding Utilities (not in canonical flow — recovery / back-fill only) ──
+const ONBOARDING_UTILITIES: EmailConfig[] = [
+  {
+    settingKey: "SELF_ONBOARDING_LINK_EMAIL_BODY",
+    label: "Resend Onboard Link",
+    trigger: "Manual — \"Send Onboard Link\" button on student profile. Use when the original O1 link expired, was lost, or for back-fill students enrolled before self-onboarding existed.",
+    recipients: "Student",
+    links: ["Self-onboard link (valid 14 days)"],
+    mergeFields: ["{{studentName}}", "{{programName}}", "{{onboardingExpiryDate}}"],
+    note: "Not part of the canonical self-onboarding workflow — fallback / recovery only.",
+    rows: 10,
   },
 ]
 
@@ -629,8 +631,8 @@ export function OfferSettings({ initial }: OfferSettingsProps) {
       <MergeTagReference resourceLinks={resourceLinks} />
 
       <EmailGroup title="Admissions" emails={ADMISSIONS_EMAILS} values={values} onSave={handleSave} />
-      <EmailGroup title="Enrolment" emails={ENROLMENT_EMAILS} values={values} onSave={handleSave} />
-      <EmailGroup title="Onboarding" emails={ONBOARDING_EMAILS} values={values} onSave={handleSave} />
+      <EmailGroup title="Self-Onboarding Workflow" emails={SELF_ONBOARDING_WORKFLOW} values={values} onSave={handleSave} />
+      <EmailGroup title="Onboarding Utilities" emails={ONBOARDING_UTILITIES} values={values} onSave={handleSave} />
 
       {/* Bank Details */}
       <SoftCard className="p-6 space-y-3">
