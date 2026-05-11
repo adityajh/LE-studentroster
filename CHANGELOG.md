@@ -4,6 +4,16 @@ All notable changes to the LE Student Roster system are documented here.
 
 ---
 
+## [1.14.1] — 2026-05-11
+
+### Fix: O3 Onboarding Submitted Alert now reaches admins
+
+#### Fixed
+- [api/onboard/[token]/route.ts](src/app/api/onboard/%5Btoken%5D/route.ts) was reading O3 recipients from `process.env.ONBOARDING_NOTIFY_EMAILS` — a comma-separated env var that was never set on Vercel. Result: the alert silently no-op'd on every submission for the entire history of the feature.
+- Replaced env-var lookup with a Prisma query that fetches all `ADMIN` users from the User table. Every admin is now notified automatically; recipient list stays in sync as admins are added/removed via Settings → Team. No env var to maintain.
+
+---
+
 ## [1.14.0] — 2026-05-11
 
 ### Self-Onboarding Workflow — auto-Welcome on approval + email codes

@@ -161,9 +161,16 @@ export async function PATCH(
       data: { submittedAt: new Date() },
     })
 
-    // Alert the team
+    // Alert all admins (workflow code O3). Recipients are pulled from the User
+    // table — every ADMIN gets the notification automatically. Previously this
+    // read from an env var (ONBOARDING_NOTIFY_EMAILS) which had to be set per
+    // deployment; that's gone now.
     const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://le-student-roster.vercel.app"
-    const notifyEmails = (process.env.ONBOARDING_NOTIFY_EMAILS ?? "").split(",").map((e) => e.trim()).filter(Boolean)
+    const admins = await prisma.user.findMany({
+      where: { role: "ADMIN" },
+      select: { email: true },
+    })
+    const notifyEmails = admins.map((a) => a.email).filter((e) => !!e)
     if (notifyEmails.length) {
       await sendOnboardingSubmittedAlert({
         to: notifyEmails,
