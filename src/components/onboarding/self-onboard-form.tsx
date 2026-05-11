@@ -327,8 +327,10 @@ export function SelfOnboardForm({ token, initialData }: { token: string; initial
   const validateBeforeSubmit = (): string | null => {
     const missing: string[] = []
     if (!form.parent1Name.trim()) missing.push("Parent / Guardian 1 name")
+    if (!form.parent1Email.trim()) missing.push("Parent / Guardian 1 email")
     if (!form.parent1Phone.trim()) missing.push("Parent / Guardian 1 phone")
     if (!form.parent2Name.trim()) missing.push("Parent / Guardian 2 name")
+    if (!form.parent2Email.trim()) missing.push("Parent / Guardian 2 email")
     if (!form.parent2Phone.trim()) missing.push("Parent / Guardian 2 phone")
     for (const docType of REQUIRED_DOC_TYPES) {
       if (!documents.find((d) => d.type === docType)) {
@@ -516,7 +518,7 @@ export function SelfOnboardForm({ token, initialData }: { token: string; initial
                   <div className="space-y-4">
                     <Field label="Full Name" name="parent1Name" value={form.parent1Name} onChange={setField("parent1Name")} required disabled={isReadOnly} />
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      <Field label="Email" name="parent1Email" value={form.parent1Email} onChange={setField("parent1Email")} type="email" disabled={isReadOnly} />
+                      <Field label="Email" name="parent1Email" value={form.parent1Email} onChange={setField("parent1Email")} type="email" required disabled={isReadOnly} />
                       <Field label="Phone" name="parent1Phone" value={form.parent1Phone} onChange={setField("parent1Phone")} type="tel" required disabled={isReadOnly} />
                     </div>
                   </div>
@@ -528,7 +530,7 @@ export function SelfOnboardForm({ token, initialData }: { token: string; initial
                   <div className="space-y-4">
                     <Field label="Full Name" name="parent2Name" value={form.parent2Name} onChange={setField("parent2Name")} required disabled={isReadOnly} />
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      <Field label="Email" name="parent2Email" value={form.parent2Email} onChange={setField("parent2Email")} type="email" disabled={isReadOnly} />
+                      <Field label="Email" name="parent2Email" value={form.parent2Email} onChange={setField("parent2Email")} type="email" required disabled={isReadOnly} />
                       <Field label="Phone" name="parent2Phone" value={form.parent2Phone} onChange={setField("parent2Phone")} type="tel" required disabled={isReadOnly} />
                     </div>
                   </div>

@@ -85,8 +85,10 @@ export function OnboardWizard({
   function validateProfile(): string | null {
     const missing: string[] = []
     if (!p1Name.trim()) missing.push("Parent / Guardian 1 name")
+    if (!p1Email.trim()) missing.push("Parent / Guardian 1 email")
     if (!p1Phone.trim()) missing.push("Parent / Guardian 1 phone")
     if (!p2Name.trim()) missing.push("Parent / Guardian 2 name")
+    if (!p2Email.trim()) missing.push("Parent / Guardian 2 email")
     if (!p2Phone.trim()) missing.push("Parent / Guardian 2 phone")
     if (missing.length === 0) return null
     return `Missing required fields: ${missing.join(", ")}.`
@@ -280,7 +282,7 @@ export function OnboardWizard({
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               {[
                 { label: "Name",  value: p1Name,  set: setP1Name,  placeholder: "Parent name", required: true },
-                { label: "Email", value: p1Email, set: setP1Email, placeholder: "parent@example.com", required: false },
+                { label: "Email", value: p1Email, set: setP1Email, placeholder: "parent@example.com", required: true },
                 { label: "Phone", value: p1Phone, set: setP1Phone, placeholder: "+91 98765 43210", required: true },
               ].map(({ label, value, set, placeholder, required }) => (
                 <div key={label}>
@@ -299,7 +301,7 @@ export function OnboardWizard({
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               {[
                 { label: "Name",  value: p2Name,  set: setP2Name,  placeholder: "Parent name", required: true },
-                { label: "Email", value: p2Email, set: setP2Email, placeholder: "parent@example.com", required: false },
+                { label: "Email", value: p2Email, set: setP2Email, placeholder: "parent@example.com", required: true },
                 { label: "Phone", value: p2Phone, set: setP2Phone, placeholder: "+91 98765 43210", required: true },
               ].map(({ label, value, set, placeholder, required }) => (
                 <div key={label}>

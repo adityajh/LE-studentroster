@@ -4,6 +4,22 @@ All notable changes to the LE Student Roster system are documented here.
 
 ---
 
+## [1.12.1] — 2026-05-11
+
+### Onboarding: Parent 1 + Parent 2 email now required
+
+#### Changed
+- Added `parent1Email` and `parent2Email` to the shared required-fields rule used by:
+  - [self-onboard-form.tsx](src/components/onboarding/self-onboard-form.tsx) — `*` marker on email fields, `validateBeforeSubmit()` blocks submit.
+  - [onboard-wizard.tsx](src/components/students/onboard-wizard.tsx) — `*` marker on Parent 1/2 email inputs, `validateProfile()` blocks Step 1 → 2.
+  - [api/onboard/[token]/route.ts](src/app/api/onboard/[token]/route.ts) — server `findMissing()` rejects submit (400) if either email is blank.
+  - [api/students/[id]/complete-onboarding/route.ts](src/app/api/students/[id]/complete-onboarding/route.ts) — same gate before flipping student to ACTIVE.
+
+#### Note
+Submissions made before this change (e.g. Arnee Parmar, Madhur Kalantri) may have empty parent emails. The Approve flow does not validate these fields, so existing submissions can still be approved as-is — or reset to `LINK_SENT` to force a re-fill.
+
+---
+
 ## [1.12.0] — 2026-05-07
 
 ### Onboarding link no longer requires login + self-registration blocked

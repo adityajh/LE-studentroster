@@ -23,8 +23,8 @@ export async function POST(
     where: { id },
     select: {
       status: true,
-      parent1Name: true, parent1Phone: true,
-      parent2Name: true, parent2Phone: true,
+      parent1Name: true, parent1Email: true, parent1Phone: true,
+      parent2Name: true, parent2Email: true, parent2Phone: true,
       documents: { select: { type: true } },
     },
   })
@@ -43,8 +43,10 @@ export async function POST(
   }
   const missing: string[] = []
   if (!student.parent1Name?.trim()) missing.push("Parent / Guardian 1 name")
+  if (!student.parent1Email?.trim()) missing.push("Parent / Guardian 1 email")
   if (!student.parent1Phone?.trim()) missing.push("Parent / Guardian 1 phone")
   if (!student.parent2Name?.trim()) missing.push("Parent / Guardian 2 name")
+  if (!student.parent2Email?.trim()) missing.push("Parent / Guardian 2 email")
   if (!student.parent2Phone?.trim()) missing.push("Parent / Guardian 2 phone")
   const docTypeSet = new Set(student.documents.map((d) => d.type))
   for (const t of REQUIRED_DOC_TYPES) {

@@ -119,8 +119,10 @@ export async function PATCH(
         .toString()
         .trim()
     if (!eff("parent1Name")) missing.push("Parent / Guardian 1 name")
+    if (!eff("parent1Email")) missing.push("Parent / Guardian 1 email")
     if (!eff("parent1Phone")) missing.push("Parent / Guardian 1 phone")
     if (!eff("parent2Name")) missing.push("Parent / Guardian 2 name")
+    if (!eff("parent2Email")) missing.push("Parent / Guardian 2 email")
     if (!eff("parent2Phone")) missing.push("Parent / Guardian 2 phone")
     const docTypes = new Set(record!.student.documents.map((d) => d.type))
     for (const t of REQUIRED_DOC_TYPES) {
