@@ -4,6 +4,29 @@ All notable changes to the LE Student Roster system are documented here.
 
 ---
 
+## [1.13.0] — 2026-05-11
+
+### Global merge tags, Cash Free Link, dynamic Resource Links
+
+#### Added
+- **Global merge tags work in every email body** — admins can drop `{{bankDetails}}`, `{{cashFreeLink}}`, or any resource-link tag into any admin-edited email template (offer, fee reminders, enrolment confirmation, onboarding, self-onboarding link). Substitution happens server-side at send time, before the `\n → <br/>` HTML conversion, so multi-line bank details render correctly.
+- **Cash Free Link** section under Settings → Emails — new `CASH_FREE_LINK` SystemSetting; available as `{{cashFreeLink}}` in any email body.
+- **Dynamic Resource Links** — replaces the 3 hardcoded URL fields (Handbook / Welcome Kit / Year 1) with an add-as-many-as-you-want list. Each row has a Label, URL, and an auto-derived merge tag key (e.g. `{{handbookUrl}}`). New `RESOURCE_LINKS_JSON` SystemSetting stores the list. Existing values seed from the 3 legacy URL keys on first view (user must click Save to persist as JSON). The Onboarding Welcome Email continues to auto-render all resource links as a bullet list.
+- **Merge Tag Reference panel** at the top of Settings → Emails — categorised list of every merge tag (Student / Program & Batch / Financial / Offer-window / System / Resource Links). Click any tag to copy.
+- New helpers in [src/lib/mail.ts](src/lib/mail.ts):
+  - `getResourceLinks()` — parses `RESOURCE_LINKS_JSON` into typed entries.
+  - `getGlobalMergeTags()` — fetches all global tag values in one query.
+  - `applyGlobalMergeTags(text, tags)` — substitutes only known global tags; leaves per-email tags untouched.
+
+#### Changed
+- `OnboardingEmailPayload` — replaces `handbookUrl`, `welcomeKitUrl`, `year1Url` with a single `resourceLinks: { label, url }[]` array.
+- [api/students/[id]/send-onboarding/route.ts](src/app/api/students/[id]/send-onboarding/route.ts) — reads from `getResourceLinks()` instead of the 3 legacy `ONBOARDING_*_URL` keys.
+
+#### Notes
+- The 3 legacy URL settings (`ONBOARDING_HANDBOOK_URL`, `ONBOARDING_WELCOME_KIT_URL`, `ONBOARDING_YEAR1_URL`) remain readable for seeding purposes but are no longer written by the UI. Once an admin saves the new Resource Links list, those keys become inert.
+
+---
+
 ## [1.12.1] — 2026-05-11
 
 ### Onboarding: Parent 1 + Parent 2 email now required

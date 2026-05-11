@@ -21,6 +21,32 @@ const DEFAULT_TERMS = `1. All fees laid out in the structure above must be paid 
 2. In the event of withdrawal, the registration fee and deposit are strictly non-refundable.
 3. The scholarship and waiver discounts have already been deducted from your base fee computation.`
 
+type ResourceLinkRow = { key: string; label: string; url: string }
+
+/** Parse RESOURCE_LINKS_JSON, falling back to seeding from the 3 legacy URL
+ *  keys when the JSON is empty/missing. Idempotent — does not write to DB. */
+function parseResourceLinks(settings: Record<string, string>): ResourceLinkRow[] {
+  const raw = settings["RESOURCE_LINKS_JSON"] || ""
+  if (raw.trim()) {
+    try {
+      const parsed = JSON.parse(raw)
+      if (Array.isArray(parsed)) {
+        return parsed.filter(
+          (x): x is ResourceLinkRow =>
+            x && typeof x.key === "string" && typeof x.label === "string" && typeof x.url === "string"
+        )
+      }
+    } catch { /* fall through to seed */ }
+  }
+  // Seed from legacy keys (in-memory only; user clicks "Save Resource Links" to persist as JSON)
+  const seeds: ResourceLinkRow[] = [
+    { key: "year1Url",     label: "Year 1 Resources",  url: settings["ONBOARDING_YEAR1_URL"]     || "" },
+    { key: "handbookUrl",  label: "Student Handbook",  url: settings["ONBOARDING_HANDBOOK_URL"]  || "" },
+    { key: "welcomeKitUrl",label: "Welcome Kit",       url: settings["ONBOARDING_WELCOME_KIT_URL"]|| "" },
+  ].filter((r) => r.url.trim().length > 0)
+  return seeds
+}
+
 const TABS = [
   { id: "team",        label: "Team",        icon: Users },
   { id: "api-keys",    label: "API Keys",    icon: Key },
@@ -63,6 +89,8 @@ export default async function SettingsPage({
       "ENROLMENT_CONFIRMATION_EMAIL_BODY",
       "SELF_ONBOARDING_LINK_EMAIL_BODY",
       "BANK_DETAILS",
+      "CASH_FREE_LINK",
+      "RESOURCE_LINKS_JSON",
       "ONBOARDING_HANDBOOK_URL",
       "ONBOARDING_WELCOME_KIT_URL",
       "ONBOARDING_YEAR1_URL",
@@ -138,9 +166,8 @@ export default async function SettingsPage({
               enrolmentConfirmationEmailBody:    offerSettings["ENROLMENT_CONFIRMATION_EMAIL_BODY"] || "",
               selfOnboardingLinkEmailBody:       offerSettings["SELF_ONBOARDING_LINK_EMAIL_BODY"] || "",
               bankDetails:                       offerSettings["BANK_DETAILS"] || "",
-              handbookUrl:                       offerSettings["ONBOARDING_HANDBOOK_URL"] || "",
-              welcomeKitUrl:                     offerSettings["ONBOARDING_WELCOME_KIT_URL"] || "",
-              year1Url:                          offerSettings["ONBOARDING_YEAR1_URL"] || "",
+              cashFreeLink:                      offerSettings["CASH_FREE_LINK"] || "",
+              resourceLinks:                     parseResourceLinks(offerSettings),
             }}
           />
         )}

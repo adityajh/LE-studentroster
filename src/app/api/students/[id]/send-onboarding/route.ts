@@ -53,11 +53,10 @@ export async function POST(
 
   const settings = await getSettings([
     "ONBOARDING_EMAIL_BODY",
-    "ONBOARDING_HANDBOOK_URL",
-    "ONBOARDING_WELCOME_KIT_URL",
-    "ONBOARDING_YEAR1_URL",
     "PROPOSAL_TERMS",
   ])
+  const { getResourceLinks } = await import("@/lib/mail")
+  const resourceLinks = (await getResourceLinks()).map((l) => ({ label: l.label, url: l.url }))
 
   // Load logo
   let logoSrc: string | undefined
@@ -82,9 +81,7 @@ export async function POST(
     bodyText: (settings["ONBOARDING_EMAIL_BODY"] || DEFAULT_ONBOARDING_BODY)
       .replace(/\{\{studentName\}\}/g, student.name)
       .replace(/\{\{programName\}\}/g, student.program.name),
-    handbookUrl: settings["ONBOARDING_HANDBOOK_URL"] || undefined,
-    welcomeKitUrl: settings["ONBOARDING_WELCOME_KIT_URL"] || undefined,
-    year1Url: settings["ONBOARDING_YEAR1_URL"] || undefined,
+    resourceLinks,
     proposalPdf: Buffer.from(proposalBuffer),
   })
 

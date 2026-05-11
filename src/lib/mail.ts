@@ -95,6 +95,66 @@ async function buildCc(extra?: string[]): Promise<string[] | undefined> {
   return merged.length > 0 ? merged : undefined
 }
 
+// ── Global merge tags ────────────────────────────────────────────────────────
+//
+// A small set of merge tags are global: they resolve from SystemSetting values
+// and can be used in any admin-edited email body (offer email, reminders,
+// onboarding, etc.). The substitution happens BEFORE per-email tag replacement
+// and BEFORE the `\n → <br/>` HTML conversion.
+//
+// Tags:
+//   {{bankDetails}}    — from SystemSetting BANK_DETAILS
+//   {{cashFreeLink}}   — from SystemSetting CASH_FREE_LINK
+//   {{<key>}}          — each entry in SystemSetting RESOURCE_LINKS_JSON
+//                        (JSON array of {key, label, url})
+
+export type ResourceLink = { key: string; label: string; url: string }
+
+export async function getResourceLinks(): Promise<ResourceLink[]> {
+  const row = await prisma.systemSetting.findUnique({
+    where: { key: "RESOURCE_LINKS_JSON" },
+    select: { value: true },
+  })
+  if (!row?.value) return []
+  try {
+    const parsed = JSON.parse(row.value)
+    if (!Array.isArray(parsed)) return []
+    return parsed.filter(
+      (x): x is ResourceLink =>
+        x && typeof x.key === "string" && typeof x.label === "string" && typeof x.url === "string"
+    )
+  } catch {
+    return []
+  }
+}
+
+export async function getGlobalMergeTags(): Promise<Record<string, string>> {
+  const [settings, links] = await Promise.all([
+    prisma.systemSetting.findMany({
+      where: { key: { in: ["BANK_DETAILS", "CASH_FREE_LINK"] } },
+      select: { key: true, value: true },
+    }),
+    getResourceLinks(),
+  ])
+  const map = Object.fromEntries(settings.map((s) => [s.key, s.value]))
+  const tags: Record<string, string> = {
+    bankDetails: map["BANK_DETAILS"] || "",
+    cashFreeLink: map["CASH_FREE_LINK"] || "",
+  }
+  for (const l of links) {
+    if (l.key && l.url) tags[l.key] = l.url
+  }
+  return tags
+}
+
+/** Substitute only known global tags; unknown {{...}} patterns are left untouched
+ *  so per-email merge fields (studentName, amount, etc.) can be resolved later. */
+export function applyGlobalMergeTags(text: string, tags: Record<string, string>): string {
+  return text.replace(/\{\{(\w+)\}\}/g, (match, key: string) =>
+    key in tags ? tags[key] : match
+  )
+}
+
 function reminderSubject(type: ReminderEmailPayload["reminderType"], label: string) {
   switch (type) {
     case "ONE_MONTH": return `Fee Reminder — ${label} due in 1 month`
@@ -170,13 +230,21 @@ export async function sendFeeReminder(payload: ReminderEmailPayload): Promise<Se
   const transporter = createTransporter(config)
   const from = `${config.fromName} <${config.fromEmail}>`
 
+  // Expand {{bankDetails}}, {{cashFreeLink}}, and any resource-link tags before
+  // per-email substitution.
+  const globalTags = await getGlobalMergeTags()
+  const expanded: ReminderEmailPayload = {
+    ...payload,
+    bodyText: applyGlobalMergeTags(payload.bodyText, globalTags),
+  }
+
   try {
     const info = await transporter.sendMail({
       from,
       to: recipients,
       cc: await buildCc(),
       subject: reminderSubject(payload.reminderType, payload.installmentLabel),
-      html: reminderHtml(payload),
+      html: reminderHtml(expanded),
     })
     return { ok: true, messageId: info.messageId }
   } catch (err) {
@@ -338,13 +406,19 @@ export async function sendOfferEmail(payload: OfferEmailPayload): Promise<SendRe
     attachments.push({ filename: `LE-${programSlug}-${studentSlug}-FeeDetails.pdf`, content: payload.proposalPdf, contentType: "application/pdf" })
   }
 
+  const globalTags = await getGlobalMergeTags()
+  const expanded: OfferEmailPayload = {
+    ...payload,
+    bodyText: payload.bodyText !== undefined ? applyGlobalMergeTags(payload.bodyText, globalTags) : payload.bodyText,
+  }
+
   try {
     const info = await transporter.sendMail({
       from: `${config.fromName} <${config.fromEmail}>`,
       to: payload.to,
       cc: await buildCc(payload.cc),
       subject: `Offer of Admission — ${payload.programName} (${payload.batchYear}) — Confirm by ${expiry}`,
-      html: offerEmailHtml(payload),
+      html: offerEmailHtml(expanded),
       attachments,
     })
     return { ok: true, messageId: info.messageId }
@@ -396,13 +470,19 @@ export async function sendOfferReminderEmail(payload: OfferReminderPayload): Pro
     day: "numeric", month: "long", year: "numeric",
   })
 
+  const globalTags = await getGlobalMergeTags()
+  const expanded: OfferReminderPayload = {
+    ...payload,
+    bodyText: payload.bodyText !== undefined ? applyGlobalMergeTags(payload.bodyText, globalTags) : payload.bodyText,
+  }
+
   try {
     const info = await transporter.sendMail({
       from: `${config.fromName} <${config.fromEmail}>`,
       to: recipients,
       cc: await buildCc(),
       subject: `Reminder: Confirm your ${payload.programName} offer by ${expiry} (${payload.daysLeft} days left)`,
-      html: offerReminderHtml(payload),
+      html: offerReminderHtml(expanded),
     })
     return { ok: true, messageId: info.messageId }
   } catch (err) {
@@ -428,13 +508,19 @@ export async function sendRevisedOfferEmail(payload: RevisedOfferPayload): Promi
     attachments.push({ filename: `LE-${rProgramSlug}-${rStudentSlug}-FeeDetails.pdf`, content: payload.proposalPdf, contentType: "application/pdf" })
   }
 
+  const rGlobalTags = await getGlobalMergeTags()
+  const rExpanded: RevisedOfferPayload = {
+    ...payload,
+    bodyText: payload.bodyText !== undefined ? applyGlobalMergeTags(payload.bodyText, rGlobalTags) : payload.bodyText,
+  }
+
   try {
     const info = await transporter.sendMail({
       from: `${config.fromName} <${config.fromEmail}>`,
       to: payload.to,
       cc: await buildCc(payload.cc),
       subject: `Updated Offer — ${payload.programName} (${payload.batchYear}) — Your seat is still available`,
-      html: offerEmailHtml(payload),
+      html: offerEmailHtml(rExpanded),
       attachments,
     })
     return { ok: true, messageId: info.messageId }
@@ -448,11 +534,9 @@ export type OnboardingEmailPayload = {
   cc?: string[]
   studentName: string
   programName: string
-  bodyText: string          // from SystemSetting ONBOARDING_EMAIL_BODY
-  handbookUrl?: string      // from SystemSetting ONBOARDING_HANDBOOK_URL
-  welcomeKitUrl?: string    // from SystemSetting ONBOARDING_WELCOME_KIT_URL
-  year1Url?: string         // from SystemSetting ONBOARDING_YEAR1_URL
-  proposalPdf: Buffer       // full proposal with roll number + installments
+  bodyText: string                                    // from SystemSetting ONBOARDING_EMAIL_BODY
+  resourceLinks?: { label: string; url: string }[]    // from SystemSetting RESOURCE_LINKS_JSON
+  proposalPdf: Buffer                                 // full proposal with roll number + installments
 }
 
 function onboardingEmailHtml(payload: OnboardingEmailPayload) {
@@ -462,11 +546,10 @@ function onboardingEmailHtml(payload: OnboardingEmailPayload) {
     .replace(/</g, "&lt;").replace(/>/g, "&gt;")
     .replace(/\n/g, "<br/>")
 
-  const links = [
-    payload.year1Url ? `<li><a href="${payload.year1Url}">Program Flow (Year 1)</a></li>` : "",
-    payload.handbookUrl ? `<li><a href="${payload.handbookUrl}">Onboarding Handbook</a></li>` : "",
-    payload.welcomeKitUrl ? `<li><a href="${payload.welcomeKitUrl}">Working BBA Welcome Kit</a></li>` : "",
-  ].filter(Boolean).join("\n")
+  const validLinks = (payload.resourceLinks ?? []).filter((l) => l.url && l.label)
+  const links = validLinks
+    .map((l) => `<li><a href="${l.url}">${l.label}</a></li>`)
+    .join("\n")
 
   return `<!DOCTYPE html>
 <html>
@@ -515,7 +598,8 @@ export async function sendEnrolmentConfirmationEmail(payload: EnrolmentConfirmat
     day: "numeric", month: "long", year: "numeric",
   })
 
-  const rawBody = (payload.bodyText || DEFAULT_ENROLMENT_CONFIRMATION_BODY)
+  const ecGlobalTags = await getGlobalMergeTags()
+  const rawBody = applyGlobalMergeTags(payload.bodyText || DEFAULT_ENROLMENT_CONFIRMATION_BODY, ecGlobalTags)
     .replace(/{{studentName}}/g, payload.studentName)
     .replace(/{{programName}}/g, payload.programName)
     .replace(/{{rollNo}}/g, payload.rollNo)
@@ -591,7 +675,8 @@ export async function sendOnboardingLinkEmail(payload: OnboardingLinkEmailPayloa
     day: "numeric", month: "long", year: "numeric",
   })
 
-  const rawBody = (payload.bodyText || DEFAULT_ONBOARDING_LINK_BODY)
+  const olGlobalTags = await getGlobalMergeTags()
+  const rawBody = applyGlobalMergeTags(payload.bodyText || DEFAULT_ONBOARDING_LINK_BODY, olGlobalTags)
     .replace(/{{studentName}}/g, payload.studentName)
     .replace(/{{programName}}/g, payload.programName)
     .replace(/{{onboardingExpiryDate}}/g, expiry)
@@ -682,13 +767,19 @@ export async function sendOnboardingEmail(payload: OnboardingEmailPayload): Prom
 
   const transporter = createTransporter(config)
 
+  const oeGlobalTags = await getGlobalMergeTags()
+  const oeExpanded: OnboardingEmailPayload = {
+    ...payload,
+    bodyText: applyGlobalMergeTags(payload.bodyText, oeGlobalTags),
+  }
+
   try {
     const info = await transporter.sendMail({
       from: `${config.fromName} <${config.fromEmail}>`,
       to: payload.to,
       cc: await buildCc(payload.cc),
       subject: `Welcome to ${payload.programName} — Let's Enterprise`,
-      html: onboardingEmailHtml(payload),
+      html: onboardingEmailHtml(oeExpanded),
       attachments: [
         { filename: `Fee_Structure_${payload.studentName.replace(/\s+/g, "_")}.pdf`, content: payload.proposalPdf, contentType: "application/pdf" },
       ],

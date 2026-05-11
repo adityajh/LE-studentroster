@@ -6,9 +6,11 @@ import { updateSetting } from "@/app/actions/settings"
 import { SoftCard, Eyebrow } from "@/components/ui/brand"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
-import { Loader2, Save, Paperclip, Link2, Zap, Lock, ChevronDown, Pencil, X } from "lucide-react"
+import { Loader2, Save, Paperclip, Link2, Zap, Lock, ChevronDown, Pencil, X, Plus, Trash2, Copy as CopyIcon, Info } from "lucide-react"
 
 // ── Types ─────────────────────────────────────────────────────────────────────
+
+export type ResourceLinkEntry = { key: string; label: string; url: string }
 
 type OfferSettingsProps = {
   initial: {
@@ -20,9 +22,8 @@ type OfferSettingsProps = {
     enrolmentConfirmationEmailBody: string
     selfOnboardingLinkEmailBody: string
     bankDetails: string
-    handbookUrl: string
-    welcomeKitUrl: string
-    year1Url: string
+    cashFreeLink: string
+    resourceLinks: ResourceLinkEntry[]
   }
 }
 
@@ -410,6 +411,127 @@ function EmailGroup({
   )
 }
 
+// ── Slugify a label into a JS-identifier-safe merge tag key ──────────────────
+function slugifyKey(label: string): string {
+  const cleaned = label
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim()
+    .split(/\s+/)
+  if (cleaned.length === 0) return ""
+  return cleaned[0] + cleaned.slice(1).map((w) => w[0].toUpperCase() + w.slice(1)).join("")
+}
+
+function copyTag(tag: string) {
+  navigator.clipboard.writeText(tag)
+  toast.success(`Copied ${tag}`)
+}
+
+// ── Merge tag reference panel ────────────────────────────────────────────────
+function MergeTagReference({ resourceLinks }: { resourceLinks: ResourceLinkEntry[] }) {
+  const groups: { title: string; tags: { tag: string; desc: string }[] }[] = [
+    {
+      title: "Student",
+      tags: [
+        { tag: "{{studentName}}", desc: "Student's full name" },
+        { tag: "{{rollNo}}", desc: "Assigned roll number (after enrolment)" },
+      ],
+    },
+    {
+      title: "Program & Batch",
+      tags: [
+        { tag: "{{programName}}", desc: "Programme name (e.g. Working BBA - Family Business)" },
+        { tag: "{{batchYear}}", desc: "Batch year" },
+      ],
+    },
+    {
+      title: "Financial",
+      tags: [
+        { tag: "{{amount}}", desc: "Amount due (fee reminders only)" },
+        { tag: "{{installmentLabel}}", desc: "Installment label, e.g. Year 1 Fee" },
+        { tag: "{{dueDate}}", desc: "Installment due date" },
+      ],
+    },
+    {
+      title: "Offer / Onboarding window",
+      tags: [
+        { tag: "{{offerExpiryDate}}", desc: "When the 7-day offer window closes" },
+        { tag: "{{daysLeft}}", desc: "Days remaining in the offer window (reminders only)" },
+        { tag: "{{onboardingExpiryDate}}", desc: "When the self-onboarding link expires" },
+      ],
+    },
+    {
+      title: "System (global — work in every email body)",
+      tags: [
+        { tag: "{{bankDetails}}", desc: "From Bank Details below" },
+        { tag: "{{cashFreeLink}}", desc: "From Cash Free Link below" },
+      ],
+    },
+  ]
+  return (
+    <SoftCard className="p-6 space-y-4">
+      <div className="flex items-start gap-3">
+        <Info className="h-5 w-5 text-indigo-600 shrink-0 mt-0.5" />
+        <div>
+          <Eyebrow>Reference</Eyebrow>
+          <h3 className="text-lg font-headline font-bold text-slate-900 mt-1">Merge Tags</h3>
+          <p className="text-sm font-medium text-slate-500 mt-1">
+            Drop these into any email body. They&apos;re replaced with real values at send time. Click to copy.
+          </p>
+        </div>
+      </div>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {groups.map((g) => (
+          <div key={g.title} className="space-y-2">
+            <p className="text-[10px] uppercase font-bold tracking-widest text-slate-400">{g.title}</p>
+            <div className="space-y-1">
+              {g.tags.map((t) => (
+                <button
+                  key={t.tag}
+                  type="button"
+                  onClick={() => copyTag(t.tag)}
+                  className="w-full text-left flex items-start gap-2 px-2 py-1.5 rounded-lg hover:bg-indigo-50 group transition-colors"
+                  title="Click to copy"
+                >
+                  <code className="text-[11px] font-mono bg-slate-100 group-hover:bg-white text-indigo-700 border border-slate-200 px-1.5 py-0.5 rounded shrink-0">
+                    {t.tag}
+                  </code>
+                  <span className="text-xs text-slate-500 flex-1">{t.desc}</span>
+                  <CopyIcon className="h-3 w-3 text-slate-300 group-hover:text-indigo-500 mt-1 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity" />
+                </button>
+              ))}
+            </div>
+          </div>
+        ))}
+        {resourceLinks.length > 0 && (
+          <div className="space-y-2 md:col-span-2 pt-2 border-t border-slate-100">
+            <p className="text-[10px] uppercase font-bold tracking-widest text-slate-400">Resource Links</p>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-1">
+              {resourceLinks.map((l) => {
+                const tag = `{{${l.key}}}`
+                return (
+                  <button
+                    key={l.key}
+                    type="button"
+                    onClick={() => copyTag(tag)}
+                    className="text-left flex items-start gap-2 px-2 py-1.5 rounded-lg hover:bg-indigo-50 group transition-colors"
+                    title="Click to copy"
+                  >
+                    <code className="text-[11px] font-mono bg-slate-100 group-hover:bg-white text-indigo-700 border border-slate-200 px-1.5 py-0.5 rounded shrink-0">
+                      {tag}
+                    </code>
+                    <span className="text-xs text-slate-500 flex-1 truncate">{l.label}</span>
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+        )}
+      </div>
+    </SoftCard>
+  )
+}
+
 // ── Main component ─────────────────────────────────────────────────────────────
 
 export function OfferSettings({ initial }: OfferSettingsProps) {
@@ -422,11 +544,13 @@ export function OfferSettings({ initial }: OfferSettingsProps) {
     ENROLMENT_CONFIRMATION_EMAIL_BODY: initial.enrolmentConfirmationEmailBody,
     SELF_ONBOARDING_LINK_EMAIL_BODY: initial.selfOnboardingLinkEmailBody,
     BANK_DETAILS: initial.bankDetails,
-    ONBOARDING_HANDBOOK_URL: initial.handbookUrl,
-    ONBOARDING_WELCOME_KIT_URL: initial.welcomeKitUrl,
-    ONBOARDING_YEAR1_URL: initial.year1Url,
+    CASH_FREE_LINK: initial.cashFreeLink,
   })
   const [urlSaving, setUrlSaving] = useState<string | null>(null)
+
+  // Dynamic resource links state
+  const [resourceLinks, setResourceLinks] = useState<ResourceLinkEntry[]>(initial.resourceLinks)
+  const [savingResources, setSavingResources] = useState(false)
 
   const handleSave = async (key: string, value: string) => {
     await updateSetting(key, value)
@@ -446,20 +570,89 @@ export function OfferSettings({ initial }: OfferSettingsProps) {
     }
   }
 
+  function addResourceLink() {
+    setResourceLinks((prev) => [...prev, { key: "", label: "", url: "" }])
+  }
+
+  function removeResourceLink(idx: number) {
+    setResourceLinks((prev) => prev.filter((_, i) => i !== idx))
+  }
+
+  function updateResourceLink(idx: number, patch: Partial<ResourceLinkEntry>) {
+    setResourceLinks((prev) =>
+      prev.map((r, i) => {
+        if (i !== idx) return r
+        const next = { ...r, ...patch }
+        // Auto-derive key from label when label changes and key was either empty
+        // or still matched the previous auto-slug
+        if (patch.label !== undefined) {
+          const prevAutoKey = slugifyKey(r.label)
+          if (!r.key || r.key === prevAutoKey) {
+            next.key = slugifyKey(next.label)
+          }
+        }
+        return next
+      })
+    )
+  }
+
+  async function saveResourceLinks() {
+    // Validation: unique non-empty keys, valid URLs (or empty allowed for in-progress rows)
+    const seen = new Set<string>()
+    for (const l of resourceLinks) {
+      if (!l.label.trim()) {
+        toast.error("Each resource link needs a label.")
+        return
+      }
+      const k = l.key.trim()
+      if (!k || !/^[a-z][A-Za-z0-9]*$/.test(k)) {
+        toast.error(`Invalid merge tag key for "${l.label}". Use a single word starting with a lowercase letter.`)
+        return
+      }
+      if (seen.has(k)) {
+        toast.error(`Duplicate merge tag key: {{${k}}}`)
+        return
+      }
+      seen.add(k)
+    }
+    setSavingResources(true)
+    try {
+      await updateSetting("RESOURCE_LINKS_JSON", JSON.stringify(resourceLinks))
+      toast.success("Resource links saved")
+    } catch {
+      toast.error("Failed to save resource links")
+    } finally {
+      setSavingResources(false)
+    }
+  }
+
   return (
     <div className="space-y-6">
+      <MergeTagReference resourceLinks={resourceLinks} />
+
       <EmailGroup title="Admissions" emails={ADMISSIONS_EMAILS} values={values} onSave={handleSave} />
       <EmailGroup title="Enrolment" emails={ENROLMENT_EMAILS} values={values} onSave={handleSave} />
       <EmailGroup title="Onboarding" emails={ONBOARDING_EMAILS} values={values} onSave={handleSave} />
 
       {/* Bank Details */}
       <SoftCard className="p-6 space-y-3">
-        <div>
-          <Eyebrow>Payments</Eyebrow>
-          <h3 className="text-lg font-headline font-bold text-slate-900 mt-1">Bank Details</h3>
-          <p className="text-sm font-medium text-slate-500 mt-1">
-            Included in all offer emails and offer letter PDFs. Use plain text — one detail per line.
-          </p>
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <Eyebrow>Payments</Eyebrow>
+            <h3 className="text-lg font-headline font-bold text-slate-900 mt-1">Bank Details</h3>
+            <p className="text-sm font-medium text-slate-500 mt-1">
+              Plain text — one detail per line. Available in any email via the merge tag.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => copyTag("{{bankDetails}}")}
+            className="shrink-0 inline-flex items-center gap-1.5 text-xs font-mono font-bold text-indigo-700 bg-indigo-50 border border-indigo-200 px-2 py-1 rounded hover:bg-indigo-100 transition-colors"
+            title="Click to copy"
+          >
+            <CopyIcon className="h-3 w-3" />
+            {"{{bankDetails}}"}
+          </button>
         </div>
         <Textarea
           value={values["BANK_DETAILS"]}
@@ -483,41 +676,145 @@ export function OfferSettings({ initial }: OfferSettingsProps) {
         </div>
       </SoftCard>
 
-      {/* Onboarding Resource URLs */}
-      <SoftCard className="p-6 space-y-4">
-        <div>
-          <Eyebrow>Onboarding</Eyebrow>
-          <h3 className="text-lg font-headline font-bold text-slate-900 mt-1">Resource Links</h3>
-          <p className="text-sm font-medium text-slate-500 mt-1">
-            URLs linked in the Onboarding Welcome Email.
-          </p>
-        </div>
-        {[
-          { key: "ONBOARDING_YEAR1_URL", label: "Year 1 Resources URL" },
-          { key: "ONBOARDING_HANDBOOK_URL", label: "Student Handbook URL" },
-          { key: "ONBOARDING_WELCOME_KIT_URL", label: "Welcome Kit URL" },
-        ].map(({ key, label }) => (
-          <div key={key} className="space-y-1.5">
-            <label className="block text-sm font-bold text-slate-700">{label}</label>
-            <div className="flex gap-2">
-              <input
-                type="url"
-                value={values[key]}
-                onChange={(e) => setValues((v) => ({ ...v, [key]: e.target.value }))}
-                placeholder="https://..."
-                className="flex-1 h-10 rounded-xl border-2 border-slate-200 bg-white px-4 text-sm font-medium text-slate-700 placeholder:text-slate-400 focus:border-indigo-500 focus:outline-none transition-all"
-              />
-              <Button
-                size="sm"
-                onClick={() => handleUrlSave(key)}
-                disabled={urlSaving === key}
-                className="bg-indigo-600 hover:bg-indigo-700 text-white shrink-0"
-              >
-                {urlSaving === key ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
-              </Button>
-            </div>
+      {/* Cash Free Link */}
+      <SoftCard className="p-6 space-y-3">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <Eyebrow>Payments</Eyebrow>
+            <h3 className="text-lg font-headline font-bold text-slate-900 mt-1">Cash Free Link</h3>
+            <p className="text-sm font-medium text-slate-500 mt-1">
+              Payment-gateway URL. Embed in any email body via the merge tag below.
+            </p>
           </div>
-        ))}
+          <button
+            type="button"
+            onClick={() => copyTag("{{cashFreeLink}}")}
+            className="shrink-0 inline-flex items-center gap-1.5 text-xs font-mono font-bold text-indigo-700 bg-indigo-50 border border-indigo-200 px-2 py-1 rounded hover:bg-indigo-100 transition-colors"
+            title="Click to copy"
+          >
+            <CopyIcon className="h-3 w-3" />
+            {"{{cashFreeLink}}"}
+          </button>
+        </div>
+        <input
+          type="url"
+          value={values["CASH_FREE_LINK"]}
+          onChange={(e) => setValues((v) => ({ ...v, CASH_FREE_LINK: e.target.value }))}
+          placeholder="https://payments.cashfree.com/..."
+          className="w-full h-10 rounded-xl border-2 border-slate-200 bg-white px-4 text-sm font-medium text-slate-700 placeholder:text-slate-400 focus:border-indigo-500 focus:outline-none transition-all"
+        />
+        <div className="flex justify-end">
+          <Button
+            size="sm"
+            onClick={() => handleUrlSave("CASH_FREE_LINK")}
+            disabled={urlSaving === "CASH_FREE_LINK"}
+            className="bg-indigo-600 hover:bg-indigo-700 text-white"
+          >
+            {urlSaving === "CASH_FREE_LINK" ? (
+              <><Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> Saving...</>
+            ) : (
+              <><Save className="h-3.5 w-3.5 mr-1.5" /> Save</>
+            )}
+          </Button>
+        </div>
+      </SoftCard>
+
+      {/* Resource Links — dynamic */}
+      <SoftCard className="p-6 space-y-4">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <Eyebrow>Onboarding</Eyebrow>
+            <h3 className="text-lg font-headline font-bold text-slate-900 mt-1">Resource Links</h3>
+            <p className="text-sm font-medium text-slate-500 mt-1">
+              Each link gets its own merge tag — use them in any email body. The Onboarding Welcome Email also auto-lists them.
+            </p>
+          </div>
+          <Button size="sm" variant="outline" onClick={addResourceLink} className="shrink-0 gap-1.5 text-indigo-600 border-indigo-200 hover:bg-indigo-50">
+            <Plus className="h-3.5 w-3.5" /> Add Link
+          </Button>
+        </div>
+        <div className="space-y-3">
+          {resourceLinks.length === 0 && (
+            <p className="text-xs text-slate-400 italic px-2 py-3 border border-dashed border-slate-200 rounded-xl text-center">No resource links yet. Click &quot;Add Link&quot; to create one.</p>
+          )}
+          {resourceLinks.map((link, idx) => {
+            const tag = link.key ? `{{${link.key}}}` : "(set a label)"
+            return (
+              <div key={idx} className="border border-slate-200 rounded-xl p-3 space-y-2 bg-slate-50/40">
+                <div className="grid grid-cols-1 md:grid-cols-[1fr_1fr_auto] gap-2 items-start">
+                  <div className="space-y-1">
+                    <label className="text-[10px] uppercase font-bold tracking-widest text-slate-400">Label</label>
+                    <input
+                      type="text"
+                      value={link.label}
+                      onChange={(e) => updateResourceLink(idx, { label: e.target.value })}
+                      placeholder="Student Handbook"
+                      className="w-full h-9 rounded-lg border-2 border-slate-200 bg-white px-3 text-sm font-medium text-slate-700 placeholder:text-slate-400 focus:border-indigo-500 focus:outline-none transition-all"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[10px] uppercase font-bold tracking-widest text-slate-400">URL</label>
+                    <input
+                      type="url"
+                      value={link.url}
+                      onChange={(e) => updateResourceLink(idx, { url: e.target.value })}
+                      placeholder="https://..."
+                      className="w-full h-9 rounded-lg border-2 border-slate-200 bg-white px-3 text-sm font-medium text-slate-700 placeholder:text-slate-400 focus:border-indigo-500 focus:outline-none transition-all"
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => removeResourceLink(idx)}
+                    title="Remove"
+                    className="mt-5 self-start p-2 rounded-lg text-slate-300 hover:text-rose-500 hover:bg-rose-50 transition-colors"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+                <div className="flex items-center justify-between gap-2 pl-1">
+                  <button
+                    type="button"
+                    onClick={() => link.key && copyTag(tag)}
+                    disabled={!link.key}
+                    className="inline-flex items-center gap-1.5 text-[11px] font-mono font-bold text-indigo-700 bg-indigo-50 border border-indigo-200 px-2 py-0.5 rounded hover:bg-indigo-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                    title={link.key ? "Click to copy" : "Set a label first"}
+                  >
+                    <CopyIcon className="h-3 w-3" />
+                    {tag}
+                  </button>
+                  <details className="text-xs">
+                    <summary className="cursor-pointer text-slate-400 hover:text-slate-600 select-none">Advanced</summary>
+                    <div className="mt-2 space-y-1">
+                      <label className="text-[10px] uppercase font-bold tracking-widest text-slate-400 block">Merge tag key</label>
+                      <input
+                        type="text"
+                        value={link.key}
+                        onChange={(e) => updateResourceLink(idx, { key: e.target.value.replace(/[^A-Za-z0-9]/g, "") })}
+                        placeholder="autogenerated from label"
+                        className="w-48 h-8 rounded-lg border border-slate-200 bg-white px-2 text-xs font-mono text-slate-700 placeholder:text-slate-300 focus:border-indigo-500 focus:outline-none"
+                      />
+                      <p className="text-[10px] text-slate-400 italic">camelCase, e.g. handbookUrl</p>
+                    </div>
+                  </details>
+                </div>
+              </div>
+            )
+          })}
+        </div>
+        <div className="flex justify-end">
+          <Button
+            size="sm"
+            onClick={saveResourceLinks}
+            disabled={savingResources}
+            className="bg-indigo-600 hover:bg-indigo-700 text-white"
+          >
+            {savingResources ? (
+              <><Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> Saving...</>
+            ) : (
+              <><Save className="h-3.5 w-3.5 mr-1.5" /> Save Resource Links</>
+            )}
+          </Button>
+        </div>
       </SoftCard>
     </div>
   )
