@@ -428,106 +428,89 @@ function copyTag(tag: string) {
 }
 
 // ── Merge tag reference panel ────────────────────────────────────────────────
+function TagPill({ tag, hint }: { tag: string; hint?: string }) {
+  return (
+    <button
+      type="button"
+      onClick={() => copyTag(tag)}
+      title={hint ? `${hint} — click to copy` : "Click to copy"}
+      className="inline-flex items-center gap-1 text-[11px] font-mono font-bold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 px-1.5 py-0.5 rounded transition-colors"
+    >
+      <CopyIcon className="h-2.5 w-2.5 opacity-50" />
+      {tag}
+    </button>
+  )
+}
+
 function MergeTagReference({ resourceLinks }: { resourceLinks: ResourceLinkEntry[] }) {
-  const groups: { title: string; tags: { tag: string; desc: string }[] }[] = [
+  const [open, setOpen] = useState(false)
+
+  const rows: { title: string; tags: { tag: string; hint?: string }[] }[] = [
     {
       title: "Student",
       tags: [
-        { tag: "{{studentName}}", desc: "Student's full name" },
-        { tag: "{{rollNo}}", desc: "Assigned roll number (after enrolment)" },
+        { tag: "{{studentName}}", hint: "Full name" },
+        { tag: "{{rollNo}}", hint: "Roll number (post-enrolment)" },
+        { tag: "{{programName}}", hint: "Programme name" },
+        { tag: "{{batchYear}}", hint: "Batch year" },
       ],
     },
     {
-      title: "Program & Batch",
+      title: "Fees",
       tags: [
-        { tag: "{{programName}}", desc: "Programme name (e.g. Working BBA - Family Business)" },
-        { tag: "{{batchYear}}", desc: "Batch year" },
+        { tag: "{{amount}}", hint: "Amount due (reminders)" },
+        { tag: "{{installmentLabel}}", hint: "e.g. Year 1 Fee" },
+        { tag: "{{dueDate}}", hint: "Installment due date" },
       ],
     },
     {
-      title: "Financial",
+      title: "Windows",
       tags: [
-        { tag: "{{amount}}", desc: "Amount due (fee reminders only)" },
-        { tag: "{{installmentLabel}}", desc: "Installment label, e.g. Year 1 Fee" },
-        { tag: "{{dueDate}}", desc: "Installment due date" },
+        { tag: "{{offerExpiryDate}}", hint: "7-day offer expiry" },
+        { tag: "{{daysLeft}}", hint: "Days left in offer window" },
+        { tag: "{{onboardingExpiryDate}}", hint: "Self-onboard link expiry" },
       ],
     },
     {
-      title: "Offer / Onboarding window",
+      title: "Global",
       tags: [
-        { tag: "{{offerExpiryDate}}", desc: "When the 7-day offer window closes" },
-        { tag: "{{daysLeft}}", desc: "Days remaining in the offer window (reminders only)" },
-        { tag: "{{onboardingExpiryDate}}", desc: "When the self-onboarding link expires" },
-      ],
-    },
-    {
-      title: "System (global — work in every email body)",
-      tags: [
-        { tag: "{{bankDetails}}", desc: "From Bank Details below" },
-        { tag: "{{cashFreeLink}}", desc: "From Cash Free Link below" },
+        { tag: "{{bankDetails}}", hint: "From Bank Details below" },
+        { tag: "{{cashFreeLink}}", hint: "From Cash Free Link below" },
+        ...resourceLinks.map((l) => ({ tag: `{{${l.key}}}`, hint: l.label })),
       ],
     },
   ]
+
+  const totalTags = rows.reduce((s, r) => s + r.tags.length, 0)
+
   return (
-    <SoftCard className="p-6 space-y-4">
-      <div className="flex items-start gap-3">
-        <Info className="h-5 w-5 text-indigo-600 shrink-0 mt-0.5" />
-        <div>
-          <Eyebrow>Reference</Eyebrow>
-          <h3 className="text-lg font-headline font-bold text-slate-900 mt-1">Merge Tags</h3>
-          <p className="text-sm font-medium text-slate-500 mt-1">
-            Drop these into any email body. They&apos;re replaced with real values at send time. Click to copy.
-          </p>
+    <SoftCard className="p-4">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="w-full flex items-center gap-2 text-left"
+      >
+        <Info className="h-4 w-4 text-indigo-600 shrink-0" />
+        <Eyebrow>Merge Tags</Eyebrow>
+        <span className="text-xs text-slate-400 font-medium">{totalTags} available · click to copy</span>
+        <ChevronDown className={`h-4 w-4 text-slate-400 ml-auto transition-transform ${open ? "rotate-180" : ""}`} />
+      </button>
+      {open && (
+        <div className="mt-3 pt-3 border-t border-slate-100 space-y-2">
+          {rows.map((r) => (
+            <div key={r.title} className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
+              <span className="text-[10px] uppercase font-bold tracking-widest text-slate-400 w-16 shrink-0">
+                {r.title}
+              </span>
+              <div className="flex flex-wrap gap-1.5 flex-1">
+                {r.tags.map((t) => (
+                  <TagPill key={t.tag} tag={t.tag} hint={t.hint} />
+                ))}
+              </div>
+            </div>
+          ))}
         </div>
-      </div>
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {groups.map((g) => (
-          <div key={g.title} className="space-y-2">
-            <p className="text-[10px] uppercase font-bold tracking-widest text-slate-400">{g.title}</p>
-            <div className="space-y-1">
-              {g.tags.map((t) => (
-                <button
-                  key={t.tag}
-                  type="button"
-                  onClick={() => copyTag(t.tag)}
-                  className="w-full text-left flex items-start gap-2 px-2 py-1.5 rounded-lg hover:bg-indigo-50 group transition-colors"
-                  title="Click to copy"
-                >
-                  <code className="text-[11px] font-mono bg-slate-100 group-hover:bg-white text-indigo-700 border border-slate-200 px-1.5 py-0.5 rounded shrink-0">
-                    {t.tag}
-                  </code>
-                  <span className="text-xs text-slate-500 flex-1">{t.desc}</span>
-                  <CopyIcon className="h-3 w-3 text-slate-300 group-hover:text-indigo-500 mt-1 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity" />
-                </button>
-              ))}
-            </div>
-          </div>
-        ))}
-        {resourceLinks.length > 0 && (
-          <div className="space-y-2 md:col-span-2 pt-2 border-t border-slate-100">
-            <p className="text-[10px] uppercase font-bold tracking-widest text-slate-400">Resource Links</p>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-1">
-              {resourceLinks.map((l) => {
-                const tag = `{{${l.key}}}`
-                return (
-                  <button
-                    key={l.key}
-                    type="button"
-                    onClick={() => copyTag(tag)}
-                    className="text-left flex items-start gap-2 px-2 py-1.5 rounded-lg hover:bg-indigo-50 group transition-colors"
-                    title="Click to copy"
-                  >
-                    <code className="text-[11px] font-mono bg-slate-100 group-hover:bg-white text-indigo-700 border border-slate-200 px-1.5 py-0.5 rounded shrink-0">
-                      {tag}
-                    </code>
-                    <span className="text-xs text-slate-500 flex-1 truncate">{l.label}</span>
-                  </button>
-                )
-              })}
-            </div>
-          </div>
-        )}
-      </div>
+      )}
     </SoftCard>
   )
 }
@@ -726,7 +709,7 @@ export function OfferSettings({ initial }: OfferSettingsProps) {
             <Eyebrow>Onboarding</Eyebrow>
             <h3 className="text-lg font-headline font-bold text-slate-900 mt-1">Resource Links</h3>
             <p className="text-sm font-medium text-slate-500 mt-1">
-              Each link gets its own merge tag — use them in any email body. The Onboarding Welcome Email also auto-lists them.
+              Each link gets a merge tag (auto-derived from the label). Use it in any email body. The Onboarding Welcome Email also auto-lists all links.
             </p>
           </div>
           <Button size="sm" variant="outline" onClick={addResourceLink} className="shrink-0 gap-1.5 text-indigo-600 border-indigo-200 hover:bg-indigo-50">
@@ -771,7 +754,7 @@ export function OfferSettings({ initial }: OfferSettingsProps) {
                     <Trash2 className="h-3.5 w-3.5" />
                   </button>
                 </div>
-                <div className="flex items-center justify-between gap-2 pl-1">
+                <div className="pl-1">
                   <button
                     type="button"
                     onClick={() => link.key && copyTag(tag)}
@@ -782,20 +765,6 @@ export function OfferSettings({ initial }: OfferSettingsProps) {
                     <CopyIcon className="h-3 w-3" />
                     {tag}
                   </button>
-                  <details className="text-xs">
-                    <summary className="cursor-pointer text-slate-400 hover:text-slate-600 select-none">Advanced</summary>
-                    <div className="mt-2 space-y-1">
-                      <label className="text-[10px] uppercase font-bold tracking-widest text-slate-400 block">Merge tag key</label>
-                      <input
-                        type="text"
-                        value={link.key}
-                        onChange={(e) => updateResourceLink(idx, { key: e.target.value.replace(/[^A-Za-z0-9]/g, "") })}
-                        placeholder="autogenerated from label"
-                        className="w-48 h-8 rounded-lg border border-slate-200 bg-white px-2 text-xs font-mono text-slate-700 placeholder:text-slate-300 focus:border-indigo-500 focus:outline-none"
-                      />
-                      <p className="text-[10px] text-slate-400 italic">camelCase, e.g. handbookUrl</p>
-                    </div>
-                  </details>
                 </div>
               </div>
             )

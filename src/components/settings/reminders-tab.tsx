@@ -3,7 +3,7 @@
 import { useState } from "react"
 import { toast } from "sonner"
 import { updateReminderSetting } from "@/app/actions/reminder-settings"
-import { Loader2, Play, CheckCircle2, AlertCircle, Copy as CopyIcon } from "lucide-react"
+import { Loader2, Play, CheckCircle2, AlertCircle, Copy as CopyIcon, Info, ChevronDown } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 type ReminderSetting = {
@@ -19,20 +19,6 @@ type ResourceLinkRow = { key: string; label: string; url: string }
 function copyTag(tag: string) {
   navigator.clipboard.writeText(tag)
   toast.success(`Copied ${tag}`)
-}
-
-function TagChip({ tag, onClick }: { tag: string; onClick: () => void }) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      title="Click to copy"
-      className="inline-flex items-center gap-1 text-[10px] font-mono font-bold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 px-1.5 py-0.5 rounded transition-colors"
-    >
-      <CopyIcon className="h-2.5 w-2.5 opacity-60" />
-      {tag}
-    </button>
-  )
 }
 
 type LastRunStats = {
@@ -61,13 +47,7 @@ const REMINDER_META: Record<string, { label: string; description: string; vars: 
   },
 }
 
-function ReminderCard({
-  setting,
-  resourceLinks,
-}: {
-  setting: ReminderSetting
-  resourceLinks: ResourceLinkRow[]
-}) {
+function ReminderCard({ setting }: { setting: ReminderSetting }) {
   const meta = REMINDER_META[setting.type] ?? { label: setting.type, description: "", vars: [] }
   const [bodyText, setBodyText] = useState(setting.bodyText)
   const [isActive, setIsActive] = useState(setting.isActive)
@@ -135,30 +115,6 @@ function ReminderCard({
           onChange={(e) => setBodyText(e.target.value)}
           placeholder="Write the reminder email body here..."
         />
-        <div className="space-y-2 pt-1">
-          <div className="flex flex-wrap items-center gap-1.5">
-            <span className="text-[10px] uppercase font-bold tracking-widest text-slate-400 mr-1">
-              This reminder:
-            </span>
-            {meta.vars.map((v) => (
-              <TagChip key={v} tag={v} onClick={() => copyTag(v)} />
-            ))}
-          </div>
-          <div className="flex flex-wrap items-center gap-1.5">
-            <span className="text-[10px] uppercase font-bold tracking-widest text-slate-400 mr-1">
-              Global (any email):
-            </span>
-            <TagChip tag="{{bankDetails}}" onClick={() => copyTag("{{bankDetails}}")} />
-            <TagChip tag="{{cashFreeLink}}" onClick={() => copyTag("{{cashFreeLink}}")} />
-            {resourceLinks.map((l) => (
-              <TagChip
-                key={l.key}
-                tag={`{{${l.key}}}`}
-                onClick={() => copyTag(`{{${l.key}}}`)}
-              />
-            ))}
-          </div>
-        </div>
       </div>
 
       {error && (
@@ -176,6 +132,79 @@ function ReminderCard({
           {saved ? "Saved" : "Save"}
         </button>
       </div>
+    </div>
+  )
+}
+
+function MergeTagPanel({ resourceLinks }: { resourceLinks: ResourceLinkRow[] }) {
+  const [open, setOpen] = useState(false)
+  const reminderTags = [
+    { tag: "{{studentName}}",     hint: "Student's full name" },
+    { tag: "{{installmentLabel}}", hint: "e.g. Year 1 Fee" },
+    { tag: "{{amount}}",          hint: "Amount due" },
+    { tag: "{{dueDate}}",         hint: "Installment due date" },
+  ]
+  const globalTags = [
+    { tag: "{{bankDetails}}",  hint: "From Settings → Emails → Bank Details" },
+    { tag: "{{cashFreeLink}}", hint: "From Settings → Emails → Cash Free Link" },
+    ...resourceLinks.map((l) => ({ tag: `{{${l.key}}}`, hint: l.label })),
+  ]
+  const total = reminderTags.length + globalTags.length
+
+  return (
+    <div className="rounded-xl border border-slate-200 bg-white p-3">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="w-full flex items-center gap-2 text-left"
+      >
+        <Info className="h-4 w-4 text-indigo-600 shrink-0" />
+        <span className="text-[10px] uppercase font-bold tracking-widest text-slate-500">Merge Tags</span>
+        <span className="text-xs text-slate-400 font-medium">{total} available · click to copy</span>
+        <ChevronDown className={`h-4 w-4 text-slate-400 ml-auto transition-transform ${open ? "rotate-180" : ""}`} />
+      </button>
+      {open && (
+        <div className="mt-3 pt-3 border-t border-slate-100 space-y-2">
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
+            <span className="text-[10px] uppercase font-bold tracking-widest text-slate-400 w-16 shrink-0">
+              Reminder
+            </span>
+            <div className="flex flex-wrap gap-1.5 flex-1">
+              {reminderTags.map((t) => (
+                <button
+                  key={t.tag}
+                  type="button"
+                  onClick={() => copyTag(t.tag)}
+                  title={`${t.hint} — click to copy`}
+                  className="inline-flex items-center gap-1 text-[11px] font-mono font-bold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 px-1.5 py-0.5 rounded transition-colors"
+                >
+                  <CopyIcon className="h-2.5 w-2.5 opacity-50" />
+                  {t.tag}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
+            <span className="text-[10px] uppercase font-bold tracking-widest text-slate-400 w-16 shrink-0">
+              Global
+            </span>
+            <div className="flex flex-wrap gap-1.5 flex-1">
+              {globalTags.map((t) => (
+                <button
+                  key={t.tag}
+                  type="button"
+                  onClick={() => copyTag(t.tag)}
+                  title={`${t.hint} — click to copy`}
+                  className="inline-flex items-center gap-1 text-[11px] font-mono font-bold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 px-1.5 py-0.5 rounded transition-colors"
+                >
+                  <CopyIcon className="h-2.5 w-2.5 opacity-50" />
+                  {t.tag}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
@@ -265,12 +294,14 @@ export function RemindersTab({
         <p className="text-xs text-rose-600 bg-rose-50 border border-rose-200 rounded-lg px-3 py-2">{runError}</p>
       )}
 
+      <MergeTagPanel resourceLinks={resourceLinks} />
+
       {/* Reminder cards */}
       <div className="space-y-4">
         {sorted.length === 0 ? (
           <p className="text-sm text-slate-400 italic">No reminder settings found. Run the seed script to initialise defaults.</p>
         ) : (
-          sorted.map((s) => <ReminderCard key={s.type} setting={s} resourceLinks={resourceLinks} />)
+          sorted.map((s) => <ReminderCard key={s.type} setting={s} />)
         )}
       </div>
     </div>

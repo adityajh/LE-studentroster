@@ -4,6 +4,17 @@ All notable changes to the LE Student Roster system are documented here.
 
 ---
 
+## [1.13.2] — 2026-05-11
+
+### UX polish on merge tag references
+
+#### Changed
+- **Emails tab — merge tag panel is now compact and collapsible.** Replaced the multi-row grid of buttons + descriptions with a single collapsible row of inline pills grouped by category (Student / Fees / Windows / Global). Click to expand. Descriptions are available on hover via `title`. Saves significant vertical space at the top of the page.
+- **Resource Links — removed the "Advanced" toggle.** The merge-tag key is auto-derived from the Label exclusively; no manual editing. Keeps the row simple — one Label + one URL + one auto-generated tag chip.
+- **Reminders tab — merge tags surface once at the top, not under each card.** Replaced the per-card chip rows with a single collapsible MergeTagPanel above the reminder cards, mirroring the Emails tab pattern. Two rows inside: Reminder-specific tags and Global tags.
+
+---
+
 ## [1.13.1] — 2026-05-11
 
 ### Reminders tab — surface global merge tags
