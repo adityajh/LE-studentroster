@@ -32,6 +32,7 @@ type CardState = "collapsed" | "preview" | "editing"
 type EmailConfig = {
   settingKey: string | null      // null = not configurable (hardcoded)
   sharedWithLabel?: string       // if it reuses another key already shown above
+  code?: string                  // workflow code shown on the card (e.g. O1, O2)
   label: string
   trigger: string
   recipients: string
@@ -168,6 +169,7 @@ const ADMISSIONS_EMAILS: EmailConfig[] = [
 const ENROLMENT_EMAILS: EmailConfig[] = [
   {
     settingKey: "ENROLMENT_CONFIRMATION_EMAIL_BODY",
+    code: "O1",
     label: "Enrolment Confirmation",
     trigger: "Automatic — sent immediately when registration payment is confirmed (\"Confirm Enrolment\" dialog)",
     recipients: "Student (CC parent if set)",
@@ -181,6 +183,7 @@ const ENROLMENT_EMAILS: EmailConfig[] = [
 const ONBOARDING_EMAILS: EmailConfig[] = [
   {
     settingKey: "SELF_ONBOARDING_LINK_EMAIL_BODY",
+    code: "O2",
     label: "Self-Onboarding Link",
     trigger: "Manual — \"Send Onboarding Link\" button on student profile",
     recipients: "Student",
@@ -189,23 +192,25 @@ const ONBOARDING_EMAILS: EmailConfig[] = [
     rows: 10,
   },
   {
-    settingKey: "ONBOARDING_EMAIL_BODY",
-    label: "Onboarding Welcome Email",
-    trigger: "Manual — \"Complete Onboarding\" wizard (final step)",
-    recipients: "Student (CC parent if set)",
-    attachments: ["Fee Structure PDF"],
-    links: ["Year 1 Resources URL", "Handbook URL", "Welcome Kit URL"],
-    mergeFields: ["{{studentName}}", "{{programName}}"],
-    rows: 12,
-  },
-  {
     settingKey: null,
+    code: "O3",
     label: "Onboarding Submitted Alert (internal)",
     trigger: "Automatic — sent to all admins when a student submits their self-onboarding form",
     recipients: "All admin team members",
     links: ["Student profile link (admin view)"],
     note: "Hardcoded — not configurable.",
     rows: 4,
+  },
+  {
+    settingKey: "ONBOARDING_EMAIL_BODY",
+    code: "O4",
+    label: "Onboarding Welcome Email",
+    trigger: "Automatic — sent when admin clicks \"Approve Profile\" on a SUBMITTED student. Also fired by the admin onboard wizard's final step.",
+    recipients: "Student (CC parent if set)",
+    attachments: ["Fee Structure PDF"],
+    links: ["All resource links (auto-listed)"],
+    mergeFields: ["{{studentName}}", "{{programName}}"],
+    rows: 12,
   },
 ]
 
@@ -258,7 +263,12 @@ function EmailCard({
         className="w-full text-left px-4 py-3 bg-slate-50 hover:bg-slate-100/70 transition-colors border-b border-slate-200 flex items-start justify-between gap-3"
       >
         <div className="min-w-0 space-y-1">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
+            {email.code && (
+              <span className="text-[10px] font-black font-mono tracking-wider text-white bg-[#160E44] px-1.5 py-0.5 rounded">
+                {email.code}
+              </span>
+            )}
             <p className="text-sm font-bold text-slate-800">{email.label}</p>
             {isCustomised && (
               <span className="text-[10px] uppercase tracking-widest font-bold text-indigo-600 bg-indigo-50 border border-indigo-200 px-1.5 py-0.5 rounded">

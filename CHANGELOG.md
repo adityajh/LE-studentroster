@@ -4,6 +4,28 @@ All notable changes to the LE Student Roster system are documented here.
 
 ---
 
+## [1.14.0] — 2026-05-11
+
+### Self-Onboarding Workflow — auto-Welcome on approval + email codes
+
+#### Added
+- **Onboarding Welcome Email (O4) now fires automatically when admin clicks "Approve Profile"** — [api/students/[id]/approve-onboarding/route.ts](src/app/api/students/[id]/approve-onboarding/route.ts) flips the status as before, then calls a new shared helper `sendOnboardingWelcomeEmail(studentId)` that renders the fee structure PDF and sends the email with all resource links. Idempotent: skipped if `onboardingEmailSentAt` was already set by an earlier admin-wizard send.
+- **Workflow codes (O1 / O2 / O3 / O4) on email cards** under Settings → Emails — the four emails that make up the self-onboarding path now carry visible codes matching the workflow table. New `code` field on `EmailConfig`. Easier to map "the email in setting X" to "step Y in the workflow doc".
+- New shared helper [src/lib/welcome-email.ts](src/lib/welcome-email.ts) — used by both `send-onboarding` (admin wizard manual fire) and `approve-onboarding` (auto-fire on approval). Eliminates duplication of PDF rendering + recipient logic.
+
+#### Changed
+- [api/students/[id]/send-onboarding/route.ts](src/app/api/students/[id]/send-onboarding/route.ts) — refactored to thin wrapper around the new helper.
+
+#### Self-Onboarding Workflow (the canonical email order)
+| Code | Email | Trigger | When |
+|---|---|---|---|
+| O1 | Enrolment Confirmation | Auto | On `Confirm Enrolment` (₹50K paid) |
+| O2 | Self-Onboarding Link | Manual or bulk | Admin clicks `Send Onboard Link` |
+| O3 | Onboarding Submitted Alert (internal) | Auto | Student submits self-onboard form |
+| O4 | Onboarding Welcome Email | **Auto** (new) | Admin clicks `Approve Profile` |
+
+---
+
 ## [1.13.2] — 2026-05-11
 
 ### UX polish on merge tag references
