@@ -4,6 +4,19 @@ All notable changes to the LE Student Roster system are documented here.
 
 ---
 
+## [1.13.1] — 2026-05-11
+
+### Reminders tab — surface global merge tags
+
+#### Changed
+- The Reminders tab ([reminders-tab.tsx](src/components/settings/reminders-tab.tsx)) now shows the same global merge tags as the Emails tab next to each reminder body editor. Two rows of click-to-copy chips:
+  - **This reminder:** `{{studentName}}`, `{{installmentLabel}}`, `{{amount}}`, `{{dueDate}}`
+  - **Global (any email):** `{{bankDetails}}`, `{{cashFreeLink}}`, plus every dynamic resource-link tag
+
+Global substitution already worked server-side in v1.13.0 — this is purely a UX surfacing of the available tags.
+
+---
+
 ## [1.13.0] — 2026-05-11
 
 ### Global merge tags, Cash Free Link, dynamic Resource Links

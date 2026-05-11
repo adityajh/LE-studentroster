@@ -177,7 +177,11 @@ export default async function SettingsPage({
         )}
 
         {activeTab === "reminders" && (
-          <RemindersTab settings={reminderSettings} lastRun={lastRun} />
+          <RemindersTab
+            settings={reminderSettings}
+            lastRun={lastRun}
+            resourceLinks={parseResourceLinks(offerSettings)}
+          />
         )}
       </div>
     </div>
