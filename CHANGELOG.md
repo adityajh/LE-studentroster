@@ -4,6 +4,26 @@ All notable changes to the LE Student Roster system are documented here.
 
 ---
 
+## [1.14.2] — 2026-05-11
+
+### Fix auto-O4 + complete email numbering scheme
+
+#### Fixed
+- **`onboardingEmailSentAt` no longer set at enrolment** ([api/students/[id]/confirm-enrolment/route.ts](src/app/api/students/%5Bid%5D/confirm-enrolment/route.ts)). The field was being set when the Enrolment Confirmation (O1) went out, but its purpose is to track the Onboarding Welcome Email (O4). Setting it at enrolment made the v1.14.0 auto-fire-O4-on-approve a silent no-op — every approval since v1.14.0 skipped the email. Now O4 only sets the field when it actually fires.
+
+#### Added
+- **Workflow codes on all admissions emails** in [offer-settings.tsx](src/components/settings/offer-settings.tsx):
+  - `A1` Offer Email · `A2` Offer Letter PDF body · `A3` Offer Reminder 1 · `A4` Offer Reminder 2 · `A5` Revised Offer
+  - `O1`–`O4` unchanged (Enrolment Confirmation · Self-Onboard Link · Submitted Alert · Welcome)
+- **Workflow codes on fee reminders** in [reminders-tab.tsx](src/components/settings/reminders-tab.tsx):
+  - `R1` 1 Month Before · `R2` 1 Week Before · `R3` On Due Date
+- **Fallback banner on admin onboard wizard** ([onboard-wizard.tsx](src/components/students/onboard-wizard.tsx)) — amber notice at the top explaining that the wizard is fallback only; students normally onboard themselves via the self-onboard link in O1.
+
+#### Workflow note
+Path B (admin onboard wizard) is no longer the primary flow. The Enrolment Confirmation email (O1) sent at `Confirm Enrolment` time already contains a working self-onboard link, so students should self-onboard whenever possible. The wizard remains available as a fallback for students who can't.
+
+---
+
 ## [1.14.1] — 2026-05-11
 
 ### Fix: O3 Onboarding Submitted Alert now reaches admins

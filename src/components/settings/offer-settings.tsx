@@ -122,6 +122,7 @@ The Let's Enterprise Team`,
 const ADMISSIONS_EMAILS: EmailConfig[] = [
   {
     settingKey: "OFFER_EMAIL_BODY",
+    code: "A1",
     label: "Offer Email",
     trigger: "Manual — \"Send Offer Email\" button on student profile",
     recipients: "Student + parent (if set)",
@@ -131,6 +132,7 @@ const ADMISSIONS_EMAILS: EmailConfig[] = [
   },
   {
     settingKey: "OFFER_LETTER_BODY",
+    code: "A2",
     label: "Offer Letter — Opening Paragraph (PDF)",
     trigger: "Same as Offer Email — rendered as opening text inside the offer letter PDF",
     recipients: "Embedded in PDF",
@@ -140,6 +142,7 @@ const ADMISSIONS_EMAILS: EmailConfig[] = [
   },
   {
     settingKey: "OFFER_REMINDER_1_BODY",
+    code: "A3",
     label: "Offer Reminder 1 — 3–5 days before expiry",
     trigger: "Automatic — daily cron, sent once when 3–5 days remain on the offer window",
     recipients: "Student + parent (if set)",
@@ -148,6 +151,7 @@ const ADMISSIONS_EMAILS: EmailConfig[] = [
   },
   {
     settingKey: "OFFER_REMINDER_2_BODY",
+    code: "A4",
     label: "Offer Reminder 2 — 0–2 days before expiry",
     trigger: "Automatic — daily cron, sent once when 0–2 days remain on the offer window",
     recipients: "Student + parent (if set)",
@@ -157,6 +161,7 @@ const ADMISSIONS_EMAILS: EmailConfig[] = [
   {
     settingKey: "OFFER_EMAIL_BODY",
     sharedWithLabel: "Offer Email",
+    code: "A5",
     label: "Revised Offer Email — 7-day waiver lapsed",
     trigger: "Automatic — daily cron, sent once after the 7-day window expires without a registration payment",
     recipients: "Student",

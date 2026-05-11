@@ -291,9 +291,13 @@ export async function POST(
         create: { studentId: id, tokenHash, expiresAt },
         update: { tokenHash, expiresAt, submittedAt: null },
       })
+      // Note: do NOT set onboardingEmailSentAt here — that field tracks the
+      // Onboarding Welcome Email (O4), which fires later (auto on approval
+      // or via admin wizard fallback). The email we send next is the
+      // Enrolment Confirmation (O1); it gets its own status (LINK_SENT).
       await prisma.student.update({
         where: { id },
-        data: { selfOnboardingStatus: "LINK_SENT", onboardingEmailSentAt: new Date() },
+        data: { selfOnboardingStatus: "LINK_SENT" },
       })
 
       const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://le-student-roster.vercel.app"

@@ -29,18 +29,21 @@ type LastRunStats = {
   runAt: string
 } | null
 
-const REMINDER_META: Record<string, { label: string; description: string; vars: string[] }> = {
+const REMINDER_META: Record<string, { code: string; label: string; description: string; vars: string[] }> = {
   ONE_MONTH: {
+    code: "R1",
     label: "1 Month Before",
     description: "Sent ~30 days before the installment due date.",
     vars: ["{{studentName}}", "{{installmentLabel}}", "{{amount}}", "{{dueDate}}"],
   },
   ONE_WEEK: {
+    code: "R2",
     label: "1 Week Before",
     description: "Sent ~7 days before the installment due date.",
     vars: ["{{studentName}}", "{{installmentLabel}}", "{{amount}}", "{{dueDate}}"],
   },
   DUE_DATE: {
+    code: "R3",
     label: "On Due Date",
     description: "Sent on the day the payment is due.",
     vars: ["{{studentName}}", "{{installmentLabel}}", "{{amount}}", "{{dueDate}}"],
@@ -48,7 +51,7 @@ const REMINDER_META: Record<string, { label: string; description: string; vars: 
 }
 
 function ReminderCard({ setting }: { setting: ReminderSetting }) {
-  const meta = REMINDER_META[setting.type] ?? { label: setting.type, description: "", vars: [] }
+  const meta = REMINDER_META[setting.type] ?? { code: "?", label: setting.type, description: "", vars: [] }
   const [bodyText, setBodyText] = useState(setting.bodyText)
   const [isActive, setIsActive] = useState(setting.isActive)
   const [saving, setSaving] = useState(false)
@@ -79,6 +82,9 @@ function ReminderCard({ setting }: { setting: ReminderSetting }) {
       <div className="flex items-start justify-between gap-4">
         <div>
           <div className="flex items-center gap-2">
+            <span className="text-[10px] font-black font-mono tracking-wider text-white bg-[#160E44] px-1.5 py-0.5 rounded">
+              {meta.code}
+            </span>
             <p className="font-bold text-slate-900 text-sm">{meta.label}</p>
             {!isActive && (
               <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 bg-slate-100 border border-slate-200 px-1.5 py-0.5 rounded">

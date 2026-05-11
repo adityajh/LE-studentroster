@@ -226,6 +226,16 @@ export function OnboardWizard({
 
   return (
     <div className="max-w-2xl mx-auto space-y-8">
+      {/* Fallback-only banner */}
+      <div className="rounded-xl border border-amber-200 bg-amber-50/60 px-4 py-3 text-sm text-amber-800 space-y-1">
+        <p className="font-bold flex items-center gap-1.5">
+          <span>⚠️</span> Admin Onboard Wizard — fallback only
+        </p>
+        <p className="text-xs">
+          The student already received a self-onboarding link in their Enrolment Confirmation (O1). Use this wizard <strong>only</strong> when the student can&apos;t complete the self-onboard form themselves (e.g., upload issues, no email access). For most students, just wait for them to submit and click <strong>Approve Profile</strong> on their profile.
+        </p>
+      </div>
+
       {/* Step indicator */}
       <div className="flex items-center gap-2">
         {STEPS.map(({ n, label }, i) => (
