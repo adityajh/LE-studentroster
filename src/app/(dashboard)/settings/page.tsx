@@ -74,12 +74,14 @@ export default async function SettingsPage({
   if (dbUser?.role !== "ADMIN") redirect("/dashboard")
 
   // Load data for each tab
-  const [members, apiKeys, emailSettings, terms, termsChangelog, offerSettings, reminderSettings, lastRunRaw] = await Promise.all([
+  const [members, apiKeys, emailSettings, terms, termsChangelog, programExpectations, programExpectationsChangelog, offerSettings, reminderSettings, lastRunRaw] = await Promise.all([
     getTeamMembers(),
     getApiKeys(),
     getSettings(["SMTP_USER", "SMTP_PASSWORD", "SMTP_FROM_NAME", "SMTP_FROM_EMAIL", "REMINDER_PAYMENT_URL"]),
     getSetting("PROPOSAL_TERMS", DEFAULT_TERMS),
     getSetting("PROPOSAL_TERMS_CHANGELOG", "[]"),
+    getSetting("PROGRAM_EXPECTATIONS", ""),
+    getSetting("PROGRAM_EXPECTATIONS_CHANGELOG", "[]"),
     getSettings([
       "OFFER_EMAIL_BODY",
       "OFFER_LETTER_BODY",
@@ -152,7 +154,12 @@ export default async function SettingsPage({
         )}
 
         {activeTab === "tcs" && (
-          <ProposalSettings initialTerms={terms} initialChangelog={termsChangelog} />
+          <ProposalSettings
+            initialTerms={terms}
+            initialChangelog={termsChangelog}
+            initialProgramExpectations={programExpectations}
+            initialProgramExpectationsChangelog={programExpectationsChangelog}
+          />
         )}
 
         {activeTab === "emails" && (

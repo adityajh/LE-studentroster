@@ -4,6 +4,36 @@ All notable changes to the LE Student Roster system are documented here.
 
 ---
 
+## [1.15.0] — 2026-05-11
+
+### PDFs: rich Offer Letter body + T&C / Programme Expectations appendix
+
+#### Offer Letter PDF
+- **Body now uses rich markup** — admin-edited `OFFER_LETTER_BODY` supports `**Headings**`, bullets (`-` / `•`), and numbered lines (`1.`). Renders properly in the PDF.
+- **"Your Fee Summary" box removed** from page 1 — fees only appear in the page 2 appendix table.
+- **Hardcoded "Programme Expectations" removed** from page 1 — now lives in the Settings-editable Programme Expectations block (see below) and renders in the appendix.
+- **Hardcoded "About the Programme" bullets removed** — moved into the body text (via the new `OFFER_LETTER_BODY` default), so admin can edit freely.
+- **New Page 3 — Terms & Programme Expectations appendix** — renders T&C and Programme Expectations side-by-side in the same rich-markup style as the body.
+
+#### Fee Letter PDF (proposal)
+- **Programme Expectations appendix added** below the existing T&C box. Same content shape as the Offer Letter appendix.
+
+#### Settings → T&C tab — new UX
+- **Both blocks now Edit-gated** — read-only by default; admin must click Edit to switch to a textarea + Save / Cancel.
+- **New Programme Expectations block** — pre-seeded with default copy on first view; same edit-gate pattern; own changelog (`PROGRAM_EXPECTATIONS_CHANGELOG`).
+- T&C block continues to track changes in `PROPOSAL_TERMS_CHANGELOG`.
+- Both blocks share a reusable `EditableBlock` component.
+
+#### Data seeded
+- `OFFER_LETTER_BODY` — replaced the prior shorter default with the long-form body from the supplied PDF, with `{{studentName}}`, `{{programName}}`, `{{batchYear}}` merge tags. Run via [scratch/seed-pdf-appendix-settings.ts](scratch/seed-pdf-appendix-settings.ts).
+- `PROGRAM_EXPECTATIONS` — seeded with the 4 numbered expectations from the supplied PDF.
+- `PROGRAM_EXPECTATIONS_CHANGELOG` — initialised to `[]`.
+
+#### Touched callers
+All 7 callers of `ProposalDocument` (proposal route, fee-letter route, confirm-enrolment, enroll, welcome-email, fee-structure preview, plus the offer letter route) now fetch + pass `programExpectations`.
+
+---
+
 ## [1.14.3] — 2026-05-11
 
 ### Settings → Emails — reorganise onboarding section

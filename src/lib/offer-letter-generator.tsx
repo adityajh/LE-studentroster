@@ -5,7 +5,7 @@ export type OfferLetterData = {
   programName: string
   batchYear: number
   offerExpiresAt: Date
-  // Financial summary (page 1 fee box)
+  // Financial summary (page 1 fee box) — still needed for the appendix table
   registrationFee: number
   baseFee: number    // y1+y2+y3, excludes registration
   year1Fee: number
@@ -16,8 +16,12 @@ export type OfferLetterData = {
   netFee: number     // baseFee - waivers, excludes registration
   // Appendix
   bankDetails: string
-  // Configurable body text (from SystemSetting OFFER_LETTER_BODY)
+  // Configurable body text (from SystemSetting OFFER_LETTER_BODY) — supports
+  // **bold headings**, bullet lines (- or •), and numbered lines (1. 2. …)
   bodyText?: string
+  // Final-page appendix content (from SystemSetting PROPOSAL_TERMS + PROGRAM_EXPECTATIONS)
+  terms?: string
+  programExpectations?: string
   // Logo (base64 data URI passed from server route)
   logoSrc?: string
 }
@@ -323,6 +327,76 @@ function formatINR(amount: number) {
   return `Rs. ${amount.toLocaleString("en-IN")}`
 }
 
+// Light markup parser for admin-edited body text. Supports:
+//   **Heading**      → bold heading block
+//   - item / • item  → bullet
+//   1. item          → numbered (rendered as written)
+//   blank line       → paragraph break
+//   anything else    → normal paragraph
+function renderRichBody(text: string) {
+  const blocks: React.ReactNode[] = []
+  // Normalize: collapse runs of empty lines and trim trailing whitespace
+  const lines = text.replace(/\r\n?/g, "\n").split("\n")
+  let key = 0
+  let bulletGroup: { kind: "bullet" | "number"; items: { marker: string; text: string }[] } | null = null
+
+  const flushBulletGroup = () => {
+    if (bulletGroup && bulletGroup.items.length > 0) {
+      blocks.push(
+        <View key={`bg-${key++}`} style={{ marginBottom: 8 }}>
+          {bulletGroup.items.map((it, i) => (
+            <View key={i} style={styles.bulletRow}>
+              <Text style={styles.bullet}>{it.marker}</Text>
+              <Text style={styles.bulletText}>{it.text}</Text>
+            </View>
+          ))}
+        </View>
+      )
+    }
+    bulletGroup = null
+  }
+
+  for (const raw of lines) {
+    const line = raw.trim()
+    if (line === "") {
+      flushBulletGroup()
+      continue
+    }
+    // Bold heading: **text**
+    const bold = line.match(/^\*\*\s*(.+?)\s*\*\*\s*:?$/)
+    if (bold) {
+      flushBulletGroup()
+      blocks.push(<Text key={`h-${key++}`} style={styles.sectionTitle}>{bold[1]}</Text>)
+      continue
+    }
+    // Bullet
+    const bul = line.match(/^[•\-]\s+(.+)$/)
+    if (bul) {
+      if (!bulletGroup || bulletGroup.kind !== "bullet") {
+        flushBulletGroup()
+        bulletGroup = { kind: "bullet", items: [] }
+      }
+      bulletGroup.items.push({ marker: "•", text: bul[1] })
+      continue
+    }
+    // Numbered
+    const num = line.match(/^(\d+)\.\s+(.+)$/)
+    if (num) {
+      if (!bulletGroup || bulletGroup.kind !== "number") {
+        flushBulletGroup()
+        bulletGroup = { kind: "number", items: [] }
+      }
+      bulletGroup.items.push({ marker: `${num[1]}.`, text: num[2] })
+      continue
+    }
+    // Regular paragraph line
+    flushBulletGroup()
+    blocks.push(<Text key={`p-${key++}`} style={styles.body}>{line}</Text>)
+  }
+  flushBulletGroup()
+  return blocks
+}
+
 export function OfferLetterDocument({ data }: { data: OfferLetterData }) {
   const expiry = data.offerExpiresAt.toLocaleDateString("en-IN", {
     day: "numeric",
@@ -330,25 +404,36 @@ export function OfferLetterDocument({ data }: { data: OfferLetterData }) {
     year: "numeric",
   })
 
-  const defaultBody = `We are pleased to formally offer you admission to the ${data.programName} at Let's Enterprise for the ${data.batchYear} intake, commencing in August ${data.batchYear}, subject to the terms outlined below.
+  const defaultBody = `Dear ${data.studentName},
 
-Based on your application, interactions, and assessment process, our admissions panel believes that you demonstrate the curiosity, intent, and growth mindset required to thrive in a highly experiential and non-traditional undergraduate journey.`
+We are pleased to formally offer you admission to the ${data.programName} at Let's Enterprise for the ${data.batchYear} intake, commencing in August ${data.batchYear}, subject to the terms outlined below.
+
+Based on your application, interactions, and assessment process, our admissions panel believes that you demonstrate the curiosity, intent, and growth mindset required to thrive in a highly experiential and non-traditional undergraduate journey.
+
+**About the Programme**
+
+The ${data.programName} is a three-year, multidisciplinary, experiential undergraduate programme designed to help young people build:
+- Entrepreneurial mindset
+- Real-world employability skills
+- Strong professional networks
+- Proof-of-work portfolios
+
+The programme emphasises applied learning through real projects, mentored apprenticeships, coaching, and immersive field experiences. Students build demonstrable skills, a strong body of work, and professional clarity alongside their academic journey.
+
+**All students experience**
+
+- Real-world and industry projects
+- Mentored apprenticeships with startups and SMEs
+- Continuous coaching and founder mentorship
+- A BBA degree pathway aligned with the student's chosen university`
 
   const bodyText = data.bodyText || defaultBody
 
   const permanentOffers = data.offers.filter((o) => !o.deadline)
   const conditionalOffers = data.offers.filter((o) => !!o.deadline)
 
-  const totalWaiver =
-    data.offers.reduce((s, o) => s + o.amount, 0) +
-    data.scholarships.reduce((s, sc) => s + sc.amount, 0)
-
   const programTotal = data.registrationFee + data.baseFee
   const netTotal = data.registrationFee + data.netFee
-
-  const permanentWaiver =
-    permanentOffers.reduce((s, o) => s + o.amount, 0) +
-    data.scholarships.reduce((s, sc) => s + sc.amount, 0)
 
   return (
     <Document>
@@ -378,65 +463,10 @@ Based on your application, interactions, and assessment process, our admissions 
           This letter confirms your offer of admission. Please read carefully.
         </Text>
 
-        {/* Salutation */}
-        <Text style={styles.salutation}>Dear {data.studentName},</Text>
-
-        {/* Body */}
-        {bodyText.split("\n\n").map((para, i) => (
-          <Text key={i} style={styles.body}>{para.trim()}</Text>
-        ))}
-
-        {/* About the Programme */}
-        <Text style={styles.sectionTitle}>About {data.programName}</Text>
-        {[
-          "Entrepreneurial mindset and real-world employability skills",
-          "Strong professional networks and proof-of-work portfolios",
-          "Real-world and industry projects with mentored apprenticeships",
-          "A BBA degree pathway aligned with the student's chosen university",
-        ].map((item, i) => (
-          <View key={i} style={styles.bulletRow}>
-            <Text style={styles.bullet}>•</Text>
-            <Text style={styles.bulletText}>{item}</Text>
-          </View>
-        ))}
-
-        {/* Fee Summary */}
-        <Text style={styles.sectionTitle}>Your Fee Summary</Text>
-        <View style={styles.feeBox}>
-          <View style={styles.feeRow}>
-            <Text>Total Programme Fee (incl. Registration)</Text>
-            <Text style={styles.feeAmount}>{formatINR(programTotal)}</Text>
-          </View>
-          {permanentOffers.map((o, i) => (
-            <View key={i} style={styles.feeRow}>
-              <Text style={styles.feeDeductLabel}>Less: {o.name}</Text>
-              <Text style={styles.feeDeductAmount}>- {formatINR(o.amount)}</Text>
-            </View>
-          ))}
-          {data.scholarships.map((sc, i) => (
-            <View key={i} style={styles.feeRow}>
-              <Text style={styles.feeDeductLabel}>Less: {sc.name} Scholarship</Text>
-              <Text style={styles.feeDeductAmount}>- {formatINR(sc.amount)}</Text>
-            </View>
-          ))}
-          {permanentWaiver > 0 && (
-            <View style={styles.feeRow}>
-              <Text style={styles.feeDeductLabel}>Total Confirmed Benefit</Text>
-              <Text style={styles.feeDeductAmount}>- {formatINR(permanentWaiver)}</Text>
-            </View>
-          )}
-          <View style={styles.feeRowBold}>
-            <Text style={styles.feeRowBoldLabel}>Net Fee Payable</Text>
-            <Text style={styles.feeRowBoldAmount}>{formatINR(netTotal)}</Text>
-          </View>
-          {conditionalOffers.length > 0 && (
-            <View style={{ marginTop: 8 }}>
-              <Text style={{ fontSize: 8, color: "#92400e", fontFamily: "Helvetica-Oblique" }}>
-                * Additional conditional offers apply — see Appendix for details.
-              </Text>
-            </View>
-          )}
-        </View>
+        {/* Body — rich content from OFFER_LETTER_BODY (supports **headings**,
+            bullets `-` / `•`, and `1.` numbered lists). The salutation is
+            expected to be the first line of the body. */}
+        {renderRichBody(bodyText)}
 
         {/* Expiry notice */}
         <View style={styles.expiryBox}>
@@ -445,20 +475,6 @@ Based on your application, interactions, and assessment process, our admissions 
             The 7-day confirmation waiver (if applicable) will lapse after this date.
           </Text>
         </View>
-
-        {/* Programme Expectations */}
-        <Text style={styles.sectionTitle}>Programme Expectations</Text>
-        {[
-          "Actively participate in all academic, project-based, and experiential components.",
-          "Demonstrate ownership of your learning, professional conduct, and collaboration.",
-          "Engage sincerely in real-world projects, apprenticeships, reviews, and feedback cycles.",
-          "Adhere to Let's Enterprise's academic guidelines, attendance norms, and code of conduct.",
-        ].map((item, i) => (
-          <View key={i} style={styles.bulletRow}>
-            <Text style={styles.bullet}>{i + 1}.</Text>
-            <Text style={styles.bulletText}>{item}</Text>
-          </View>
-        ))}
 
         {/* Footer */}
         <View style={styles.footer}>
@@ -595,6 +611,54 @@ Based on your application, interactions, and assessment process, our admissions 
           </Text>
         </View>
       </Page>
+
+      {/* ── Page 3: Appendix — Terms & Conditions + Programme Expectations ── */}
+      {(data.terms || data.programExpectations) && (
+        <Page size="A4" style={styles.page}>
+          {/* Header */}
+          <View style={styles.header}>
+            <View style={styles.headerLeft}>
+              {data.logoSrc ? (
+                <Image src={data.logoSrc} style={styles.logo} />
+              ) : (
+                <Text style={styles.logoFallback}>LET'S ENTERPRISE</Text>
+              )}
+              <Text style={styles.tagline}>Work is the Curriculum</Text>
+            </View>
+            <View style={styles.headerRight}>
+              <Text style={styles.contact}>www.letsenterprise.in</Text>
+              <Text style={styles.contact}>+91 84472 84008</Text>
+            </View>
+          </View>
+
+          <Text style={styles.appendixLabel}>Appendix</Text>
+          <Text style={styles.appendixTitle}>Terms &amp; Programme Expectations</Text>
+
+          {data.terms ? (
+            <View style={styles.appSection}>
+              <Text style={styles.appSectionTitle}>Terms &amp; Conditions</Text>
+              {renderRichBody(data.terms)}
+            </View>
+          ) : null}
+
+          {data.programExpectations ? (
+            <View style={styles.appSection}>
+              <Text style={styles.appSectionTitle}>Programme Expectations</Text>
+              {renderRichBody(data.programExpectations)}
+            </View>
+          ) : null}
+
+          {/* Footer */}
+          <View style={styles.footer}>
+            <Text style={styles.footerAddress}>
+              Let's Enterprise  ·  6th Floor, Trimurty Honeygold, 44 Range Hill Road, Pune 411016
+            </Text>
+            <Text style={styles.footerAddress}>
+              www.letsenterprise.in  ·  +91 84472 84008
+            </Text>
+          </View>
+        </Page>
+      )}
     </Document>
   )
 }

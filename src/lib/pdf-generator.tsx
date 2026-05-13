@@ -220,10 +220,11 @@ const styles = StyleSheet.create({
 interface ProposalDocumentProps {
   student: FullStudent
   terms: string
+  programExpectations?: string
   logoSrc?: string
 }
 
-export function ProposalDocument({ student, terms, logoSrc }: ProposalDocumentProps) {
+export function ProposalDocument({ student, terms, programExpectations, logoSrc }: ProposalDocumentProps) {
   const fin = student.financial
   if (!fin) throw new Error("Financial records missing")
 
@@ -418,6 +419,14 @@ export function ProposalDocument({ student, terms, logoSrc }: ProposalDocumentPr
           <Text style={styles.termsTitle}>Terms & Conditions</Text>
           <Text style={styles.termsText}>{terms}</Text>
         </View>
+
+        {/* Programme Expectations */}
+        {programExpectations ? (
+          <View style={styles.termsContainer}>
+            <Text style={styles.termsTitle}>Programme Expectations</Text>
+            <Text style={styles.termsText}>{programExpectations}</Text>
+          </View>
+        ) : null}
 
         {/* Footer */}
         <View style={styles.footer}>

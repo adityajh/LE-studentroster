@@ -93,6 +93,7 @@ export async function PUT(
 
   const globalTerms = await getSetting("PROPOSAL_TERMS", "All fees must be paid on or before the due date.")
   const terms = student.financial?.customTerms || globalTerms
+  const programExpectations = (await getSetting("PROGRAM_EXPECTATIONS", "")) || undefined
 
   let logoSrc: string | undefined
   try {
@@ -102,7 +103,7 @@ export async function PUT(
 
   const { ProposalDocument } = await import("@/lib/pdf-generator")
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const pdfBuffer = await renderToBuffer(createElement(ProposalDocument, { student, terms, logoSrc }) as any)
+  const pdfBuffer = await renderToBuffer(createElement(ProposalDocument, { student, terms, programExpectations, logoSrc }) as any)
 
   const version = await saveFeeLetterVersion(id, Buffer.from(pdfBuffer), "GENERATED", dbUser.id)
 

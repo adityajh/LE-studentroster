@@ -271,13 +271,15 @@ export async function POST(
       } catch { /* logo missing */ }
 
       const { ProposalDocument } = await import("@/lib/pdf-generator")
-      const [terms, enrolmentConfirmationEmailBody] = await Promise.all([
+      const [terms, enrolmentConfirmationEmailBody, programExpectationsRaw] = await Promise.all([
         studentFull.financial?.customTerms
           || getSetting("PROPOSAL_TERMS", "All fees must be paid on or before the due date."),
         getSetting("ENROLMENT_CONFIRMATION_EMAIL_BODY", ""),
+        getSetting("PROGRAM_EXPECTATIONS", ""),
       ])
+      const programExpectations = programExpectationsRaw || undefined
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const pdfBuffer = await renderToBuffer(createElement(ProposalDocument, { student: studentFull, terms, logoSrc }) as any)
+      const pdfBuffer = await renderToBuffer(createElement(ProposalDocument, { student: studentFull, terms, programExpectations, logoSrc }) as any)
 
       // Save fee letter as the official stored version
       await saveFeeLetterVersion(id, Buffer.from(pdfBuffer), "GENERATED", dbUser?.id)

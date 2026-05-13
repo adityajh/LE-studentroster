@@ -54,6 +54,7 @@ export async function GET(
 
   const globalTerms = await getSetting("PROPOSAL_TERMS", "1. All fees laid out in the structure above must be paid on or before the due date.")
   const terms = student.financial?.customTerms || globalTerms
+  const programExpectations = (await getSetting("PROGRAM_EXPECTATIONS", "")) || undefined
 
   const programSlug = student.program.name.split(/\s*[-–]\s*/)[0].trim().replace(/\s+/g, "")
   const studentSlug = student.name.replace(/\s+/g, "")
@@ -68,7 +69,7 @@ export async function GET(
     // logo missing — PDF will fall back to text
   }
 
-  const stream = await renderToStream(ProposalDocument({ student, terms, logoSrc }))
+  const stream = await renderToStream(ProposalDocument({ student, terms, programExpectations, logoSrc }))
   return new NextResponse(stream as unknown as ReadableStream, {
     headers: {
       "Content-Type": "application/pdf",

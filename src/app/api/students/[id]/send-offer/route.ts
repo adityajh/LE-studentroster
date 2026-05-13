@@ -65,6 +65,7 @@ export async function POST(
     "OFFER_LETTER_BODY",
     "BANK_DETAILS",
     "PROPOSAL_TERMS",
+    "PROGRAM_EXPECTATIONS",
   ])
 
   // Load logo as base64
@@ -109,6 +110,8 @@ export async function POST(
           .replace(/\{\{batchYear\}\}/g, String(student.batch.year))
           .replace(/\{\{offerExpiryDate\}\}/g, offerExpiresAt.toLocaleDateString("en-IN", { day: "numeric", month: "long", year: "numeric" }))
       : undefined,
+    terms: student.financial?.customTerms || settings["PROPOSAL_TERMS"] || undefined,
+    programExpectations: settings["PROGRAM_EXPECTATIONS"] || undefined,
     logoSrc,
   }
 

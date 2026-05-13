@@ -53,7 +53,7 @@ export async function sendOnboardingWelcomeEmail(studentId: string): Promise<Wel
   if (!student) return { ok: false, error: "Student not found" }
   if (!student.email) return { ok: false, error: "Student has no email address" }
 
-  const settings = await getSettings(["ONBOARDING_EMAIL_BODY", "PROPOSAL_TERMS"])
+  const settings = await getSettings(["ONBOARDING_EMAIL_BODY", "PROPOSAL_TERMS", "PROGRAM_EXPECTATIONS"])
   const resourceLinks = (await getResourceLinks()).map((l) => ({ label: l.label, url: l.url }))
 
   // Load logo
@@ -66,8 +66,9 @@ export async function sendOnboardingWelcomeEmail(studentId: string): Promise<Wel
   const { ProposalDocument } = await import("@/lib/pdf-generator")
   const terms = student.financial?.customTerms
     || await getSetting("PROPOSAL_TERMS", "All fees must be paid on or before the due date.")
+  const programExpectations = settings["PROGRAM_EXPECTATIONS"] || undefined
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const proposalBuffer = await renderToBuffer(createElement(ProposalDocument, { student, terms, logoSrc }) as any)
+  const proposalBuffer = await renderToBuffer(createElement(ProposalDocument, { student, terms, programExpectations, logoSrc }) as any)
 
   const recipients = [student.email]
   if (student.parent1Email) recipients.push(student.parent1Email)
