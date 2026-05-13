@@ -13,7 +13,7 @@ import fs from "fs"
 import path from "path"
 import { prisma } from "@/lib/prisma"
 import { sendOnboardingEmail, getResourceLinks } from "@/lib/mail"
-import { getSettings, getSetting } from "@/app/actions/settings"
+import { getSettings } from "@/app/actions/settings"
 
 export const DEFAULT_ONBOARDING_BODY = `Hi {{studentName}},
 
@@ -53,7 +53,7 @@ export async function sendOnboardingWelcomeEmail(studentId: string): Promise<Wel
   if (!student) return { ok: false, error: "Student not found" }
   if (!student.email) return { ok: false, error: "Student has no email address" }
 
-  const settings = await getSettings(["ONBOARDING_EMAIL_BODY", "PROPOSAL_TERMS", "PROGRAM_EXPECTATIONS"])
+  const settings = await getSettings(["ONBOARDING_EMAIL_BODY"])
   const resourceLinks = (await getResourceLinks()).map((l) => ({ label: l.label, url: l.url }))
 
   // Load logo
@@ -64,11 +64,10 @@ export async function sendOnboardingWelcomeEmail(studentId: string): Promise<Wel
   } catch { /* logo missing — PDF falls back to text */ }
 
   const { ProposalDocument } = await import("@/lib/pdf-generator")
-  const terms = student.financial?.customTerms
-    || await getSetting("PROPOSAL_TERMS", "All fees must be paid on or before the due date.")
-  const programExpectations = settings["PROGRAM_EXPECTATIONS"] || undefined
+  const { loadPdfAppendixData } = await import("@/lib/pdf-appendix-data")
+  const appendix = await loadPdfAppendixData({ customTerms: student.financial?.customTerms })
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const proposalBuffer = await renderToBuffer(createElement(ProposalDocument, { student, terms, programExpectations, logoSrc }) as any)
+  const proposalBuffer = await renderToBuffer(createElement(ProposalDocument, { student, ...appendix, logoSrc }) as any)
 
   const recipients = [student.email]
   if (student.parent1Email) recipients.push(student.parent1Email)

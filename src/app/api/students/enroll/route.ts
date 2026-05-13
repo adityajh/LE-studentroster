@@ -286,21 +286,19 @@ export async function POST(req: NextRequest) {
     })
     if (studentFull) {
       const { ProposalDocument } = await import("@/lib/pdf-generator")
-      const { getSetting } = await import("@/app/actions/settings")
+      const { loadPdfAppendixData } = await import("@/lib/pdf-appendix-data")
       const dbUser = await prisma.user.findUnique({
         where: { email: session.user!.email! },
         select: { id: true },
       })
-      const terms = studentFull.financial?.customTerms
-        || await getSetting("PROPOSAL_TERMS", "All fees must be paid on or before the due date.")
-      const programExpectations = (await getSetting("PROGRAM_EXPECTATIONS", "")) || undefined
+      const appendix = await loadPdfAppendixData({ customTerms: studentFull.financial?.customTerms })
       let logoSrc: string | undefined
       try {
         const logoBuf = fs.readFileSync(path.join(process.cwd(), "public", "le-logo-light.png"))
         logoSrc = `data:image/png;base64,${logoBuf.toString("base64")}`
       } catch { /* logo missing */ }
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const pdfBuffer = await renderToBuffer(createElement(ProposalDocument, { student: studentFull, terms, programExpectations, logoSrc }) as any)
+      const pdfBuffer = await renderToBuffer(createElement(ProposalDocument, { student: studentFull, ...appendix, logoSrc }) as any)
       await saveFeeLetterVersion(student.id, Buffer.from(pdfBuffer), "GENERATED", dbUser?.id)
     }
   } catch (err) {

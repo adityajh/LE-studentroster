@@ -221,10 +221,12 @@ interface ProposalDocumentProps {
   student: FullStudent
   terms: string
   programExpectations?: string
+  bankDetails?: string
+  cashFreeLink?: string
   logoSrc?: string
 }
 
-export function ProposalDocument({ student, terms, programExpectations, logoSrc }: ProposalDocumentProps) {
+export function ProposalDocument({ student, terms, programExpectations, bankDetails, cashFreeLink, logoSrc }: ProposalDocumentProps) {
   const fin = student.financial
   if (!fin) throw new Error("Financial records missing")
 
@@ -413,6 +415,22 @@ export function ProposalDocument({ student, terms, programExpectations, logoSrc 
             )}
           </View>
         </View>
+
+        {/* Bank Details */}
+        {bankDetails ? (
+          <View style={styles.termsContainer}>
+            <Text style={styles.termsTitle}>Payment — Bank Details</Text>
+            <Text style={styles.termsText}>{bankDetails}</Text>
+          </View>
+        ) : null}
+
+        {/* Cash Free Link */}
+        {cashFreeLink ? (
+          <View style={styles.termsContainer}>
+            <Text style={styles.termsTitle}>Payment — Online (Cash Free)</Text>
+            <Text style={styles.termsText}>{cashFreeLink}</Text>
+          </View>
+        ) : null}
 
         {/* Terms and Conditions */}
         <View style={styles.termsContainer}>

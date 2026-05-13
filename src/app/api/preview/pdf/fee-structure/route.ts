@@ -84,11 +84,11 @@ export async function GET() {
     deductions: [],
   }
 
-  const terms = "1. All fees laid out in the structure above must be paid on or before the due date.\n2. In the event of withdrawal, the registration fee is strictly non-refundable.\n3. The scholarship and waiver discounts have already been deducted from your base fee computation."
-  const programExpectations = "1. Actively participate in all academic, project-based, and experiential components.\n2. Demonstrate ownership of your learning, professional conduct, and collaboration.\n3. Engage sincerely in real-world projects, apprenticeships, reviews, and feedback cycles.\n4. Adhere to Let's Enterprise's academic guidelines, attendance norms, and code of conduct."
+  const { loadPdfAppendixData } = await import("@/lib/pdf-appendix-data")
+  const appendix = await loadPdfAppendixData()
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const buffer = await renderToBuffer(createElement(ProposalDocument, { student: mockStudent, terms, programExpectations, logoSrc }) as any)
+  const buffer = await renderToBuffer(createElement(ProposalDocument, { student: mockStudent, ...appendix, logoSrc }) as any)
 
   return new NextResponse(new Uint8Array(buffer), {
     headers: {

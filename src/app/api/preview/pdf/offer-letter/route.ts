@@ -27,6 +27,7 @@ export async function GET() {
   const settings = await getSettings([
     "OFFER_LETTER_BODY",
     "BANK_DETAILS",
+    "CASH_FREE_LINK",
     "PROPOSAL_TERMS",
     "PROGRAM_EXPECTATIONS",
   ])
@@ -62,6 +63,7 @@ export async function GET() {
     ],
     netFee: 1235000,
     bankDetails: settings["BANK_DETAILS"] || "Storysells Education Pvt. Ltd\nBank: ICICI Bank, Bund Garden Branch, Pune\nAccount No: 000505026869\nIFSC: ICIC0000005",
+    cashFreeLink: settings["CASH_FREE_LINK"] || undefined,
     bodyText,
     terms: settings["PROPOSAL_TERMS"] || undefined,
     programExpectations: settings["PROGRAM_EXPECTATIONS"] || undefined,

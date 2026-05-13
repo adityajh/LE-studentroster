@@ -64,6 +64,7 @@ export async function POST(
     "OFFER_EMAIL_BODY",
     "OFFER_LETTER_BODY",
     "BANK_DETAILS",
+    "CASH_FREE_LINK",
     "PROPOSAL_TERMS",
     "PROGRAM_EXPECTATIONS",
   ])
@@ -103,6 +104,7 @@ export async function POST(
     scholarships: student.scholarships.map((sc) => ({ name: sc.scholarship.name, amount: Number(sc.amount) })),
     netFee: Number(student.financial?.netFee ?? 0),
     bankDetails: settings["BANK_DETAILS"] || DEFAULT_BANK_DETAILS,
+    cashFreeLink: settings["CASH_FREE_LINK"] || undefined,
     bodyText: settings["OFFER_LETTER_BODY"]
       ? settings["OFFER_LETTER_BODY"]
           .replace(/\{\{studentName\}\}/g, student.name)

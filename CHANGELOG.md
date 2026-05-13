@@ -4,6 +4,24 @@ All notable changes to the LE Student Roster system are documented here.
 
 ---
 
+## [1.15.2] — 2026-05-11
+
+### Cash Free Link in PDFs + unified appendix styling
+
+#### Added
+- **Cash Free Link rendered in both Offer Letter and Fee Structure PDFs**, after Bank Details. Reads from `SystemSetting.CASH_FREE_LINK`; skipped silently if empty.
+- **Fee Letter PDF now includes Bank Details + Cash Free Link** sections before the T&C and Programme Expectations boxes. Previously the Fee Letter had no payment instructions inline.
+- New shared helper [src/lib/pdf-appendix-data.ts](src/lib/pdf-appendix-data.ts) — `loadPdfAppendixData({ customTerms })` returns `{ terms, programExpectations, bankDetails, cashFreeLink }` in one call. All 6 fee-letter callers now use it (eliminates the previous 4-line repeating fetch).
+
+#### Changed
+- **Offer Letter Page 3 appendix** now uses the same flat gray-box format as the Fee Letter (`termsContainer` / `termsTitle` / `termsText` styles). T&C and Programme Expectations render as plain text inside soft gray cards, no rich-markup parsing — matches the Fee Letter look.
+
+#### Wiring
+Offer letter callers updated: [send-offer](src/app/api/students/%5Bid%5D/send-offer/route.ts), [preview offer letter](src/app/api/preview/pdf/offer-letter/route.ts).
+Fee-letter callers updated: [enroll](src/app/api/students/enroll/route.ts), [proposal](src/app/api/students/%5Bid%5D/proposal/route.ts), [fee-letter](src/app/api/students/%5Bid%5D/fee-letter/route.ts), [confirm-enrolment](src/app/api/students/%5Bid%5D/confirm-enrolment/route.ts), [welcome-email helper](src/lib/welcome-email.ts), [preview fee-structure](src/app/api/preview/pdf/fee-structure/route.ts).
+
+---
+
 ## [1.15.1] — 2026-05-11
 
 ### Offer Letter PDF preview + body fixes

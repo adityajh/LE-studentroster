@@ -4,7 +4,6 @@ import { prisma } from "@/lib/prisma"
 import { saveFeeLetterVersion, getActiveFeeLetterVersion } from "@/lib/fee-letter"
 import { renderToBuffer } from "@react-pdf/renderer"
 import { createElement } from "react"
-import { getSetting } from "@/app/actions/settings"
 import fs from "fs"
 import path from "path"
 
@@ -91,9 +90,8 @@ export async function PUT(
   })
   if (!student) return NextResponse.json({ error: "Student not found" }, { status: 404 })
 
-  const globalTerms = await getSetting("PROPOSAL_TERMS", "All fees must be paid on or before the due date.")
-  const terms = student.financial?.customTerms || globalTerms
-  const programExpectations = (await getSetting("PROGRAM_EXPECTATIONS", "")) || undefined
+  const { loadPdfAppendixData } = await import("@/lib/pdf-appendix-data")
+  const appendix = await loadPdfAppendixData({ customTerms: student.financial?.customTerms })
 
   let logoSrc: string | undefined
   try {
@@ -103,7 +101,7 @@ export async function PUT(
 
   const { ProposalDocument } = await import("@/lib/pdf-generator")
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const pdfBuffer = await renderToBuffer(createElement(ProposalDocument, { student, terms, programExpectations, logoSrc }) as any)
+  const pdfBuffer = await renderToBuffer(createElement(ProposalDocument, { student, ...appendix, logoSrc }) as any)
 
   const version = await saveFeeLetterVersion(id, Buffer.from(pdfBuffer), "GENERATED", dbUser.id)
 

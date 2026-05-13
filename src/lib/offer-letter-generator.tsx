@@ -16,6 +16,7 @@ export type OfferLetterData = {
   netFee: number     // baseFee - waivers, excludes registration
   // Appendix
   bankDetails: string
+  cashFreeLink?: string                // optional payment-gateway URL (CASH_FREE_LINK)
   // Configurable body text (from SystemSetting OFFER_LETTER_BODY) — supports
   // **bold headings**, bullet lines (- or •), and numbered lines (1. 2. …)
   bodyText?: string
@@ -320,6 +321,24 @@ const styles = StyleSheet.create({
     color: "#334155",
     lineHeight: 1.7,
   },
+  // ── T&C + Programme Expectations (flat gray box, matching fee letter) ─────
+  termsContainer: {
+    marginTop: 16,
+    padding: 12,
+    backgroundColor: "#f8fafc",
+    borderRadius: 4,
+  },
+  termsTitle: {
+    fontSize: 10,
+    fontFamily: "Helvetica-Bold",
+    marginBottom: 6,
+    color: "#3663AD",
+  },
+  termsText: {
+    fontSize: 9,
+    color: "#475569",
+    lineHeight: 1.6,
+  },
 })
 
 // PDF-safe formatter: Helvetica has no ₹ glyph — use "Rs." instead.
@@ -588,6 +607,16 @@ The programme emphasises applied learning through real projects, mentored appren
           </View>
         </View>
 
+        {/* Cash Free Link (optional) */}
+        {data.cashFreeLink ? (
+          <View style={styles.appSection}>
+            <Text style={styles.appSectionTitle}>Payment — Online (Cash Free)</Text>
+            <View style={styles.bankBox}>
+              <Text style={styles.bankText}>{data.cashFreeLink}</Text>
+            </View>
+          </View>
+        ) : null}
+
         {/* Footer */}
         <View style={styles.footer}>
           <Text style={styles.footerAddress}>
@@ -622,16 +651,16 @@ The programme emphasises applied learning through real projects, mentored appren
           <Text style={styles.appendixTitle}>Terms &amp; Programme Expectations</Text>
 
           {data.terms ? (
-            <View style={styles.appSection}>
-              <Text style={styles.appSectionTitle}>Terms &amp; Conditions</Text>
-              {renderRichBody(data.terms)}
+            <View style={styles.termsContainer}>
+              <Text style={styles.termsTitle}>Terms &amp; Conditions</Text>
+              <Text style={styles.termsText}>{data.terms}</Text>
             </View>
           ) : null}
 
           {data.programExpectations ? (
-            <View style={styles.appSection}>
-              <Text style={styles.appSectionTitle}>Programme Expectations</Text>
-              {renderRichBody(data.programExpectations)}
+            <View style={styles.termsContainer}>
+              <Text style={styles.termsTitle}>Programme Expectations</Text>
+              <Text style={styles.termsText}>{data.programExpectations}</Text>
             </View>
           ) : null}
 
