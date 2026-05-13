@@ -4,6 +4,21 @@ All notable changes to the LE Student Roster system are documented here.
 
 ---
 
+## [1.15.1] — 2026-05-11
+
+### Offer Letter PDF preview + body fixes
+
+#### Fixed
+- **Offer Letter preview was using hardcoded mock body** ([api/preview/pdf/offer-letter/route.ts](src/app/api/preview/pdf/offer-letter/route.ts)) and never passed `terms` / `programExpectations`. Now reads `OFFER_LETTER_BODY`, `BANK_DETAILS`, `PROPOSAL_TERMS`, `PROGRAM_EXPECTATIONS` from `SystemSetting`, resolves merge tags, and renders the appendix pages identically to a real send. Preview now matches reality.
+- **Removed yellow 7-day expiry box** from offer letter page 1. The expiry / signoff information now lives in the body text (Commencement & A Note from the Team sections) plus the appendix.
+- **Extended `OFFER_LETTER_BODY` to full 2-page content** — added the Commencement & Communication, A Note from the Team, and signoff sections from page 2 of the original source PDF. Body is now 1,876 characters (was 1,216).
+- **Email body editor textarea was too thin** in Settings → Emails — bumped minimum height to 420px (was ~176px), with `resize-y` enabled so admins can drag taller.
+
+#### Note
+The Programme Expectations PDF appendix already worked in the Fee Letter preview (it reads from DB); the issue was offer-letter-specific.
+
+---
+
 ## [1.15.0] — 2026-05-11
 
 ### PDFs: rich Offer Letter body + T&C / Programme Expectations appendix

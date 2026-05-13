@@ -368,8 +368,8 @@ function EmailCard({
               <Textarea
                 value={draft}
                 onChange={(e) => setDraft(e.target.value)}
-                className="font-mono text-xs"
-                style={{ minHeight: `${(email.rows ?? 8) * 22}px` }}
+                className="font-mono text-xs resize-y"
+                style={{ minHeight: `${Math.max(420, (email.rows ?? 8) * 32)}px` }}
                 placeholder={`Leave blank to use the built-in default…\n\n${DEFAULTS[key!] ?? ""}`}
               />
               <div className="flex items-center justify-between">

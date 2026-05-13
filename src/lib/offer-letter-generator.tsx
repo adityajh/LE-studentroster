@@ -398,12 +398,6 @@ function renderRichBody(text: string) {
 }
 
 export function OfferLetterDocument({ data }: { data: OfferLetterData }) {
-  const expiry = data.offerExpiresAt.toLocaleDateString("en-IN", {
-    day: "numeric",
-    month: "long",
-    year: "numeric",
-  })
-
   const defaultBody = `Dear ${data.studentName},
 
 We are pleased to formally offer you admission to the ${data.programName} at Let's Enterprise for the ${data.batchYear} intake, commencing in August ${data.batchYear}, subject to the terms outlined below.
@@ -465,16 +459,9 @@ The programme emphasises applied learning through real projects, mentored appren
 
         {/* Body — rich content from OFFER_LETTER_BODY (supports **headings**,
             bullets `-` / `•`, and `1.` numbered lists). The salutation is
-            expected to be the first line of the body. */}
+            expected to be the first line of the body. Expiry, fees, T&C,
+            and Programme Expectations all live in the appendix pages. */}
         {renderRichBody(bodyText)}
-
-        {/* Expiry notice */}
-        <View style={styles.expiryBox}>
-          <Text style={styles.expiryText}>
-            To secure your seat, please pay the Rs. 50,000 registration fee and confirm your admission by {expiry}.
-            The 7-day confirmation waiver (if applicable) will lapse after this date.
-          </Text>
-        </View>
 
         {/* Footer */}
         <View style={styles.footer}>
