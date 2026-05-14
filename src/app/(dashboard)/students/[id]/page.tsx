@@ -3,7 +3,7 @@ import Link from "next/link"
 import { getActiveFeeLetterVersion } from "@/lib/fee-letter"
 import { getStudentById } from "@/lib/students"
 import { formatInstallmentStatus, formatStudentStatus } from "@/lib/students"
-import { formatINR } from "@/lib/fee-schedule"
+import { formatINRFull } from "@/lib/fee-schedule"
 import { splitWaivers } from "@/lib/fee-calc"
 import { RecordPaymentDialog } from "@/components/students/record-payment-dialog"
 import { DocumentUpload, DocumentStatusStrip } from "@/components/students/document-upload"
@@ -486,13 +486,13 @@ export default async function StudentDetailPage({
               <div className="space-y-2">
                 <div className="flex justify-between text-sm">
                   <span className="font-medium text-slate-500">Base fee</span>
-                  <span className="font-bold text-slate-700">{formatINR(fin.baseFee)}</span>
+                  <span className="font-bold text-slate-700">{formatINRFull(fin.baseFee)}</span>
                 </div>
                 {student.offers.length > 0 && 
                   student.offers.map(so => (
                     <div key={so.id} className="flex justify-between text-xs pl-2 border-l-2 border-emerald-500/30">
                       <span className="font-semibold text-slate-500 italic">{so.offer.name}</span>
-                      <span className="font-bold text-emerald-600">−{formatINR(so.waiverAmount)}</span>
+                      <span className="font-bold text-emerald-600">−{formatINRFull(so.waiverAmount)}</span>
                     </div>
                   ))
                 }
@@ -500,7 +500,7 @@ export default async function StudentDetailPage({
                   student.scholarships.map(ss => (
                     <div key={ss.id} className="flex justify-between text-xs pl-2 border-l-2 border-indigo-500/30">
                       <span className="font-semibold text-slate-500 italic">Scholarship: {ss.scholarship.name}</span>
-                      <span className="font-bold text-indigo-600">−{formatINR(ss.amount)}</span>
+                      <span className="font-bold text-indigo-600">−{formatINRFull(ss.amount)}</span>
                     </div>
                   ))
                 }
@@ -508,7 +508,7 @@ export default async function StudentDetailPage({
                   student.deductions.map(sd => (
                     <div key={sd.id} className="flex justify-between text-xs pl-2 border-l-2 border-rose-500/30">
                       <span className="font-semibold text-slate-500 italic">{sd.description}</span>
-                      <span className="font-bold text-rose-600">−{formatINR(sd.amount)}</span>
+                      <span className="font-bold text-rose-600">−{formatINRFull(sd.amount)}</span>
                     </div>
                   ))
                 }
@@ -516,20 +516,20 @@ export default async function StudentDetailPage({
                 {fin.totalWaiver.toNumber() > 0 && student.offers.length === 0 && student.scholarships.length === 0 && (
                   <div className="flex justify-between text-xs pl-2 border-l-2 border-slate-200">
                     <span className="font-semibold text-slate-500 italic">Applied Waivers</span>
-                    <span className="font-bold text-emerald-600">−{formatINR(fin.totalWaiver)}</span>
+                    <span className="font-bold text-emerald-600">−{formatINRFull(fin.totalWaiver)}</span>
                   </div>
                 )}
                 <div className="flex justify-between border-t border-slate-100 pt-2">
                   <span className="text-sm font-bold text-slate-700">Net fee</span>
-                  <span className="text-base font-black text-indigo-600">{formatINR(fin.netFee)}</span>
+                  <span className="text-base font-black text-indigo-600">{formatINRFull(fin.netFee)}</span>
                 </div>
                 <div className="flex justify-between text-sm">
                   <span className="font-medium text-slate-500">Paid so far</span>
-                  <span className="font-bold text-emerald-600">{formatINR(totalPaid)}</span>
+                  <span className="font-bold text-emerald-600">{formatINRFull(totalPaid)}</span>
                 </div>
                 <div className="flex justify-between text-sm">
                   <span className="font-medium text-slate-500">Outstanding</span>
-                  <span className="font-bold text-slate-800">{formatINR(outstanding)}</span>
+                  <span className="font-bold text-slate-800">{formatINRFull(outstanding)}</span>
                 </div>
               </div>
 
@@ -648,7 +648,7 @@ export default async function StudentDetailPage({
                           </span>
                         </td>
                         <td className="px-4 py-4 text-right">
-                          <p className="font-extrabold text-slate-800">{formatINR(syntheticRegFifo.fee)}</p>
+                          <p className="font-extrabold text-slate-800">{formatINRFull(syntheticRegFifo.fee)}</p>
                           {syntheticReg.isPaid && syntheticReg.paidDate && (
                             <p className="text-[10px] text-emerald-500 font-semibold mt-0.5">
                               Paid {new Date(syntheticReg.paidDate).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
@@ -656,10 +656,10 @@ export default async function StudentDetailPage({
                           )}
                         </td>
                         <td className="px-4 py-4 text-right font-extrabold text-emerald-600">
-                          {syntheticRegFifo.received > 0 ? formatINR(syntheticRegFifo.received) : "—"}
+                          {syntheticRegFifo.received > 0 ? formatINRFull(syntheticRegFifo.received) : "—"}
                         </td>
                         <td className="px-4 py-4 text-right font-extrabold text-slate-800">
-                          {syntheticRegFifo.pending > 0 ? formatINR(syntheticRegFifo.pending) : <span className="text-emerald-500">✓</span>}
+                          {syntheticRegFifo.pending > 0 ? formatINRFull(syntheticRegFifo.pending) : <span className="text-emerald-500">✓</span>}
                         </td>
                         <td className="px-5 py-4"></td>
                       </tr>
@@ -685,12 +685,12 @@ export default async function StudentDetailPage({
                             </span>
                           </td>
                           <td className="px-4 py-4 text-right">
-                            <p className="font-extrabold text-slate-800">{formatINR(fee)}</p>
+                            <p className="font-extrabold text-slate-800">{formatINRFull(fee)}</p>
                             {isAnnualYear && totalWaiverForYear > 0 && (
                               <p className="text-[10px] text-slate-400 mt-0.5">
-                                {formatINR(yearFees[inst.year])}
+                                {formatINRFull(yearFees[inst.year])}
                                 {" − "}
-                                <span className="text-emerald-600">{formatINR(totalWaiverForYear)} waiver</span>
+                                <span className="text-emerald-600">{formatINRFull(totalWaiverForYear)} waiver</span>
                               </p>
                             )}
                             <p className="text-[10px] text-slate-400 mt-0.5">
@@ -698,10 +698,10 @@ export default async function StudentDetailPage({
                             </p>
                           </td>
                           <td className="px-4 py-4 text-right font-extrabold text-emerald-600">
-                            {received > 0 ? formatINR(received) : "—"}
+                            {received > 0 ? formatINRFull(received) : "—"}
                           </td>
                           <td className="px-4 py-4 text-right font-extrabold text-slate-800">
-                            {pending > 0 ? formatINR(pending) : <span className="text-emerald-500">✓</span>}
+                            {pending > 0 ? formatINRFull(pending) : <span className="text-emerald-500">✓</span>}
                           </td>
                           <td className="px-5 py-4 text-right">
                             {!isPaid && canRecord && (

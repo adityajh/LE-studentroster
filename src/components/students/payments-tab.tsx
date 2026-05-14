@@ -1,7 +1,7 @@
 "use client"
 
 import Link from "next/link"
-import { formatINR } from "@/lib/fee-schedule"
+import { formatINRFull } from "@/lib/fee-schedule"
 import { cn } from "@/lib/utils"
 import { RecordPaymentDialog } from "./record-payment-dialog"
 import { Wallet, Info, FileText, User as UserIcon, Receipt } from "lucide-react"
@@ -38,7 +38,7 @@ export function PaymentsTab({ studentId, studentName, payments, netFee, canRecor
       <div className="px-5 pt-6 grid grid-cols-1 md:grid-cols-3 gap-4">
         <div className="bg-emerald-50 border border-emerald-100 rounded-2xl p-4">
           <p className="text-[10px] uppercase tracking-widest font-bold text-emerald-600 mb-1">Total Received</p>
-          <p className="text-xl font-black text-emerald-700">{formatINR(totalReceived)}</p>
+          <p className="text-xl font-black text-emerald-700">{formatINRFull(totalReceived)}</p>
           <div className="mt-2 h-1 w-full bg-emerald-200 rounded-full overflow-hidden">
             <div 
               className="h-full bg-emerald-500 transition-all duration-1000" 
@@ -48,7 +48,7 @@ export function PaymentsTab({ studentId, studentName, payments, netFee, canRecor
         </div>
         <div className="bg-slate-50 border border-slate-100 rounded-2xl p-4">
           <p className="text-[10px] uppercase tracking-widest font-bold text-slate-400 mb-1">Outstanding</p>
-          <p className="text-xl font-black text-slate-700">{formatINR(outstanding)}</p>
+          <p className="text-xl font-black text-slate-700">{formatINRFull(outstanding)}</p>
           <p className="text-[10px] font-medium text-slate-400 mt-1">{Math.round(100 - collectionPercentage)}% remaining</p>
         </div>
         <div className="flex flex-col justify-end">
@@ -76,7 +76,7 @@ export function PaymentsTab({ studentId, studentName, payments, netFee, canRecor
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 mb-1">
                   <span className="text-sm font-bold text-slate-800">
-                    {formatINR(Number(p.amount))}
+                    {formatINRFull(Number(p.amount))}
                   </span>
                   <span className={cn(
                     "text-[9px] uppercase tracking-widest font-black px-2 py-0.5 rounded border",

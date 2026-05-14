@@ -37,3 +37,15 @@ export function formatINR(amount: number | string | { toNumber: () => number }) 
   }
   return `₹${num.toLocaleString("en-IN")}`
 }
+
+/**
+ * Full Indian-format rupee value, no abbreviation (1,00,000 — not 1L).
+ * Use this in places where the precise amount matters: Schedule / Payments
+ * / Fee Summary on the student detail page, payment receipts, etc.
+ * The compact `formatINR` (above) stays for dashboard stat cards and lists
+ * where space is tight.
+ */
+export function formatINRFull(amount: number | string | { toNumber: () => number }) {
+  const num = typeof amount === "object" ? amount.toNumber() : Number(amount)
+  return `₹${Math.round(num).toLocaleString("en-IN")}`
+}

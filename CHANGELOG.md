@@ -4,6 +4,16 @@ All notable changes to the LE Student Roster system are documented here.
 
 ---
 
+## [1.15.3] — 2026-05-14
+
+### Full-rupee formatting on student detail
+
+#### Changed
+- Student detail page — **Fee Summary**, **Schedule tab**, and **Payments tab** now display amounts in full Indian comma format (`₹1,00,000`) instead of the abbreviated `₹1L` / `₹50K`. Compact format kept for stat cards elsewhere (Dashboard tiles, Students list "Next Due Amt" column).
+- New helper `formatINRFull` in [src/lib/fee-schedule.ts](src/lib/fee-schedule.ts). Existing `formatINR` (abbreviated) is unchanged.
+
+---
+
 ## [1.15.2] — 2026-05-11
 
 ### Cash Free Link in PDFs + unified appendix styling
