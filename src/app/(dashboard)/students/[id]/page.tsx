@@ -5,6 +5,7 @@ import { getStudentById } from "@/lib/students"
 import { formatInstallmentStatus, formatStudentStatus } from "@/lib/students"
 import { formatINRFull } from "@/lib/fee-schedule"
 import { splitWaivers } from "@/lib/fee-calc"
+import { computeFeeLedger, REG_SYNTH_ID } from "@/lib/fee-ledger"
 import { RecordPaymentDialog } from "@/components/students/record-payment-dialog"
 import { DocumentUpload, DocumentStatusStrip } from "@/components/students/document-upload"
 import { RemindersTab } from "@/components/students/reminders-tab"
@@ -128,41 +129,50 @@ export default async function StudentDetailPage({
   )
   const outstanding = Math.max(0, summaryNetFee - totalPaid)
 
-  // Expected fee for a given installment year under the current scheme
-  const expectedInstFee = (year: number, instAmount: number): number => {
-    if (year === 0) return regFeeAmount
-    if (fin?.installmentType === "ANNUAL") {
-      const base = yearFees[year] ?? 0
-      const yearSpread = spreadByYear[year] ?? 0
-      const deductionForYear = year === 1 ? totalDeductionAmount : 0
-      return Math.max(0, Math.round(base - yearSpread - (year === 1 ? schemeOnetimeTotal : 0) - deductionForYear))
-    }
-    // ONE_TIME or CUSTOM: use stored amount (custom plans are admin-set)
-    return instAmount
-  }
-
-  // FIFO: walk installments in year order, allocate payments against scheme fees
-  const sortedInstsForSchedule = [...student.installments].sort((a, b) => a.year - b.year)
-  let fifoRemaining = totalPaid
-  let syntheticRegFifo: { fee: number; received: number; pending: number } | null = null
-  if (syntheticReg) {
-    const fee = syntheticReg.amount
-    const received = Math.min(fifoRemaining, fee)
-    fifoRemaining -= received
-    syntheticRegFifo = { fee, received, pending: Math.max(0, fee - received) }
-  }
-  const scheduleRows = sortedInstsForSchedule.map(inst => {
-    const fee = expectedInstFee(inst.year, Number(inst.amount))
-    const received = Math.min(fifoRemaining, fee)
-    fifoRemaining -= received
-    return { inst, fee, received, pending: Math.max(0, fee - received) }
+  // FIFO + synthetic registration via the central ledger. The ledger
+  // computes each installment's effective fee from program year fees
+  // minus waivers/deductions, matching what the Schedule tab shows.
+  const ledger = computeFeeLedger({
+    totalPaid,
+    installments: student.installments.map((inst) => ({
+      id: inst.id,
+      year: inst.year,
+      label: inst.label,
+      amount: Number(inst.amount),
+      dueDate: inst.dueDate,
+      status: inst.status,
+    })),
+    reg: syntheticReg ? { fee: syntheticReg.amount, isPaid: syntheticReg.isPaid, paidDate: syntheticReg.paidDate } : undefined,
+    program: fin ? {
+      year1Fee: student.program.year1Fee.toNumber(),
+      year2Fee: student.program.year2Fee.toNumber(),
+      year3Fee: student.program.year3Fee.toNumber(),
+      installmentType: fin.installmentType,
+    } : undefined,
+    waivers: {
+      offers: student.offers.map(o => ({
+        conditions: (o.offer as { conditions: unknown }).conditions,
+        waiverAmount: Number(o.waiverAmount),
+      })),
+      scholarships: student.scholarships.map(sc => ({
+        amount: Number(sc.amount),
+        spreadAcrossYears: (sc.scholarship as { spreadAcrossYears: boolean }).spreadAcrossYears,
+      })),
+      totalDeductionAmount,
+    },
   })
 
-  const scheduleTotals = {
-    fee: (syntheticRegFifo?.fee ?? 0) + scheduleRows.reduce((s, r) => s + r.fee, 0),
-    received: (syntheticRegFifo?.received ?? 0) + scheduleRows.reduce((s, r) => s + r.received, 0),
-    pending: (syntheticRegFifo?.pending ?? 0) + scheduleRows.reduce((s, r) => s + r.pending, 0),
-  }
+  const syntheticRegFifo = ledger.rows.find((r) => r.id === REG_SYNTH_ID) ?? null
+  const instById = new Map(student.installments.map((i) => [i.id, i]))
+  const scheduleRows = ledger.rows
+    .filter((r) => !r.isSynthetic)
+    .map((r) => ({
+      inst: instById.get(r.id)!,
+      fee: r.fee,
+      received: r.received,
+      pending: r.pending,
+    }))
+  const scheduleTotals = ledger.totals
 
   return (
     <div className="space-y-8 max-w-[1000px]">

@@ -4,6 +4,31 @@ All notable changes to the LE Student Roster system are documented here.
 
 ---
 
+## [1.16.0] — 2026-05-15
+
+### Central fee-ledger module
+
+All payment-allocation logic that powers the Schedule tab, the Students-list `Next Due Amt`, the reminder-email amounts, and (any future view) is now consolidated into one module: [src/lib/fee-ledger.ts](src/lib/fee-ledger.ts).
+
+`computeFeeLedger(input)` is responsible for:
+
+1. **Effective fee per installment** — for ANNUAL plans it computes `program year fee − spread waivers − one-time waivers/deductions (year 1)`. For ONE_TIME / CUSTOM plans it falls back to stored `installment.amount`. Solves the Pattern A2 / Ameya case where stored `installment.amount` was pre-waiver and different views were disagreeing on the displayed fee.
+2. **FIFO allocation** — walks installments in `(year, dueDate)` order, allocates `totalPaid` greedily. Returns per-row `{ fee, received, pending }`, totals, and `nextDue`.
+3. **Synthetic registration row** — when registration is tracked as a flag on `financial.registrationPaid` rather than a real `year=0` installment, a synthesized row is inserted at the top of the ledger so the reg fee is FIFO-consumed first (matching what the Schedule tab has always done).
+
+#### Migrated call-sites
+- **Student detail page** — Schedule tab, Fee Summary, Schedule totals.
+- **Students list** — `Next Due Amt` / `Next Due Date`.
+- **Reminder cron** — the amount emailed in each reminder, and the decision of which installment to remind on.
+
+#### Why
+Over the past day we hit the same FIFO/reg/waiver edge case in three views, fixed it three times with three slightly different inline implementations, and at one point would have emailed students "Amount due: ₹-45,000". The new module has one ~150-line implementation with a precise contract; future views just call `computeFeeLedger(...)` and get the same numbers everyone else sees.
+
+#### Sanity check
+`scratch/verify_fee_ledger.ts` runs the ledger over all 28 ACTIVE students and prints totals + next due. All amounts positive, all match the Schedule tab on student detail. No user-visible regressions.
+
+---
+
 ## [1.15.7] — 2026-05-15
 
 ### Fix: Students list "Next Due Amt" missing registration

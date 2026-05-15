@@ -1,6 +1,7 @@
 import Link from "next/link"
 import { getStudents } from "@/lib/students"
 import { formatINR } from "@/lib/fee-schedule"
+import { computeFeeLedger } from "@/lib/fee-ledger"
 import { buttonVariants } from "@/lib/button-variants"
 import { cn } from "@/lib/utils"
 import { auth } from "@/auth"
@@ -200,29 +201,43 @@ export default async function StudentsPage({
                 const totalPending = Math.max(0, netFeeNum - totalReceived)
                 const overdueCount = s.installments.filter((i) => i.status === "OVERDUE").length
 
-                // FIFO: walk installments by year and allocate total payments.
-                // First installment with pending > 0 is the "next due".
-                // (Using installment.paidAmount alone is unreliable — payments
-                // sometimes link to a different installment than the one they
-                // actually clear, so paidAmount can exceed amount.)
-                // When registration is tracked as a flag rather than a year=0
-                // installment, consume the reg fee out of total payments first
-                // — matches the Schedule tab's synthetic-reg logic.
-                const hasRegInstallment = s.installments.some((i) => i.year === 0)
-                let fifoRemaining = totalReceived
-                if (!hasRegInstallment && s.financial?.registrationPaid) {
-                  const regFee = s.financial.registrationFeeOverride != null
-                    ? Number(s.financial.registrationFeeOverride)
-                    : Number(s.program?.registrationFee ?? 0)
-                  fifoRemaining = Math.max(0, fifoRemaining - regFee)
-                }
-                const fifo = s.installments.map((i) => {
-                  const fee = Number(i.amount)
-                  const received = Math.min(fifoRemaining, fee)
-                  fifoRemaining -= received
-                  return { ...i, fee, pending: Math.max(0, fee - received) }
+                const ledger = computeFeeLedger({
+                  totalPaid: totalReceived,
+                  installments: s.installments.map((i) => ({
+                    id: i.id,
+                    year: i.year,
+                    label: "",
+                    amount: Number(i.amount),
+                    dueDate: i.dueDate,
+                    status: i.status,
+                  })),
+                  reg: s.financial?.registrationPaid
+                    ? {
+                        fee: s.financial.registrationFeeOverride != null
+                          ? Number(s.financial.registrationFeeOverride)
+                          : Number(s.program?.registrationFee ?? 0),
+                        isPaid: true,
+                      }
+                    : undefined,
+                  program: s.program ? {
+                    year1Fee: Number(s.program.year1Fee),
+                    year2Fee: Number(s.program.year2Fee),
+                    year3Fee: Number(s.program.year3Fee),
+                    installmentType: s.financial?.installmentType,
+                  } : undefined,
+                  waivers: {
+                    offers: s.offers.map(o => ({
+                      conditions: (o.offer as { conditions: unknown }).conditions,
+                      waiverAmount: Number(o.waiverAmount),
+                    })),
+                    scholarships: s.scholarships.map(sc => ({
+                      amount: Number(sc.amount),
+                      spreadAcrossYears: (sc.scholarship as { spreadAcrossYears: boolean }).spreadAcrossYears,
+                    })),
+                    totalDeductionAmount: s.deductions.reduce((sum, d) => sum + Number(d.amount), 0),
+                  },
                 })
-                const nextDue = fifo.find((i) => i.pending > 0) ?? null
+                const nextDue = ledger.nextDue
                 const nextDueAmt = nextDue?.pending ?? null
                 const nextDueDateStr = nextDue?.dueDate
                   ? new Date(nextDue.dueDate).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })

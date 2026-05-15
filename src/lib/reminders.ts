@@ -1,5 +1,6 @@
 import { prisma } from "./prisma"
 import { sendFeeReminder } from "./mail"
+import { computeFeeLedger } from "./fee-ledger"
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -55,8 +56,11 @@ export async function processDailyReminders(): Promise<{
       email: true,
       parent1Email: true,
       payments: { select: { amount: true } },
-      financial: { select: { registrationPaid: true, registrationFeeOverride: true } },
-      program: { select: { registrationFee: true } },
+      financial: { select: { registrationPaid: true, registrationFeeOverride: true, installmentType: true } },
+      program: { select: { registrationFee: true, year1Fee: true, year2Fee: true, year3Fee: true } },
+      offers: { include: { offer: true } },
+      scholarships: { include: { scholarship: true } },
+      deductions: true,
       installments: {
         include: { reminderLogs: { select: { type: true } } },
         orderBy: { year: "asc" },
@@ -73,31 +77,54 @@ export async function processDailyReminders(): Promise<{
   const tuples: Tuple[] = []
   for (const student of students) {
     const totalPaid = student.payments.reduce((s, p) => s + Number(p.amount), 0)
+    const ledger = computeFeeLedger({
+      totalPaid,
+      installments: student.installments.map((i) => ({
+        id: i.id,
+        year: i.year,
+        label: i.label,
+        amount: Number(i.amount),
+        dueDate: i.dueDate,
+        status: i.status,
+      })),
+      reg: student.financial?.registrationPaid
+        ? {
+            fee: student.financial.registrationFeeOverride != null
+              ? Number(student.financial.registrationFeeOverride)
+              : Number(student.program?.registrationFee ?? 0),
+            isPaid: true,
+          }
+        : undefined,
+      program: student.program ? {
+        year1Fee: Number(student.program.year1Fee),
+        year2Fee: Number(student.program.year2Fee),
+        year3Fee: Number(student.program.year3Fee),
+        installmentType: student.financial?.installmentType,
+      } : undefined,
+      waivers: {
+        offers: student.offers.map(o => ({
+          conditions: (o.offer as { conditions: unknown }).conditions,
+          waiverAmount: Number(o.waiverAmount),
+        })),
+        scholarships: student.scholarships.map(sc => ({
+          amount: Number(sc.amount),
+          spreadAcrossYears: (sc.scholarship as { spreadAcrossYears: boolean }).spreadAcrossYears,
+        })),
+        totalDeductionAmount: student.deductions.reduce((s, d) => s + Number(d.amount), 0),
+      },
+    })
 
-    // Registration is sometimes its own year=0 installment, sometimes just a
-    // flag on `financial.registrationPaid`. When it's the flag form, consume
-    // the reg fee out of total payments BEFORE FIFO-allocating to year
-    // installments — so the schedule view and reminder amounts agree.
-    const hasRegInstallment = student.installments.some((i) => i.year === 0)
-    let remaining = totalPaid
-    if (!hasRegInstallment && student.financial?.registrationPaid) {
-      const regFee = student.financial.registrationFeeOverride != null
-        ? Number(student.financial.registrationFeeOverride)
-        : Number(student.program?.registrationFee ?? 0)
-      remaining = Math.max(0, remaining - regFee)
-    }
-
-    for (const inst of student.installments) {
-      const fee = Number(inst.amount)
-      const received = Math.min(remaining, fee)
-      remaining -= received
-      const pending = Math.max(0, fee - received)
-      // Only consider installments that are (a) within the lookahead window
-      // and (b) not already FIFO-cleared. Skip PAID installments too.
-      if (inst.dueDate > maxLookahead) continue
-      if (inst.status === "PAID") continue
-      if (pending === 0) continue
-      tuples.push({ student, inst, pending })
+    // Index installments by id so we can recover the original row (with
+    // reminderLogs) from each ledger row.
+    const instById = new Map(student.installments.map((i) => [i.id, i]))
+    for (const row of ledger.rows) {
+      if (row.isSynthetic) continue
+      if (row.pending === 0) continue
+      if (row.dueDate > maxLookahead) continue
+      if (row.status === "PAID") continue
+      const inst = instById.get(row.id)
+      if (!inst) continue
+      tuples.push({ student, inst, pending: row.pending })
     }
   }
 

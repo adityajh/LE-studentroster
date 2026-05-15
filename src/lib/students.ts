@@ -38,10 +38,13 @@ export async function getStudents(opts?: {
     },
     include: {
       batch: true,
-      program: { select: { id: true, name: true, registrationFee: true } },
+      program: { select: { id: true, name: true, registrationFee: true, year1Fee: true, year2Fee: true, year3Fee: true } },
       financial: { select: { netFee: true, installmentType: true, registrationPaid: true, registrationFeeOverride: true } },
-      installments: { select: { status: true, dueDate: true, amount: true, paidAmount: true, year: true }, orderBy: { year: "asc" } },
+      installments: { select: { id: true, status: true, dueDate: true, amount: true, paidAmount: true, year: true }, orderBy: { year: "asc" } },
       payments: { select: { amount: true } },
+      offers: { include: { offer: true } },
+      scholarships: { include: { scholarship: true } },
+      deductions: true,
     },
     orderBy: [{ batch: { year: "desc" } }, { rollNo: "asc" }],
   })
