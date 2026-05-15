@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation"
 import Link from "next/link"
-import { getFeeScheduleByYear, formatINR } from "@/lib/fee-schedule"
+import { getFeeScheduleByYear, formatINR, formatINRFull } from "@/lib/fee-schedule"
 import { buttonVariants } from "@/lib/button-variants"
 import { auth } from "@/auth"
 import { prisma } from "@/lib/prisma"
@@ -114,7 +114,7 @@ export default async function FeeScheduleYearPage({
                   </p>
                 )}
                 <p className="text-3xl font-black text-indigo-600 mb-4">
-                  {formatINR(program.totalFee)}
+                  {formatINRFull(program.totalFee)}
                 </p>
                 <div className="space-y-1.5 border-t border-slate-100 pt-3">
                   {[
@@ -125,7 +125,7 @@ export default async function FeeScheduleYearPage({
                   ].map(({ label, value }) => (
                     <div key={label} className="flex justify-between items-center">
                       <span className="text-xs font-medium text-slate-400">{label}</span>
-                      <span className="text-sm font-bold text-slate-700">{formatINR(value)}</span>
+                      <span className="text-sm font-bold text-slate-700">{formatINRFull(value)}</span>
                     </div>
                   ))}
                 </div>
