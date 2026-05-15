@@ -38,8 +38,8 @@ export async function getStudents(opts?: {
     },
     include: {
       batch: true,
-      program: { select: { id: true, name: true } },
-      financial: { select: { netFee: true, installmentType: true, registrationPaid: true } },
+      program: { select: { id: true, name: true, registrationFee: true } },
+      financial: { select: { netFee: true, installmentType: true, registrationPaid: true, registrationFeeOverride: true } },
       installments: { select: { status: true, dueDate: true, amount: true, paidAmount: true, year: true }, orderBy: { year: "asc" } },
       payments: { select: { amount: true } },
     },

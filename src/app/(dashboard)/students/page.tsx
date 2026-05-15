@@ -205,7 +205,17 @@ export default async function StudentsPage({
                 // (Using installment.paidAmount alone is unreliable — payments
                 // sometimes link to a different installment than the one they
                 // actually clear, so paidAmount can exceed amount.)
+                // When registration is tracked as a flag rather than a year=0
+                // installment, consume the reg fee out of total payments first
+                // — matches the Schedule tab's synthetic-reg logic.
+                const hasRegInstallment = s.installments.some((i) => i.year === 0)
                 let fifoRemaining = totalReceived
+                if (!hasRegInstallment && s.financial?.registrationPaid) {
+                  const regFee = s.financial.registrationFeeOverride != null
+                    ? Number(s.financial.registrationFeeOverride)
+                    : Number(s.program?.registrationFee ?? 0)
+                  fifoRemaining = Math.max(0, fifoRemaining - regFee)
+                }
                 const fifo = s.installments.map((i) => {
                   const fee = Number(i.amount)
                   const received = Math.min(fifoRemaining, fee)

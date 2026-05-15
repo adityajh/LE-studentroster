@@ -4,6 +4,24 @@ All notable changes to the LE Student Roster system are documented here.
 
 ---
 
+## [1.15.7] — 2026-05-15
+
+### Fix: Students list "Next Due Amt" missing registration
+
+Follow-up to 1.15.6 — the FIFO walk on the students list page was
+allocating the full `totalReceived` to year installments, but for
+students whose registration is tracked via `financial.registrationPaid`
+(not a year=0 installment), the reg fee was already inside
+`totalReceived` and should have been consumed first. Result: every
+such student's next-due amount was understated by exactly the
+registration fee (Aditya showed `₹1.91L` instead of `₹2.36L`, etc.).
+
+Now mirrors the same reg-consumption logic added to the reminder
+engine in 1.15.6, so the students list, Schedule tab, and reminder
+emails all agree.
+
+---
+
 ## [1.15.6] — 2026-05-15
 
 ### Fix: negative amounts on students list + fee reminders
