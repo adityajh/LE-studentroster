@@ -4,6 +4,24 @@ All notable changes to the LE Student Roster system are documented here.
 
 ---
 
+## [1.15.6] — 2026-05-15
+
+### Fix: negative "Next Due Amt" on students list
+
+The students list page (`/students`) was computing `nextDueAmt` as
+`installment.amount − installment.paidAmount`. When all payments are
+linked to a single installment (typical when registration is tracked as
+a flag on the financial record rather than its own installment),
+`paidAmount` exceeds `amount` and the diff goes negative — Aditya
+Singhal showed `₹-46,000`, Arha Doijode `₹-51,000`, etc.
+
+Switched to the same FIFO walk the Schedule tab uses: allocate total
+payments by year order and pick the first installment with non-zero
+pending. No more negatives, and "next due" now correctly points to Y2
+for students who've fully cleared reg + Y1.
+
+---
+
 ## [1.15.5] — 2026-05-15
 
 ### Student-detail polish + LE2025 data cleanup

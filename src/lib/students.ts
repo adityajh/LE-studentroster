@@ -40,7 +40,7 @@ export async function getStudents(opts?: {
       batch: true,
       program: { select: { id: true, name: true } },
       financial: { select: { netFee: true, installmentType: true, registrationPaid: true } },
-      installments: { select: { status: true, dueDate: true, amount: true, paidAmount: true }, orderBy: { dueDate: "asc" } },
+      installments: { select: { status: true, dueDate: true, amount: true, paidAmount: true, year: true }, orderBy: { year: "asc" } },
       payments: { select: { amount: true } },
     },
     orderBy: [{ batch: { year: "desc" } }, { rollNo: "asc" }],

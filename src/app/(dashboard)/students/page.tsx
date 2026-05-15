@@ -199,12 +199,21 @@ export default async function StudentsPage({
                 const netFeeNum = s.financial ? Number(s.financial.netFee) : 0
                 const totalPending = Math.max(0, netFeeNum - totalReceived)
                 const overdueCount = s.installments.filter((i) => i.status === "OVERDUE").length
-                const nextDue = s.installments.find((i) => i.status === "OVERDUE" || i.status === "PARTIAL" || i.status === "UPCOMING") ?? null
-                const nextDueAmt = nextDue
-                  ? (nextDue.status === "PARTIAL" && nextDue.paidAmount
-                    ? Number(nextDue.amount) - Number(nextDue.paidAmount)
-                    : Number(nextDue.amount))
-                  : null
+
+                // FIFO: walk installments by year and allocate total payments.
+                // First installment with pending > 0 is the "next due".
+                // (Using installment.paidAmount alone is unreliable — payments
+                // sometimes link to a different installment than the one they
+                // actually clear, so paidAmount can exceed amount.)
+                let fifoRemaining = totalReceived
+                const fifo = s.installments.map((i) => {
+                  const fee = Number(i.amount)
+                  const received = Math.min(fifoRemaining, fee)
+                  fifoRemaining -= received
+                  return { ...i, fee, pending: Math.max(0, fee - received) }
+                })
+                const nextDue = fifo.find((i) => i.pending > 0) ?? null
+                const nextDueAmt = nextDue?.pending ?? null
                 const nextDueDateStr = nextDue?.dueDate
                   ? new Date(nextDue.dueDate).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })
                   : null
