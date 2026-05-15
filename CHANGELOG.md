@@ -14,6 +14,7 @@ All notable changes to the LE Student Roster system are documented here.
 
 #### Changed
 - Fee Summary `Net fee` and `Outstanding` are computed fresh from items + program data (`regFee + Y1+Y2+Y3 − offerWaivers − scholarshipWaivers − deductions`), bypassing the historically inconsistent `fin.baseFee` / `fin.netFee` values (Pattern A2 records had registration mixed in inconsistently).
+- **Payments tab** — the `Total Received` / `Outstanding` summary now uses the same fresh Net Fee (which includes registration) instead of the stored `fin.netFee`, so it stays consistent with the Fee Summary and Schedule totals.
 
 ---
 

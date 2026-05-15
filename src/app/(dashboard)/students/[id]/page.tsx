@@ -634,7 +634,7 @@ export default async function StudentDetailPage({
                 studentId={student.id} 
                 studentName={student.firstName || student.name}
                 payments={student.payments} 
-                netFee={Number(fin?.netFee ?? 0)}
+                netFee={summaryNetFee}
                 canRecord={canRecord}
               />
             )}
