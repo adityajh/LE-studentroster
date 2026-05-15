@@ -360,6 +360,66 @@ export default async function StudentDetailPage({
         {/* Left column */}
         <div className="lg:col-span-1 space-y-4">
 
+          {/* Fee Summary */}
+          {fin && (
+            <div className="bg-white border border-slate-200/50 rounded-2xl shadow-sm p-5">
+              <p className="text-[10px] uppercase tracking-widest font-bold text-slate-400 mb-3">Fee Summary</p>
+              <div className="space-y-2">
+                <div className="flex justify-between text-sm">
+                  <span className="font-medium text-slate-500">Registration</span>
+                  <span className="font-bold text-slate-700">{formatINRFull(regFeeAmount)}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="font-medium text-slate-500">Base fee</span>
+                  <span className="font-bold text-slate-700">{formatINRFull(programBaseFee)}</span>
+                </div>
+                {student.offers.length > 0 &&
+                  student.offers.map(so => (
+                    <div key={so.id} className="flex justify-between text-xs pl-2 border-l-2 border-emerald-500/30">
+                      <span className="font-semibold text-slate-500 italic">{so.offer.name}</span>
+                      <span className="font-bold text-emerald-600">−{formatINRFull(so.waiverAmount)}</span>
+                    </div>
+                  ))
+                }
+                {student.scholarships.length > 0 &&
+                  student.scholarships.map(ss => (
+                    <div key={ss.id} className="flex justify-between text-xs pl-2 border-l-2 border-indigo-500/30">
+                      <span className="font-semibold text-slate-500 italic">Scholarship: {ss.scholarship.name}</span>
+                      <span className="font-bold text-indigo-600">−{formatINRFull(ss.amount)}</span>
+                    </div>
+                  ))
+                }
+                {student.deductions.length > 0 &&
+                  student.deductions.map(sd => (
+                    <div key={sd.id} className="flex justify-between text-xs pl-2 border-l-2 border-rose-500/30">
+                      <span className="font-semibold text-slate-500 italic">{sd.description}</span>
+                      <span className="font-bold text-rose-600">−{formatINRFull(sd.amount)}</span>
+                    </div>
+                  ))
+                }
+                {/* Fallback for legacy data or manual overrides not in items */}
+                {fin.totalWaiver.toNumber() > 0 && student.offers.length === 0 && student.scholarships.length === 0 && (
+                  <div className="flex justify-between text-xs pl-2 border-l-2 border-slate-200">
+                    <span className="font-semibold text-slate-500 italic">Applied Waivers</span>
+                    <span className="font-bold text-emerald-600">−{formatINRFull(fin.totalWaiver)}</span>
+                  </div>
+                )}
+                <div className="flex justify-between border-t border-slate-100 pt-2">
+                  <span className="text-sm font-bold text-slate-700">Net fee</span>
+                  <span className="text-base font-black text-indigo-600">{formatINRFull(summaryNetFee)}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="font-medium text-slate-500">Paid so far</span>
+                  <span className="font-bold text-emerald-600">{formatINRFull(totalPaid)}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="font-medium text-slate-500">Outstanding</span>
+                  <span className="font-bold text-slate-800">{formatINRFull(outstanding)}</span>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Document status strip */}
           <div className="bg-white border border-slate-200/50 rounded-2xl shadow-sm p-5 space-y-3">
             <p className="text-[10px] uppercase tracking-widest font-bold text-slate-400">Documents</p>
@@ -495,66 +555,6 @@ export default async function StudentDetailPage({
             </div>
           )}
 
-          {/* Fee Summary */}
-          {fin && (
-            <div className="bg-white border border-slate-200/50 rounded-2xl shadow-sm p-5">
-              <p className="text-[10px] uppercase tracking-widest font-bold text-slate-400 mb-3">Fee Summary</p>
-              <div className="space-y-2">
-                <div className="flex justify-between text-sm">
-                  <span className="font-medium text-slate-500">Registration</span>
-                  <span className="font-bold text-slate-700">{formatINRFull(regFeeAmount)}</span>
-                </div>
-                <div className="flex justify-between text-sm">
-                  <span className="font-medium text-slate-500">Base fee</span>
-                  <span className="font-bold text-slate-700">{formatINRFull(programBaseFee)}</span>
-                </div>
-                {student.offers.length > 0 && 
-                  student.offers.map(so => (
-                    <div key={so.id} className="flex justify-between text-xs pl-2 border-l-2 border-emerald-500/30">
-                      <span className="font-semibold text-slate-500 italic">{so.offer.name}</span>
-                      <span className="font-bold text-emerald-600">−{formatINRFull(so.waiverAmount)}</span>
-                    </div>
-                  ))
-                }
-                {student.scholarships.length > 0 && 
-                  student.scholarships.map(ss => (
-                    <div key={ss.id} className="flex justify-between text-xs pl-2 border-l-2 border-indigo-500/30">
-                      <span className="font-semibold text-slate-500 italic">Scholarship: {ss.scholarship.name}</span>
-                      <span className="font-bold text-indigo-600">−{formatINRFull(ss.amount)}</span>
-                    </div>
-                  ))
-                }
-                {student.deductions.length > 0 && 
-                  student.deductions.map(sd => (
-                    <div key={sd.id} className="flex justify-between text-xs pl-2 border-l-2 border-rose-500/30">
-                      <span className="font-semibold text-slate-500 italic">{sd.description}</span>
-                      <span className="font-bold text-rose-600">−{formatINRFull(sd.amount)}</span>
-                    </div>
-                  ))
-                }
-                {/* Fallback for legacy data or manual overrides not in items */}
-                {fin.totalWaiver.toNumber() > 0 && student.offers.length === 0 && student.scholarships.length === 0 && (
-                  <div className="flex justify-between text-xs pl-2 border-l-2 border-slate-200">
-                    <span className="font-semibold text-slate-500 italic">Applied Waivers</span>
-                    <span className="font-bold text-emerald-600">−{formatINRFull(fin.totalWaiver)}</span>
-                  </div>
-                )}
-                <div className="flex justify-between border-t border-slate-100 pt-2">
-                  <span className="text-sm font-bold text-slate-700">Net fee</span>
-                  <span className="text-base font-black text-indigo-600">{formatINRFull(summaryNetFee)}</span>
-                </div>
-                <div className="flex justify-between text-sm">
-                  <span className="font-medium text-slate-500">Paid so far</span>
-                  <span className="font-bold text-emerald-600">{formatINRFull(totalPaid)}</span>
-                </div>
-                <div className="flex justify-between text-sm">
-                  <span className="font-medium text-slate-500">Outstanding</span>
-                  <span className="font-bold text-slate-800">{formatINRFull(outstanding)}</span>
-                </div>
-              </div>
-
-            </div>
-          )}
         </div>
 
         {/* Right column — Tabs: Installments / Reminders */}
