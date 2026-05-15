@@ -68,9 +68,6 @@ export default async function StudentDetailPage({
 
   // Use payments journal as source of truth for total paid
   const totalPaid = (student.payments || []).reduce((s, p) => s + Number(p.amount), 0)
-  // Outstanding = netFee minus what's been paid (netFee already incorporates deductions)
-  const netFeeAmount = fin ? Number(fin.netFee) : 0
-  const outstanding = Math.max(0, netFeeAmount - totalPaid)
 
   const yearFees: Record<number, number> = {
     1: student.program.year1Fee.toNumber(),
@@ -118,6 +115,19 @@ export default async function StudentDetailPage({
   // Total manual deductions (reduce year 1 installment)
   const totalDeductionAmount = student.deductions.reduce((s, d) => s + Number(d.amount), 0)
 
+  // ── Fee Summary totals (computed fresh from items + program data, so the
+  // display is consistent regardless of how `fin.baseFee` / `fin.netFee` were
+  // stored historically — Pattern A2 records had registration mixed in
+  // inconsistently). Registration is its own line; Base fee is Y1+Y2+Y3.
+  const programBaseFee = (yearFees[1] ?? 0) + (yearFees[2] ?? 0) + (yearFees[3] ?? 0)
+  const offerWaiverTotal = student.offers.reduce((s, o) => s + Number(o.waiverAmount), 0)
+  const scholarshipWaiverTotal = student.scholarships.reduce((s, sc) => s + Number(sc.amount), 0)
+  const summaryNetFee = Math.max(
+    0,
+    regFeeAmount + programBaseFee - offerWaiverTotal - scholarshipWaiverTotal - totalDeductionAmount
+  )
+  const outstanding = Math.max(0, summaryNetFee - totalPaid)
+
   // Expected fee for a given installment year under the current scheme
   const expectedInstFee = (year: number, instAmount: number): number => {
     if (year === 0) return regFeeAmount
@@ -147,6 +157,12 @@ export default async function StudentDetailPage({
     fifoRemaining -= received
     return { inst, fee, received, pending: Math.max(0, fee - received) }
   })
+
+  const scheduleTotals = {
+    fee: (syntheticRegFifo?.fee ?? 0) + scheduleRows.reduce((s, r) => s + r.fee, 0),
+    received: (syntheticRegFifo?.received ?? 0) + scheduleRows.reduce((s, r) => s + r.received, 0),
+    pending: (syntheticRegFifo?.pending ?? 0) + scheduleRows.reduce((s, r) => s + r.pending, 0),
+  }
 
   return (
     <div className="space-y-8 max-w-[1000px]">
@@ -485,8 +501,12 @@ export default async function StudentDetailPage({
               <p className="text-[10px] uppercase tracking-widest font-bold text-slate-400 mb-3">Fee Summary</p>
               <div className="space-y-2">
                 <div className="flex justify-between text-sm">
+                  <span className="font-medium text-slate-500">Registration</span>
+                  <span className="font-bold text-slate-700">{formatINRFull(regFeeAmount)}</span>
+                </div>
+                <div className="flex justify-between text-sm">
                   <span className="font-medium text-slate-500">Base fee</span>
-                  <span className="font-bold text-slate-700">{formatINRFull(fin.baseFee)}</span>
+                  <span className="font-bold text-slate-700">{formatINRFull(programBaseFee)}</span>
                 </div>
                 {student.offers.length > 0 && 
                   student.offers.map(so => (
@@ -521,7 +541,7 @@ export default async function StudentDetailPage({
                 )}
                 <div className="flex justify-between border-t border-slate-100 pt-2">
                   <span className="text-sm font-bold text-slate-700">Net fee</span>
-                  <span className="text-base font-black text-indigo-600">{formatINRFull(fin.netFee)}</span>
+                  <span className="text-base font-black text-indigo-600">{formatINRFull(summaryNetFee)}</span>
                 </div>
                 <div className="flex justify-between text-sm">
                   <span className="font-medium text-slate-500">Paid so far</span>
@@ -711,6 +731,24 @@ export default async function StudentDetailPage({
                         </tr>
                       )
                     })}
+                    {/* Total row */}
+                    {(syntheticReg || scheduleRows.length > 0) && (
+                      <tr className="bg-slate-50/60 border-t-2 border-slate-200">
+                        <td className="px-5 py-3">
+                          <p className="text-[10px] uppercase tracking-widest font-black text-slate-600">Total</p>
+                        </td>
+                        <td className="px-4 py-3 text-right font-black text-slate-900">
+                          {formatINRFull(scheduleTotals.fee)}
+                        </td>
+                        <td className="px-4 py-3 text-right font-black text-emerald-700">
+                          {scheduleTotals.received > 0 ? formatINRFull(scheduleTotals.received) : "—"}
+                        </td>
+                        <td className="px-4 py-3 text-right font-black text-slate-900">
+                          {scheduleTotals.pending > 0 ? formatINRFull(scheduleTotals.pending) : <span className="text-emerald-500">✓</span>}
+                        </td>
+                        <td className="px-5 py-3"></td>
+                      </tr>
+                    )}
                   </tbody>
                 </table>
               </div>

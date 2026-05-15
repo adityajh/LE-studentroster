@@ -4,6 +4,19 @@ All notable changes to the LE Student Roster system are documented here.
 
 ---
 
+## [1.15.4] — 2026-05-15
+
+### Registration row in Fee Summary + Schedule totals
+
+#### Added
+- **Fee Summary** (student detail, left column) — new **Registration** row above **Base fee**, so the registration fee is now visible as its own line and included in the Net fee total. Base fee is now strictly Y1+Y2+Y3.
+- **Schedule tab** — new **Total** row at the bottom of the table, summing the Fee / Received / Pending columns across the registration row and all installment rows.
+
+#### Changed
+- Fee Summary `Net fee` and `Outstanding` are computed fresh from items + program data (`regFee + Y1+Y2+Y3 − offerWaivers − scholarshipWaivers − deductions`), bypassing the historically inconsistent `fin.baseFee` / `fin.netFee` values (Pattern A2 records had registration mixed in inconsistently).
+
+---
+
 ## [1.15.3] — 2026-05-14
 
 ### Full-rupee formatting on student detail
