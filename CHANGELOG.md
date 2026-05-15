@@ -4,6 +4,21 @@ All notable changes to the LE Student Roster system are documented here.
 
 ---
 
+## [1.15.5] — 2026-05-15
+
+### Student-detail polish + LE2025 data cleanup
+
+#### Frontend
+- **Fee Summary** card moved to the **top** of the left column on the student detail page (above Documents / Contact / Address). Most-used info first.
+- **Fee Schedule page** — program cards now use full-rupee format (`₹13,00,000`) instead of abbreviated `₹13L` for total and per-year fees. Offers / scholarships still use compact.
+- **Record Payment dialog** — removed the broken `Bank Transfer` option (value `BANK_TRANSFER`, which isn't in the Prisma `PaymentMode` enum and caused `prisma.payment.create` to throw `Invalid value for argument paymentMode`). Relabelled `NEFT` as `NEFT / Bank Transfer` so the friendly term stays available.
+
+#### Data cleanup (one-time, scripted via `scratch/`)
+- **LE2025 Y1 due dates** — all 18 LE2025 students had `Y1.dueDate = 2026-08-07` instead of `2025-08-07` (the import script had used the import date instead of the academic enrolment date). Shifted Y1 dueDate back by one calendar year for the entire batch.
+- **₹1,000 application-fee gap** — 4 LE2025 students (Aditya Singhal, Ameya Kanchar, Arha Doijode, Saumyaa Gupta) had paid ₹1,000 more than `Reg + Y1 (net)`, because the actual transaction included a one-time ₹1,000 application fee that the system doesn't track. FIFO was spilling that ₹1,000 into Y2's `Received` column. Reduced the relevant payment row by ₹1,000 for each (Ameya/Arha: the clean `₹51,000` reg-time payment → `₹50,000`; Aditya/Saumyaa: earliest payment − ₹1,000 since the application fee was bundled into a larger lump sum).
+
+---
+
 ## [1.15.4] — 2026-05-15
 
 ### Registration row in Fee Summary + Schedule totals
