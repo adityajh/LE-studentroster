@@ -163,11 +163,10 @@ export function RecordPaymentDialog({ studentId, studentName, installment }: Pro
                 className="w-full h-11 rounded-xl border-2 border-slate-200 bg-white px-3 text-sm font-semibold text-slate-800 focus:border-indigo-500 focus:outline-none transition-all"
               >
                 <option value="UPI">UPI</option>
-                <option value="BANK_TRANSFER">Bank Transfer</option>
+                <option value="NEFT">NEFT / Bank Transfer</option>
+                <option value="RTGS">RTGS</option>
                 <option value="CASH">Cash</option>
                 <option value="CHEQUE">Cheque</option>
-                <option value="NEFT">NEFT</option>
-                <option value="RTGS">RTGS</option>
                 <option value="OTHER">Other</option>
               </select>
             </div>
