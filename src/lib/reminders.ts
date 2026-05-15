@@ -36,26 +36,74 @@ export async function processDailyReminders(): Promise<{
     where: { isActive: true },
   })
 
-  // Fetch all non-paid installments with an email address, within our window
-  const installments = await prisma.installment.findMany({
+  // Fetch active students with installments in our window, plus ALL their
+  // installments + payments so we can compute FIFO per student.
+  const students = await prisma.student.findMany({
     where: {
-      status: { in: ["UPCOMING", "DUE", "OVERDUE", "PARTIAL"] },
-      dueDate: { lte: maxLookahead },
-      student: {
-        email: { not: null },
-        status: "ACTIVE",
+      status: "ACTIVE",
+      email: { not: null },
+      installments: {
+        some: {
+          status: { in: ["UPCOMING", "DUE", "OVERDUE", "PARTIAL"] },
+          dueDate: { lte: maxLookahead },
+        },
       },
     },
-    include: {
-      student: { select: { id: true, name: true, email: true, parent1Email: true } },
-      reminderLogs: { select: { type: true } },
+    select: {
+      id: true,
+      name: true,
+      email: true,
+      parent1Email: true,
+      payments: { select: { amount: true } },
+      financial: { select: { registrationPaid: true, registrationFeeOverride: true } },
+      program: { select: { registrationFee: true } },
+      installments: {
+        include: { reminderLogs: { select: { type: true } } },
+        orderBy: { year: "asc" },
+      },
     },
-    orderBy: { dueDate: "asc" },
   })
+
+  // Flatten to (student, installment) tuples with FIFO-computed pending
+  type Tuple = {
+    student: (typeof students)[number]
+    inst: (typeof students)[number]["installments"][number]
+    pending: number
+  }
+  const tuples: Tuple[] = []
+  for (const student of students) {
+    const totalPaid = student.payments.reduce((s, p) => s + Number(p.amount), 0)
+
+    // Registration is sometimes its own year=0 installment, sometimes just a
+    // flag on `financial.registrationPaid`. When it's the flag form, consume
+    // the reg fee out of total payments BEFORE FIFO-allocating to year
+    // installments — so the schedule view and reminder amounts agree.
+    const hasRegInstallment = student.installments.some((i) => i.year === 0)
+    let remaining = totalPaid
+    if (!hasRegInstallment && student.financial?.registrationPaid) {
+      const regFee = student.financial.registrationFeeOverride != null
+        ? Number(student.financial.registrationFeeOverride)
+        : Number(student.program?.registrationFee ?? 0)
+      remaining = Math.max(0, remaining - regFee)
+    }
+
+    for (const inst of student.installments) {
+      const fee = Number(inst.amount)
+      const received = Math.min(remaining, fee)
+      remaining -= received
+      const pending = Math.max(0, fee - received)
+      // Only consider installments that are (a) within the lookahead window
+      // and (b) not already FIFO-cleared. Skip PAID installments too.
+      if (inst.dueDate > maxLookahead) continue
+      if (inst.status === "PAID") continue
+      if (pending === 0) continue
+      tuples.push({ student, inst, pending })
+    }
+  }
 
   let sent = 0, skipped = 0, failed = 0
 
-  for (const inst of installments) {
+  for (const { student, inst, pending } of tuples) {
     const daysUntilDue = daysDiff(today, inst.dueDate)
 
     for (const setting of settings) {
@@ -81,14 +129,12 @@ export async function processDailyReminders(): Promise<{
       })
 
       // Send the email — student + parent1
-      const recipients = [inst.student.email, inst.student.parent1Email].filter((e): e is string => !!e)
+      const recipients = [student.email, student.parent1Email].filter((e): e is string => !!e)
       const result = await sendFeeReminder({
         to:               recipients,
-        studentName:      inst.student.name,
+        studentName:      student.name,
         installmentLabel: inst.label,
-        amount:           Number(inst.paidAmount
-          ? Number(inst.amount) - Number(inst.paidAmount)
-          : inst.amount),
+        amount:           pending,
         dueDate:          inst.dueDate,
         reminderType:     setting.type as any,
         bodyText:         setting.bodyText,
@@ -121,7 +167,7 @@ export async function processDailyReminders(): Promise<{
     }
   }
 
-  const stats = { checked: installments.length, sent, skipped, failed }
+  const stats = { checked: tuples.length, sent, skipped, failed }
 
   // Persist last-run stats for the Settings UI
   await prisma.systemSetting.upsert({
