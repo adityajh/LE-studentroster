@@ -4,6 +4,19 @@ All notable changes to the LE Student Roster system are documented here.
 
 ---
 
+## [1.16.1] — 2026-05-18
+
+### Fix: Confirm Enrolment dialog preview ignored spread-flag on offers
+
+The Confirm Enrolment dialog's payment-plan preview was treating **all** confirmed offers as one-time Y1 waivers, regardless of their `conditions.spreadAcrossYears` flag. For Anudev E this showed Y1 = ₹4.77L when the actual saved amount (and the fee letter PDF the student receives) was ₹5.10L. Backend code was already correct — only the admin-facing preview was wrong.
+
+#### What changed
+- Dialog preview now calls the central `splitWaivers` + `annualInstallmentAmounts` helpers from [src/lib/fee-calc.ts](src/lib/fee-calc.ts) — same code the backend uses on Confirm. Spread offers (e.g. Early Bird) now correctly spread across all 3 years.
+- Same fix applied to the **Custom schedule** pre-populate (clicking "Custom schedule" now seeds the rows with the correct per-year amounts).
+- Each year row in the preview now shows a small monospace breakdown line, e.g. `565000 − 25000 − (50000 + 15000 + 25000)/3`, so the admin can verify the math against the source numbers.
+
+---
+
 ## [1.16.0] — 2026-05-15
 
 ### Central fee-ledger module

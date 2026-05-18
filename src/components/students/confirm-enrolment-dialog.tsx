@@ -4,6 +4,7 @@ import { useState, useMemo } from "react"
 import { useRouter } from "next/navigation"
 import { Loader2, CheckCircle2, ChevronLeft, ChevronRight, Plus, Trash2 } from "lucide-react"
 import { formatINR } from "@/lib/fee-schedule"
+import { splitWaivers, annualInstallmentAmounts, isSpreadCondition } from "@/lib/fee-calc"
 import { cn } from "@/lib/utils"
 
 const PAYMENT_MODES = ["UPI", "NEFT", "RTGS", "CHEQUE", "CASH", "OTHER"] as const
@@ -121,38 +122,70 @@ export function ConfirmEnrolmentDialog({
   const netFee = Math.max(0, baseFee - totalWaiver - confirmedDeductionTotal)
 
   const schedule = useMemo(() => {
-    // Per-year spread: scholarships that spread divided by 3; one-time offers + non-spread scholarships only in Y1
-    const spreadWaiver = confirmedScholarships
-      .filter((s) => s.spreadAcrossYears)
-      .reduce((sum, s) => sum + s.amount, 0)
-    const nonSpreadScholarshipWaiver = confirmedScholarships
-      .filter((s) => !s.spreadAcrossYears)
-      .reduce((sum, s) => sum + s.amount, 0)
-    const onetimeOfferWaiver = offerSource
+    // Use the central splitWaivers helper so the dialog preview matches what
+    // the backend (confirm-enrolment/route.ts) actually saves. Spread offers
+    // / scholarships split evenly across 3 years; non-spread fall on Y1 only.
+    const offerInputs = offerSource
       .filter((o) => confirmedOfferIds.includes(o.id))
-      .reduce((sum, o) => sum + o.waiverAmount, 0)
-    const spreadPerYear = Math.round(spreadWaiver / 3)
+      .map((o) => ({ conditions: o.conditions, waiverAmount: o.waiverAmount }))
+    const scholarshipInputs = confirmedScholarships.map((s) => ({
+      amount: s.amount,
+      spreadAcrossYears: s.spreadAcrossYears,
+    }))
+    const split = splitWaivers(offerInputs, scholarshipInputs)
+    const annual = annualInstallmentAmounts(
+      { y1: year1Fee, y2: year2Fee, y3: year3Fee },
+      split,
+      confirmedDeductionTotal,
+    )
 
-    const y1Net = Math.max(0, Math.round(year1Fee - spreadPerYear - onetimeOfferWaiver - nonSpreadScholarshipWaiver - confirmedDeductionTotal))
-    const y2Net = Math.max(0, Math.round(year2Fee - spreadPerYear))
-    const y3Net = Math.max(0, Math.round(year3Fee - spreadPerYear))
+    // Build a human-readable breakdown for each year (for the small-font line
+    // shown under each amount). Lists the actual spread waiver amounts in
+    // parentheses so the admin can verify the math.
+    const spreadAmounts: number[] = [
+      ...offerInputs.filter((o) => isSpreadCondition(o.conditions)).map((o) => o.waiverAmount),
+      ...scholarshipInputs.filter((s) => s.spreadAcrossYears !== false).map((s) => s.amount),
+    ].filter((n) => n > 0)
+    const onetimeOffers = offerInputs.filter((o) => !isSpreadCondition(o.conditions))
+    const nonSpreadSchols = scholarshipInputs.filter((s) => s.spreadAcrossYears === false)
+    const onetimeAmounts: number[] = [
+      ...onetimeOffers.map((o) => o.waiverAmount),
+      ...nonSpreadSchols.map((s) => s.amount),
+    ].filter((n) => n > 0)
+
+    const fmt = (n: number) => n.toLocaleString("en-IN")
+    const spreadExpr = spreadAmounts.length > 0
+      ? `(${spreadAmounts.map(fmt).join(" + ")})/3`
+      : null
+    const breakdownFor = (year: 1 | 2 | 3): string | null => {
+      if (year === 1) {
+        const parts: string[] = [fmt(year1Fee)]
+        for (const a of onetimeAmounts) parts.push(`− ${fmt(a)}`)
+        if (confirmedDeductionTotal > 0) parts.push(`− ${fmt(confirmedDeductionTotal)}`)
+        if (spreadExpr) parts.push(`− ${spreadExpr}`)
+        return parts.length > 1 ? parts.join(" ") : null
+      }
+      const yf = year === 2 ? year2Fee : year3Fee
+      if (!spreadExpr) return null
+      return `${fmt(yf)} − ${spreadExpr}`
+    }
 
     if (installmentType === "ANNUAL") {
       return [
-        { label: "Registration Fee", amount: registrationFee, due: "Today", year: 0 },
-        { label: "Year 1 — Growth", amount: y1Net, due: `Aug 7, ${batchYear}`, year: 1 },
-        { label: "Year 2 — Projects", amount: y2Net, due: `May 15, ${batchYear + 1}`, year: 2 },
-        { label: "Year 3 — Work", amount: y3Net, due: `May 15, ${batchYear + 2}`, year: 3 },
+        { label: "Registration Fee", amount: registrationFee, due: "Today", year: 0, breakdown: null as string | null },
+        { label: "Year 1 — Growth", amount: annual.y1, due: `Aug 7, ${batchYear}`, year: 1, breakdown: breakdownFor(1) },
+        { label: "Year 2 — Projects", amount: annual.y2, due: `May 15, ${batchYear + 1}`, year: 2, breakdown: breakdownFor(2) },
+        { label: "Year 3 — Work", amount: annual.y3, due: `May 15, ${batchYear + 2}`, year: 3, breakdown: breakdownFor(3) },
       ]
     }
     if (installmentType === "ONE_TIME") {
       return [
-        { label: "Registration Fee", amount: registrationFee, due: "Today", year: 0 },
-        { label: "Full Programme Fee (3 Years)", amount: Math.max(0, baseFee - totalWaiver - confirmedDeductionTotal), due: "Within 30 days", year: 1 },
+        { label: "Registration Fee", amount: registrationFee, due: "Today", year: 0, breakdown: null as string | null },
+        { label: "Full Programme Fee (3 Years)", amount: Math.max(0, baseFee - totalWaiver - confirmedDeductionTotal), due: "Within 30 days", year: 1, breakdown: null },
       ]
     }
-    return customInstallments.map((i) => ({ label: i.label, amount: i.amount, due: i.dueDate, year: i.year }))
-  }, [installmentType, confirmedOfferIds, confirmedScholarships, deductions, customInstallments,
+    return customInstallments.map((i) => ({ label: i.label, amount: i.amount, due: i.dueDate, year: i.year, breakdown: null as string | null }))
+  }, [installmentType, confirmedOfferIds, confirmedScholarships, customInstallments,
       year1Fee, year2Fee, year3Fee, registrationFee, baseFee, batchYear,
       offerSource, totalWaiver, confirmedDeductionTotal])
 
@@ -463,15 +496,20 @@ export function ConfirmEnrolmentDialog({
                             setInstallmentType(t)
                             // Pre-populate custom amounts with waiver-applied values when switching to CUSTOM
                             if (t === "CUSTOM") {
-                              const spreadW = confirmedScholarships.filter((s) => s.spreadAcrossYears).reduce((s, sc) => s + sc.amount, 0)
-                              const nonSpreadW = confirmedScholarships.filter((s) => !s.spreadAcrossYears).reduce((s, sc) => s + sc.amount, 0)
-                              const offerW = offerSource.filter((o) => confirmedOfferIds.includes(o.id)).reduce((s, o) => s + o.waiverAmount, 0)
-                              const spd = Math.round(spreadW / 3)
+                              const split = splitWaivers(
+                                offerSource.filter((o) => confirmedOfferIds.includes(o.id)).map((o) => ({ conditions: o.conditions, waiverAmount: o.waiverAmount })),
+                                confirmedScholarships.map((s) => ({ amount: s.amount, spreadAcrossYears: s.spreadAcrossYears })),
+                              )
+                              const annual = annualInstallmentAmounts(
+                                { y1: year1Fee, y2: year2Fee, y3: year3Fee },
+                                split,
+                                confirmedDeductionTotal,
+                              )
                               setCustomInstallments([
                                 { label: "Registration Fee", dueDate: today, amount: registrationFee, year: 0, yearOption: "0" },
-                                { label: "Year 1 — Growth", dueDate: y1Due, amount: Math.max(0, Math.round(year1Fee - spd - offerW - nonSpreadW - confirmedDeductionTotal)), year: 1, yearOption: "1" },
-                                { label: "Year 2 — Projects", dueDate: y2Due, amount: Math.max(0, Math.round(year2Fee - spd)), year: 2, yearOption: "2" },
-                                { label: "Year 3 — Work", dueDate: y3Due, amount: Math.max(0, Math.round(year3Fee - spd)), year: 3, yearOption: "3" },
+                                { label: "Year 1 — Growth", dueDate: y1Due, amount: annual.y1, year: 1, yearOption: "1" },
+                                { label: "Year 2 — Projects", dueDate: y2Due, amount: annual.y2, year: 2, yearOption: "2" },
+                                { label: "Year 3 — Work", dueDate: y3Due, amount: annual.y3, year: 3, yearOption: "3" },
                               ])
                             }
                           }}
@@ -529,9 +567,14 @@ export function ConfirmEnrolmentDialog({
                       {installmentType !== "CUSTOM" && (
                         <div className="rounded-lg bg-slate-50 border border-slate-200 divide-y divide-slate-100">
                           {schedule.map((row, i) => (
-                            <div key={i} className="flex justify-between px-3 py-2 text-sm">
-                              <span className="text-slate-600">{row.label}</span>
-                              <span className="font-medium">{formatINR(row.amount)}</span>
+                            <div key={i} className="flex justify-between items-start px-3 py-2 text-sm gap-3">
+                              <div className="min-w-0">
+                                <p className="text-slate-600">{row.label}</p>
+                                {row.breakdown && (
+                                  <p className="text-[10px] text-slate-400 font-mono mt-0.5">{row.breakdown}</p>
+                                )}
+                              </div>
+                              <span className="font-medium whitespace-nowrap">{formatINR(row.amount)}</span>
                             </div>
                           ))}
                           <div className="flex justify-between px-3 py-2 text-sm font-bold bg-slate-100">
