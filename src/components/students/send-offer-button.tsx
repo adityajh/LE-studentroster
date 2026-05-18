@@ -38,14 +38,6 @@ export function SendOfferButton({
     }
   }
 
-  if (sent) {
-    return (
-      <div className="flex items-center gap-1.5 h-9 px-4 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-700 text-sm font-semibold">
-        <Check className="h-4 w-4" /> Offer email sent
-      </div>
-    )
-  }
-
   return (
     <div className="flex items-center gap-2">
       <a
@@ -58,6 +50,11 @@ export function SendOfferButton({
         Preview PDF
       </a>
 
+      {sent ? (
+        <div className="flex items-center gap-1.5 h-9 px-4 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-700 text-sm font-semibold">
+          <Check className="h-4 w-4" /> Offer email sent
+        </div>
+      ) : (
       <div className="relative">
         {showConfirm && (
           <div className="absolute right-0 top-full mt-1 z-10 bg-white border border-slate-200 rounded-xl shadow-lg p-4 w-64 space-y-3">
@@ -89,6 +86,7 @@ export function SendOfferButton({
           {alreadySent ? "Resend Offer" : "Send Offer Email"}
         </button>
       </div>
+      )}
     </div>
   )
 }
