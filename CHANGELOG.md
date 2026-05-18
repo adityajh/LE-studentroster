@@ -4,6 +4,28 @@ All notable changes to the LE Student Roster system are documented here.
 
 ---
 
+## [1.16.4] — 2026-05-18
+
+### Offer letter PDF: yellow box now lists all conditional offers (7-Day, Early Bird, Full 3-Year)
+
+The yellow "Conditional Offers" box on page 2 of the offer letter PDF was previously filled by `student.offers.filter(o => o.deadline)` — which silently dropped:
+- The 7-Day offer (no `deadline` field in the DB; the 7-day window is per-student, computed from offer date).
+- The Full 3-Year Payment offer (no deadline; conditional on payment plan).
+- Any conditional batch offer the student hadn't yet "confirmed" but should still see.
+
+Now the box is built from the **batch's** offer catalogue, filtered to types `EARLY_BIRD`, `ACCEPTANCE_7DAY`, `FULL_PAYMENT`, `FIRST_N_REGISTRATIONS`. For each:
+- `EARLY_BIRD` / explicit-deadline offers → show their stored deadline (e.g. "by 30 May 2026").
+- `ACCEPTANCE_7DAY` → deadline shown as the student's `offerExpiresAt` (offer date + 7 days).
+- `FULL_PAYMENT` without a deadline → shown with condition text "pay full 3-year fee upfront".
+- `FIRST_N_REGISTRATIONS` → "limited seats".
+
+#### What changed
+- [src/lib/offer-letter-generator.tsx](src/lib/offer-letter-generator.tsx) — added `conditionalOffers` field to `OfferLetterData`; renderer prefers it when provided, falls back to the legacy `offers.filter(has deadline)` split otherwise so existing callers don't break.
+- [src/lib/offer-letter-data.ts](src/lib/offer-letter-data.ts) — fetches `batch.feeSchedule.offers`, builds the conditional list with the right deadline / conditionText per type, populates `conditionalOffers`.
+- "Confirmed Benefits" section deduplicates against the conditional list by name so an offer never shows in both places.
+
+---
+
 ## [1.16.3] — 2026-05-18
 
 ### Confirm Enrolment: One-Time plan auto-applies FULL_PAYMENT offers in addition to Step-1 choices

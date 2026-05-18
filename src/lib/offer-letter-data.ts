@@ -29,7 +29,7 @@ export async function buildOfferLetterDataForStudent(
     where: { id: studentId },
     include: {
       program: true,
-      batch: true,
+      batch: { include: { feeSchedule: { include: { offers: true } } } },
       financial: true,
       offers: { include: { offer: true } },
       scholarships: { include: { scholarship: true } },
@@ -60,6 +60,29 @@ export async function buildOfferLetterDataForStudent(
     ? Number(student.financial.registrationFeeOverride)
     : Number(student.program.registrationFee)
 
+  // Build the explicit "Conditional Offers" list shown in the yellow box on
+  // the appendix page. This is sourced from the batch's full offer catalogue
+  // (not just what the student has confirmed) so that every conditional
+  // discount available — 7-Day, Early Bird, Full 3-Year — is surfaced to
+  // the student regardless of which ones we've pre-applied.
+  const CONDITIONAL_TYPES = new Set(["EARLY_BIRD", "ACCEPTANCE_7DAY", "FULL_PAYMENT", "FIRST_N_REGISTRATIONS"])
+  const batchOffers = student.batch.feeSchedule?.offers ?? []
+  const conditionalOffers = batchOffers
+    .filter((o) => CONDITIONAL_TYPES.has(o.type))
+    .map((o) => {
+      let deadline: Date | null | undefined = o.deadline
+      let conditionText: string | undefined
+      if (o.type === "ACCEPTANCE_7DAY") {
+        // 7-Day offer's deadline is per-student: 7 days from offer date.
+        deadline = offerExpiresAt
+      } else if (o.type === "FULL_PAYMENT" && !o.deadline) {
+        conditionText = "pay full 3-year fee upfront"
+      } else if (o.type === "FIRST_N_REGISTRATIONS") {
+        conditionText = "limited seats"
+      }
+      return { name: o.name, amount: Number(o.waiverAmount), deadline, conditionText }
+    })
+
   const data: OfferLetterData = {
     studentName: student.name,
     programName: student.program.name,
@@ -76,6 +99,7 @@ export async function buildOfferLetterDataForStudent(
       deadline: o.offer.deadline,
     })),
     scholarships: student.scholarships.map((sc) => ({ name: sc.scholarship.name, amount: Number(sc.amount) })),
+    conditionalOffers,
     netFee: Number(student.financial?.netFee ?? 0),
     bankDetails: settings["BANK_DETAILS"] || DEFAULT_BANK_DETAILS,
     cashFreeLink: settings["CASH_FREE_LINK"] || undefined,

@@ -13,6 +13,12 @@ export type OfferLetterData = {
   year3Fee: number
   offers: { name: string; amount: number; deadline?: Date | null }[]
   scholarships: { name: string; amount: number }[]
+  /** Optional explicit list for the yellow "Conditional Offers" box. When
+   *  provided, used instead of the implicit `offers.filter(has deadline)`
+   *  split. Lets the caller surface batch-level conditional offers that
+   *  the student hasn't confirmed yet (e.g. "Full 3-Year Payment"), and
+   *  attach a condition string for offers that aren't time-bound. */
+  conditionalOffers?: { name: string; amount: number; deadline?: Date | null; conditionText?: string }[]
   netFee: number     // baseFee - waivers, excludes registration
   // Appendix
   bankDetails: string
@@ -442,8 +448,18 @@ The programme emphasises applied learning through real projects, mentored appren
 
   const bodyText = data.bodyText || defaultBody
 
-  const permanentOffers = data.offers.filter((o) => !o.deadline)
-  const conditionalOffers = data.offers.filter((o) => !!o.deadline)
+  // Conditional offers: if the caller has explicitly built the list (so it
+  // can include batch offers the student hasn't yet "confirmed" and supply
+  // conditionText for non-time-bound conditions), use that. Otherwise fall
+  // back to the legacy implicit split by presence of a deadline.
+  const conditionalOffers = data.conditionalOffers && data.conditionalOffers.length > 0
+    ? data.conditionalOffers
+    : data.offers.filter((o) => !!o.deadline).map((o) => ({ name: o.name, amount: o.amount, deadline: o.deadline, conditionText: undefined as string | undefined }))
+
+  // Permanent (Confirmed Benefits) section: any confirmed offer that isn't
+  // already represented in the conditional list, and has no deadline.
+  const conditionalNames = new Set(conditionalOffers.map((o) => o.name))
+  const permanentOffers = data.offers.filter((o) => !conditionalNames.has(o.name) && !o.deadline)
 
   const programTotal = data.registrationFee + data.baseFee
   const netTotal = data.registrationFee + data.netFee
@@ -580,7 +596,7 @@ The programme emphasises applied learning through real projects, mentored appren
         {conditionalOffers.length > 0 && (
           <View style={styles.conditionalBox}>
             <Text style={styles.conditionalTitle}>
-              Conditional Offers (applied on confirmation before deadline)
+              Conditional Offers (applied when the condition is met)
             </Text>
             {conditionalOffers.map((o, i) => (
               <View key={i} style={styles.conditionalRow}>
@@ -589,12 +605,14 @@ The programme emphasises applied learning through real projects, mentored appren
                   - {formatINR(o.amount)}
                   {o.deadline
                     ? `  (by ${new Date(o.deadline).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })})`
+                    : o.conditionText
+                    ? `  (${o.conditionText})`
                     : ""}
                 </Text>
               </View>
             ))}
             <Text style={styles.conditionalNote}>
-              Note: The above offer(s) will be applied to your programme fee upon confirmation of admission and payment of the registration fee, provided the deadline has not passed.
+              Note: Each offer above is additive and is applied when the corresponding condition is met (paid by deadline, paid within 7 days of offer, or paying the full 3-year fee upfront).
             </Text>
           </View>
         )}
