@@ -4,6 +4,19 @@ All notable changes to the LE Student Roster system are documented here.
 
 ---
 
+## [1.16.3] — 2026-05-18
+
+### Confirm Enrolment: One-Time plan applies only FULL_PAYMENT offers + scholarships
+
+Picking **One-Time (full)** as the payment plan now applies the FULL_PAYMENT-type offer(s) plus the confirmed scholarships (and deductions). Offers of other types (Early Bird, 7-Day Acceptance, Referral, etc.) are intentionally ignored for this plan because they don't make sense paired with a single upfront payment.
+
+#### What changed
+- Dialog preview now computes Year-1 amount for ONE_TIME as `baseFee − (sum of FULL_PAYMENT offer waivers) − (sum of scholarships) − deductions`, with the breakdown shown in small monospace text under the row.
+- Submit payload sends only the FULL_PAYMENT offer IDs (not the offers checked in Step 1) when `installmentType === "ONE_TIME"`, so the backend's `totalWaiver` matches the dialog preview.
+- Italic helper line under the plan selector explains the auto-apply behaviour so the admin doesn't have to read code to understand why Step-1 choices are being ignored.
+
+---
+
 ## [1.16.2] — 2026-05-18
 
 ### Preview offer-letter PDF before sending

@@ -179,9 +179,24 @@ export function ConfirmEnrolmentDialog({
       ]
     }
     if (installmentType === "ONE_TIME") {
+      // One-Time plan: ignore the offers checked in Step 1. The only offers
+      // that apply for a single upfront payment are the FULL_PAYMENT-type
+      // ones (the "Pay in full" / "Full 3-Year" discount). Scholarships and
+      // deductions still apply as confirmed.
+      const fullPaymentOffers = offerSource.filter((o) => o.type === "FULL_PAYMENT")
+      const fullPaymentWaiver = fullPaymentOffers.reduce((s, o) => s + o.waiverAmount, 0)
+      const schoTotal = confirmedScholarships.reduce((s, sc) => s + sc.amount, 0)
+      const oneTimeNet = Math.max(0, baseFee - fullPaymentWaiver - schoTotal - confirmedDeductionTotal)
+
+      const oneTimeParts: string[] = [fmt(baseFee)]
+      for (const o of fullPaymentOffers) if (o.waiverAmount > 0) oneTimeParts.push(`− ${fmt(o.waiverAmount)}`)
+      for (const sc of confirmedScholarships) if (sc.amount > 0) oneTimeParts.push(`− ${fmt(sc.amount)}`)
+      if (confirmedDeductionTotal > 0) oneTimeParts.push(`− ${fmt(confirmedDeductionTotal)}`)
+      const oneTimeBreakdown = oneTimeParts.length > 1 ? oneTimeParts.join(" ") : null
+
       return [
         { label: "Registration Fee", amount: registrationFee, due: "Today", year: 0, breakdown: null as string | null },
-        { label: "Full Programme Fee (3 Years)", amount: Math.max(0, baseFee - totalWaiver - confirmedDeductionTotal), due: "Within 30 days", year: 1, breakdown: null },
+        { label: "Full Programme Fee (3 Years)", amount: oneTimeNet, due: "Within 30 days", year: 1, breakdown: oneTimeBreakdown },
       ]
     }
     return customInstallments.map((i) => ({ label: i.label, amount: i.amount, due: i.dueDate, year: i.year, breakdown: null as string | null }))
@@ -236,12 +251,19 @@ export function ConfirmEnrolmentDialog({
     setLoading(true)
     setError("")
     try {
+      // For ONE_TIME plan, apply only the FULL_PAYMENT-type offers (so the
+      // backend's totalWaiver matches what the dialog previewed). Other
+      // offer types don't make sense paired with a single upfront payment.
+      const offerIdsToSubmit = installmentType === "ONE_TIME"
+        ? offerSource.filter((o) => o.type === "FULL_PAYMENT").map((o) => o.id)
+        : confirmedOfferIds
+
       const res = await fetch(`/api/students/${studentId}/confirm-enrolment`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           // Benefits confirmed
-          offerIds: confirmedOfferIds,
+          offerIds: offerIdsToSubmit,
           scholarships: confirmedScholarships.map((s) => ({ scholarshipId: s.scholarshipId, amount: s.amount })),
           deductions: deductions.filter((d) => d.description && d.amount > 0),
           // Payment plan
@@ -562,6 +584,12 @@ export function ConfirmEnrolmentDialog({
                             </span>
                           </div>
                         </div>
+                      )}
+
+                      {installmentType === "ONE_TIME" && (
+                        <p className="text-xs text-slate-500 italic">
+                          Only the FULL_PAYMENT-type offer(s) and confirmed scholarships apply for a one-time payment. Other offers checked in Step 1 are ignored for this plan.
+                        </p>
                       )}
 
                       {installmentType !== "CUSTOM" && (
