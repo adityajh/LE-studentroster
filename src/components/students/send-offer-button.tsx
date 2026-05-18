@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import { useRouter } from "next/navigation"
-import { Loader2, Send, Check } from "lucide-react"
+import { Loader2, Send, Check, FileText } from "lucide-react"
 
 export function SendOfferButton({
   studentId,
@@ -47,36 +47,48 @@ export function SendOfferButton({
   }
 
   return (
-    <div className="relative">
-      {showConfirm && (
-        <div className="absolute right-0 top-full mt-1 z-10 bg-white border border-slate-200 rounded-xl shadow-lg p-4 w-64 space-y-3">
-          <p className="text-sm font-semibold text-slate-800">Send Offer Email</p>
-          <p className="text-xs text-slate-500">
-            Sends the offer letter PDF (with fee breakdown appendix) to the student and parent.
-          </p>
-          {error && <p className="text-xs text-rose-600">{error}</p>}
-          <div className="flex gap-2">
-            <button type="button" onClick={() => setShowConfirm(false)}
-              className="flex-1 py-1.5 border border-slate-200 text-sm text-slate-600 rounded-lg hover:bg-slate-50">
-              Cancel
-            </button>
-            <button type="button" onClick={handleSend} disabled={loading}
-              className="flex-1 py-1.5 bg-violet-600 text-white text-sm font-semibold rounded-lg hover:bg-violet-700 disabled:opacity-60 flex items-center justify-center gap-1">
-              {loading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
-              Send
-            </button>
-          </div>
-        </div>
-      )}
-
-      <button
-        type="button"
-        onClick={() => setShowConfirm(!showConfirm)}
-        className="flex items-center gap-1.5 h-9 px-4 rounded-xl border-2 border-violet-200 text-violet-700 text-sm font-bold hover:bg-violet-50 transition-all shrink-0"
+    <div className="flex items-center gap-2">
+      <a
+        href={`/api/students/${studentId}/offer-letter`}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="flex items-center gap-1.5 h-9 px-4 rounded-xl border-2 border-slate-200 text-slate-600 text-sm font-bold hover:border-violet-300 hover:text-violet-700 hover:bg-violet-50 transition-all shrink-0"
       >
-        <Send className="h-3.5 w-3.5" />
-        {alreadySent ? "Resend Offer" : "Send Offer Email"}
-      </button>
+        <FileText className="h-3.5 w-3.5" />
+        Preview PDF
+      </a>
+
+      <div className="relative">
+        {showConfirm && (
+          <div className="absolute right-0 top-full mt-1 z-10 bg-white border border-slate-200 rounded-xl shadow-lg p-4 w-64 space-y-3">
+            <p className="text-sm font-semibold text-slate-800">Send Offer Email</p>
+            <p className="text-xs text-slate-500">
+              Sends the offer letter PDF (with fee breakdown appendix) to the student and parent.
+            </p>
+            {error && <p className="text-xs text-rose-600">{error}</p>}
+            <div className="flex gap-2">
+              <button type="button" onClick={() => setShowConfirm(false)}
+                className="flex-1 py-1.5 border border-slate-200 text-sm text-slate-600 rounded-lg hover:bg-slate-50">
+                Cancel
+              </button>
+              <button type="button" onClick={handleSend} disabled={loading}
+                className="flex-1 py-1.5 bg-violet-600 text-white text-sm font-semibold rounded-lg hover:bg-violet-700 disabled:opacity-60 flex items-center justify-center gap-1">
+                {loading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
+                Send
+              </button>
+            </div>
+          </div>
+        )}
+
+        <button
+          type="button"
+          onClick={() => setShowConfirm(!showConfirm)}
+          className="flex items-center gap-1.5 h-9 px-4 rounded-xl border-2 border-violet-200 text-violet-700 text-sm font-bold hover:bg-violet-50 transition-all shrink-0"
+        >
+          <Send className="h-3.5 w-3.5" />
+          {alreadySent ? "Resend Offer" : "Send Offer Email"}
+        </button>
+      </div>
     </div>
   )
 }

@@ -3,11 +3,10 @@ import { auth } from "@/auth"
 import { prisma } from "@/lib/prisma"
 import { renderToBuffer } from "@react-pdf/renderer"
 import { createElement } from "react"
-import { OfferLetterDocument, type OfferLetterData } from "@/lib/offer-letter-generator"
+import { OfferLetterDocument } from "@/lib/offer-letter-generator"
 import { sendOfferEmail } from "@/lib/mail"
 import { getSettings } from "@/app/actions/settings"
-import fs from "fs"
-import path from "path"
+import { buildOfferLetterDataForStudent } from "@/lib/offer-letter-data"
 
 const DEFAULT_OFFER_EMAIL_BODY = `Hi {{studentName}},
 
@@ -43,79 +42,14 @@ export async function POST(
 
   const { id } = await params
 
-  const student = await prisma.student.findUnique({
-    where: { id },
-    include: {
-      program: true,
-      batch: true,
-      financial: true,
-      offers: { include: { offer: true } },
-      scholarships: { include: { scholarship: true } },
-      deductions: true,
-      installments: { orderBy: { dueDate: "asc" } },
-    },
-  })
-
-  if (!student) return NextResponse.json({ error: "Student not found" }, { status: 404 })
+  const { data: offerLetterData, student } = await buildOfferLetterDataForStudent(id)
   if (!student.email) return NextResponse.json({ error: "Student has no email address" }, { status: 400 })
   if (student.status !== "OFFERED") return NextResponse.json({ error: "Student is not in OFFERED status" }, { status: 400 })
 
   const settings = await getSettings([
     "OFFER_EMAIL_BODY",
-    "OFFER_LETTER_BODY",
     "BANK_DETAILS",
-    "CASH_FREE_LINK",
-    "PROPOSAL_TERMS",
-    "PROGRAM_EXPECTATIONS",
   ])
-
-  // Load logo as base64
-  let logoSrc: string | undefined
-  try {
-    const logoBuf = fs.readFileSync(path.join(process.cwd(), "public", "le-logo-light.png"))
-    logoSrc = `data:image/png;base64,${logoBuf.toString("base64")}`
-  } catch {
-    // logo missing — PDF will fall back to text
-  }
-
-  const offerExpiresAt = student.offerExpiresAt ?? new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
-
-  // Registration fee: use override if set, else programme default
-  const regFee = student.financial?.registrationFeeOverride != null
-    ? Number(student.financial.registrationFeeOverride)
-    : Number(student.program.registrationFee)
-
-  // Build offer letter PDF data (appendix included in same PDF)
-  const offerLetterData: OfferLetterData = {
-    studentName: student.name,
-    programName: student.program.name,
-    batchYear: student.batch.year,
-    offerExpiresAt,
-    registrationFee: regFee,
-    baseFee: Number(student.financial?.baseFee ?? student.program.totalFee),
-    year1Fee: Number(student.program.year1Fee),
-    year2Fee: Number(student.program.year2Fee),
-    year3Fee: Number(student.program.year3Fee),
-    offers: student.offers.map((o) => ({
-      name: o.offer.name,
-      amount: Number(o.waiverAmount),
-      deadline: o.offer.deadline,
-    })),
-    scholarships: student.scholarships.map((sc) => ({ name: sc.scholarship.name, amount: Number(sc.amount) })),
-    netFee: Number(student.financial?.netFee ?? 0),
-    bankDetails: settings["BANK_DETAILS"] || DEFAULT_BANK_DETAILS,
-    cashFreeLink: settings["CASH_FREE_LINK"] || undefined,
-    bodyText: settings["OFFER_LETTER_BODY"]
-      ? settings["OFFER_LETTER_BODY"]
-          .replace(/\{\{studentName\}\}/g, student.name)
-          .replace(/\{\{programName\}\}/g, student.program.name)
-          .replace(/\{\{batchYear\}\}/g, String(student.batch.year))
-          .replace(/\{\{offerExpiryDate\}\}/g, offerExpiresAt.toLocaleDateString("en-IN", { day: "numeric", month: "long", year: "numeric" }))
-      : undefined,
-    terms: student.financial?.customTerms || settings["PROPOSAL_TERMS"] || undefined,
-    programExpectations: settings["PROGRAM_EXPECTATIONS"] || undefined,
-    logoSrc,
-  }
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const offerLetterPdf = await renderToBuffer(createElement(OfferLetterDocument, { data: offerLetterData }) as any)
@@ -126,9 +60,9 @@ export async function POST(
   const result = await sendOfferEmail({
     to: recipients,
     studentName: student.name,
-    programName: student.program.name,
-    batchYear: student.batch.year,
-    offerExpiryDate: offerExpiresAt,
+    programName: offerLetterData.programName,
+    batchYear: offerLetterData.batchYear,
+    offerExpiryDate: offerLetterData.offerExpiresAt,
     bodyText: settings["OFFER_EMAIL_BODY"] || DEFAULT_OFFER_EMAIL_BODY,
     bankDetails: settings["BANK_DETAILS"] || DEFAULT_BANK_DETAILS,
     offerLetterPdf: Buffer.from(offerLetterPdf),

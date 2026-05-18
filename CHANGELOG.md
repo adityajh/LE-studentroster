@@ -4,6 +4,19 @@ All notable changes to the LE Student Roster system are documented here.
 
 ---
 
+## [1.16.2] — 2026-05-18
+
+### Preview offer-letter PDF before sending
+
+Added a **Preview PDF** button next to **Send Offer Email** on the student detail page (visible whenever the student is in `OFFERED` status). Clicking it opens the exact PDF that the student would receive — in a new tab, inline, with no email sent.
+
+#### What changed
+- New endpoint `GET /api/students/[id]/offer-letter` returns the rendered offer-letter PDF inline (`Content-Disposition: inline; filename="LE-OfferLetter-<student>.pdf"`).
+- Extracted the offer-letter data-builder out of [send-offer/route.ts](src/app/api/students/[id]/send-offer/route.ts) into [src/lib/offer-letter-data.ts](src/lib/offer-letter-data.ts), so the preview endpoint and the send-offer endpoint produce byte-identical PDF bodies. Any future change to the PDF flows through both paths.
+- `SendOfferButton` now renders **Preview PDF** + **Send Offer Email** side-by-side. The preview button is a plain `<a target="_blank">` link (no client state, no extra round-trip beyond the PDF render).
+
+---
+
 ## [1.16.1] — 2026-05-18
 
 ### Fix: Confirm Enrolment dialog preview ignored spread-flag on offers
