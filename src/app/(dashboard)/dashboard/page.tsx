@@ -98,6 +98,39 @@ async function getDashboardData() {
   const totalCollected = paymentAgg._sum.amount?.toNumber() ?? 0
   const collectionRate = totalNetFee > 0 ? Math.round((totalCollected / totalNetFee) * 100) : 0
 
+  // FIRST_N offer progress — across all active batches.
+  // For each FIRST_N offer with a firstNLimit set, count how many students
+  // (across all programs in that batch) currently hold the offer.
+  const firstNOffers = await prisma.offer.findMany({
+    where: {
+      type: "FIRST_N",
+      firstNLimit: { not: null },
+    },
+    select: {
+      id: true,
+      name: true,
+      firstNLimit: true,
+      waiverAmount: true,
+      feeSchedule: { select: { batch: { select: { year: true } } } },
+      _count: {
+        select: {
+          studentOffers: {
+            where: { student: { status: { not: "WITHDRAWN" } } },
+          },
+        },
+      },
+    },
+    orderBy: [{ feeSchedule: { batch: { year: "desc" } } }, { name: "asc" }],
+  })
+  const firstNProgress = firstNOffers.map((o) => ({
+    id: o.id,
+    name: o.name,
+    batchYear: o.feeSchedule.batch.year,
+    limit: o.firstNLimit!,
+    taken: o._count.studentOffers,
+    waiverAmount: o.waiverAmount.toNumber(),
+  }))
+
   return {
     totalStudents,
     pendingOffers,
@@ -111,6 +144,7 @@ async function getDashboardData() {
     totalCollected,
     totalNetFee,
     recentPayments,
+    firstNProgress,
   }
 }
 
@@ -320,6 +354,52 @@ export default async function DashboardPage() {
           )}
         </SoftCard>
       </div>
+
+      {/* First-N offer progress — only render if there's at least one. */}
+      {d.firstNProgress.length > 0 && (
+        <SoftCard className="p-5">
+          <div className="flex items-start justify-between gap-3 mb-4">
+            <div>
+              <Eyebrow>Offers</Eyebrow>
+              <h2 className="text-base font-extrabold text-slate-900 mt-0.5 font-headline">First-N Offer Progress</h2>
+              <p className="text-xs text-slate-500 mt-0.5">Awarded automatically to the first N students in the batch to pay their Year 1 fee.</p>
+            </div>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {d.firstNProgress.map((o) => {
+              const remaining = Math.max(0, o.limit - o.taken)
+              const pct = o.limit > 0 ? Math.min(100, Math.round((o.taken / o.limit) * 100)) : 0
+              const full = remaining === 0
+              return (
+                <div key={o.id} className="border border-slate-200/60 rounded-xl p-3 bg-white">
+                  <div className="flex items-center justify-between gap-3 mb-1.5">
+                    <p className="text-sm font-extrabold text-slate-800 truncate">{o.name}</p>
+                    <span className="text-[10px] uppercase tracking-wider font-bold text-slate-500 shrink-0">LE{o.batchYear}</span>
+                  </div>
+                  <div className="flex items-end justify-between gap-3 mb-2">
+                    <p className="text-2xl font-black text-slate-900 leading-none">
+                      {o.taken}<span className="text-slate-300 text-lg font-bold"> / {o.limit}</span>
+                    </p>
+                    <span className={cn(
+                      "text-[10px] uppercase tracking-wider font-bold px-2 py-0.5 rounded border",
+                      full ? "bg-rose-50 text-rose-600 border-rose-200" : "bg-emerald-50 text-emerald-700 border-emerald-200",
+                    )}>
+                      {full ? "Filled" : `${remaining} left`}
+                    </span>
+                  </div>
+                  <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
+                    <div
+                      className={cn("h-full transition-all", full ? "bg-rose-400" : "bg-emerald-500")}
+                      style={{ width: `${pct}%` }}
+                    />
+                  </div>
+                  <p className="text-[10px] text-slate-400 mt-1.5">Waiver: {formatINR(o.waiverAmount)} each</p>
+                </div>
+              )
+            })}
+          </div>
+        </SoftCard>
+      )}
     </div>
   )
 }

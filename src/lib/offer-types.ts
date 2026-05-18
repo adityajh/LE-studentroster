@@ -67,3 +67,35 @@ export function deadlineApplicability(type: OfferTypeValue | string): "required"
   if (type === "FIRST_N") return "optional"
   return "none"
 }
+
+/** Generate the default human-readable description for an offer based on
+ *  its type / deadline / firstNLimit. Used to pre-populate the description
+ *  field in the offer form, and as the fallback display string when an
+ *  admin hasn't entered one. */
+export function defaultOfferDescription(opts: {
+  type: OfferTypeValue | string
+  deadline?: Date | string | null
+  firstNLimit?: number | null
+}): string {
+  const { type, deadline, firstNLimit } = opts
+  const fmtDate = (d: Date | string) =>
+    new Date(d).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })
+
+  switch (type) {
+    case "DEADLINE":
+      return deadline ? `Pay by ${fmtDate(deadline)}` : "Pay by the specified date"
+    case "ROLLING_DEADLINE":
+      return "Pay within 7 days of receiving the offer letter"
+    case "FIRST_N":
+      return firstNLimit && firstNLimit > 0
+        ? `First ${firstNLimit} students to pay Year 1 fee`
+        : "First N students to pay Year 1 fee"
+    case "FULL_PAYMENT":
+      return "Pay full 3-year fee upfront"
+    case "REFERRAL":
+      return "If you refer another student who enrols"
+    case "REGULAR":
+    default:
+      return ""
+  }
+}

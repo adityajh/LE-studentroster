@@ -14,7 +14,7 @@
 import { prisma } from "@/lib/prisma"
 import { getSettings } from "@/app/actions/settings"
 import type { OfferLetterData } from "@/lib/offer-letter-generator"
-import { CONDITIONAL_OFFER_TYPES } from "@/lib/offer-types"
+import { CONDITIONAL_OFFER_TYPES, defaultOfferDescription } from "@/lib/offer-types"
 import fs from "fs"
 import path from "path"
 
@@ -71,19 +71,16 @@ export async function buildOfferLetterDataForStudent(
   const conditionalOffers = batchOffers
     .filter((o) => CONDITIONAL_OFFER_TYPES.has(o.type as never))
     .map((o) => {
-      let deadline: Date | null | undefined = o.deadline
-      let conditionText: string | undefined
-      if (o.type === "ROLLING_DEADLINE") {
-        // Per-student deadline: offer date + 7 days (current rule).
-        deadline = offerExpiresAt
-      } else if (o.type === "FULL_PAYMENT" && !o.deadline) {
-        conditionText = "pay full 3-year fee upfront"
-      } else if (o.type === "FIRST_N" && !o.deadline) {
-        conditionText = "limited seats"
-      } else if (o.type === "REFERRAL" && !o.deadline) {
-        conditionText = "if you refer another student who enrols"
-      }
-      return { name: o.name, amount: Number(o.waiverAmount), deadline, conditionText }
+      // Rolling-deadline offers carry a per-student deadline (offer date +
+      // 7 days). For other types we use the stored deadline if any.
+      const deadline: Date | null | undefined =
+        o.type === "ROLLING_DEADLINE" ? offerExpiresAt : o.deadline
+      // Description preference: admin-edited description → auto-generated
+      // fallback derived from type/deadline/firstNLimit.
+      const conditionText = (o.description && o.description.trim())
+        ? o.description.trim()
+        : defaultOfferDescription({ type: o.type, deadline, firstNLimit: o.firstNLimit })
+      return { name: o.name, amount: Number(o.waiverAmount), deadline, conditionText: conditionText || undefined }
     })
     // Drop offers whose deadline has already passed — no point showing
     // "Deadline 30 May 2026" to a student getting the offer on 1 June.

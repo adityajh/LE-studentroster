@@ -97,6 +97,8 @@ export async function POST(req: NextRequest) {
     // Upsert offers
     for (const o of offers) {
       const offerConditions = { spreadAcrossYears: o.spreadAcrossYears ?? true }
+      const desc = o.description?.trim() || null
+      const firstN = o.firstNLimit ? parseInt(o.firstNLimit, 10) : null
       if (o.id.startsWith("new-")) {
         await tx.offer.create({
           data: {
@@ -106,6 +108,8 @@ export async function POST(req: NextRequest) {
             waiverAmount: parseFloat(o.waiverAmount || "0"),
             deadline: o.deadline ? new Date(o.deadline) : null,
             conditions: offerConditions,
+            description: desc,
+            firstNLimit: firstN,
           },
         })
       } else {
@@ -117,6 +121,8 @@ export async function POST(req: NextRequest) {
             waiverAmount: parseFloat(o.waiverAmount || "0"),
             deadline: o.deadline ? new Date(o.deadline) : null,
             conditions: offerConditions,
+            description: desc,
+            firstNLimit: firstN,
           },
         })
       }
@@ -124,6 +130,7 @@ export async function POST(req: NextRequest) {
 
     // Upsert scholarships
     for (const s of scholarships) {
+      const desc = s.description?.trim() || null
       if (s.id.startsWith("new-")) {
         await tx.scholarship.create({
           data: {
@@ -133,6 +140,7 @@ export async function POST(req: NextRequest) {
             minAmount: parseFloat(s.minAmount || "0"),
             maxAmount: parseFloat(s.maxAmount || "0"),
             spreadAcrossYears: s.spreadAcrossYears ?? true,
+            description: desc,
           },
         })
       } else {
@@ -143,6 +151,7 @@ export async function POST(req: NextRequest) {
             minAmount: parseFloat(s.minAmount || "0"),
             maxAmount: parseFloat(s.maxAmount || "0"),
             spreadAcrossYears: s.spreadAcrossYears ?? true,
+            description: desc,
           },
         })
       }

@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Loader2, Save, Trash2 } from "lucide-react"
-import { OFFER_TYPES, OFFER_TYPE_LABELS, deadlineApplicability } from "@/lib/offer-types"
+import { OFFER_TYPES, OFFER_TYPE_LABELS, deadlineApplicability, defaultOfferDescription } from "@/lib/offer-types"
 import { cn } from "@/lib/utils"
 
 interface Program {
@@ -30,6 +30,8 @@ interface Offer {
   waiverAmount: { toString(): string }
   deadline: Date | null
   conditions: unknown
+  description: string | null
+  firstNLimit: number | null
 }
 
 interface Scholarship {
@@ -38,6 +40,7 @@ interface Scholarship {
   category: string
   minAmount: { toString(): string }
   maxAmount: { toString(): string }
+  description: string | null
 }
 
 interface Batch {
@@ -75,6 +78,8 @@ export function FeeScheduleEditForm({ batch }: { batch: Batch }) {
       waiverAmount: o.waiverAmount.toString(),
       deadline: o.deadline ? new Date(o.deadline).toISOString().split("T")[0] : "",
       spreadAcrossYears: (o.conditions as { spreadAcrossYears?: boolean } | null)?.spreadAcrossYears ?? true,
+      description: o.description ?? "",
+      firstNLimit: o.firstNLimit?.toString() ?? "",
     }))
   )
 
@@ -86,6 +91,7 @@ export function FeeScheduleEditForm({ batch }: { batch: Batch }) {
       minAmount: s.minAmount.toString(),
       maxAmount: s.maxAmount.toString(),
       spreadAcrossYears: (s as { spreadAcrossYears?: boolean }).spreadAcrossYears ?? true,
+      description: s.description ?? "",
     }))
   )
 
@@ -133,7 +139,7 @@ export function FeeScheduleEditForm({ batch }: { batch: Batch }) {
   const addOffer = () =>
     setOffers((prev) => [
       ...prev,
-      { id: `new-${Date.now()}`, name: "", type: "FULL_PAYMENT", waiverAmount: "0", deadline: "", spreadAcrossYears: true },
+      { id: `new-${Date.now()}`, name: "", type: "FULL_PAYMENT", waiverAmount: "0", deadline: "", spreadAcrossYears: true, description: "", firstNLimit: "" },
     ])
 
   // ── Scholarship handlers ──────────────────────────────────────────────────
@@ -148,7 +154,7 @@ export function FeeScheduleEditForm({ batch }: { batch: Batch }) {
   const addScholarship = (category: string) =>
     setScholarships((prev) => [
       ...prev,
-      { id: `new-${Date.now()}-${category}`, name: "", category, minAmount: "0", maxAmount: "0", spreadAcrossYears: true },
+      { id: `new-${Date.now()}-${category}`, name: "", category, minAmount: "0", maxAmount: "0", spreadAcrossYears: true, description: "" },
     ])
 
   // ── Save ──────────────────────────────────────────────────────────────────
@@ -325,6 +331,28 @@ export function FeeScheduleEditForm({ batch }: { batch: Batch }) {
                     </div>
                   )
                 })()}
+                {offer.type === "FIRST_N" && (
+                  <div className="space-y-1">
+                    <Label className="text-xs">First N — number of seats</Label>
+                    <Input
+                      type="number"
+                      min="1"
+                      placeholder="e.g. 5"
+                      value={offer.firstNLimit}
+                      onChange={(e) => updateOffer(offer.id, "firstNLimit", e.target.value)}
+                    />
+                  </div>
+                )}
+                <div className="space-y-1 md:col-span-3">
+                  <Label className="text-xs">
+                    Description <span className="text-slate-400 font-normal">(one-line; shown in offer letter, dialog, and fee schedule)</span>
+                  </Label>
+                  <Input
+                    value={offer.description}
+                    placeholder={defaultOfferDescription({ type: offer.type, deadline: offer.deadline || null, firstNLimit: offer.firstNLimit ? Number(offer.firstNLimit) : null })}
+                    onChange={(e) => updateOffer(offer.id, "description", e.target.value)}
+                  />
+                </div>
                 <div className="md:col-span-2 flex items-center gap-2 pt-1">
                   <input
                     type="checkbox"
@@ -386,6 +414,16 @@ export function FeeScheduleEditForm({ batch }: { batch: Batch }) {
                           type="number"
                           value={s.maxAmount}
                           onChange={(e) => updateScholarship(s.id, "maxAmount", e.target.value)}
+                        />
+                      </div>
+                      <div className="space-y-1 md:col-span-3">
+                        <Label className="text-xs">
+                          Description <span className="text-slate-400 font-normal">(one-line; optional)</span>
+                        </Label>
+                        <Input
+                          value={s.description}
+                          placeholder="e.g. Awarded to students with national-level sports achievements"
+                          onChange={(e) => updateScholarship(s.id, "description", e.target.value)}
                         />
                       </div>
                       <div className="md:col-span-2 flex items-center gap-2 pt-1">

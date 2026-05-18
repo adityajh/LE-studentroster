@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation"
 import { Loader2, CheckCircle2, ChevronLeft, ChevronRight, Plus, Trash2 } from "lucide-react"
 import { formatINR } from "@/lib/fee-schedule"
 import { splitWaivers, annualInstallmentAmounts, isSpreadCondition } from "@/lib/fee-calc"
-import { AUTO_CHECK_OFFER_TYPES } from "@/lib/offer-types"
+import { AUTO_CHECK_OFFER_TYPES, defaultOfferDescription } from "@/lib/offer-types"
 import { cn } from "@/lib/utils"
 
 const PAYMENT_MODES = ["UPI", "NEFT", "RTGS", "CHEQUE", "CASH", "OTHER"] as const
@@ -20,8 +20,8 @@ const YEAR_OPTIONS = [
 
 type OfferedOffer = { id: string; offerId: string; name: string; waiverAmount: number }
 type OfferedScholarship = { id: string; scholarshipId: string; name: string; category: string; amount: number; spreadAcrossYears: boolean }
-type BatchOffer = { id: string; name: string; type?: string; waiverAmount: number; deadline: string | null; conditions: unknown }
-type BatchScholarship = { id: string; name: string; category: string; minAmount: number; maxAmount: number; spreadAcrossYears: boolean }
+type BatchOffer = { id: string; name: string; type?: string; waiverAmount: number; deadline: string | null; conditions: unknown; description?: string | null; firstNLimit?: number | null }
+type BatchScholarship = { id: string; name: string; category: string; minAmount: number; maxAmount: number; spreadAcrossYears: boolean; description?: string | null }
 type CustomInstallment = { label: string; dueDate: string; amount: number; year: number; yearOption: string }
 type Deduction = { description: string; amount: number }
 
@@ -385,6 +385,7 @@ export function ConfirmEnrolmentDialog({
                                   const deadlineLabel = o.deadline
                                     ? new Date(o.deadline).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })
                                     : null
+                                  const description = o.description?.trim() || (o.type ? defaultOfferDescription({ type: o.type, deadline: o.deadline, firstNLimit: o.firstNLimit ?? null }) : "")
                                   return (
                                     <label key={o.id} className={cn(
                                       "flex items-center gap-3 p-3 rounded-lg border",
@@ -402,18 +403,23 @@ export function ConfirmEnrolmentDialog({
                                         }}
                                         className="rounded border-slate-300"
                                       />
-                                      <span className="flex-1 text-sm">{o.name}</span>
+                                      <div className="flex-1 min-w-0">
+                                        <p className="text-sm">{o.name}</p>
+                                        {description && (
+                                          <p className="text-[11px] italic text-slate-500 mt-0.5">{description}</p>
+                                        )}
+                                      </div>
                                       {!valid && deadlineLabel && (
-                                        <span className="text-[10px] text-slate-400 bg-slate-100 border border-slate-200 rounded px-1.5 py-0.5 mr-1">
+                                        <span className="text-[10px] text-slate-400 bg-slate-100 border border-slate-200 rounded px-1.5 py-0.5 mr-1 shrink-0">
                                           Expired {deadlineLabel}
                                         </span>
                                       )}
                                       {valid && deadlineLabel && (
-                                        <span className="text-[10px] text-amber-600 bg-amber-50 border border-amber-200 rounded px-1.5 py-0.5 mr-1">
+                                        <span className="text-[10px] text-amber-600 bg-amber-50 border border-amber-200 rounded px-1.5 py-0.5 mr-1 shrink-0">
                                           Until {deadlineLabel}
                                         </span>
                                       )}
-                                      <span className={cn("text-sm font-semibold", valid ? "text-emerald-600" : "text-slate-400")}>
+                                      <span className={cn("text-sm font-semibold whitespace-nowrap", valid ? "text-emerald-600" : "text-slate-400")}>
                                         - {formatINR(o.waiverAmount)}
                                       </span>
                                     </label>
@@ -445,9 +451,14 @@ export function ConfirmEnrolmentDialog({
                                         )}
                                         className="rounded border-slate-300 cursor-pointer"
                                       />
-                                      <span className="flex-1 text-sm">{s.name}</span>
+                                      <div className="flex-1 min-w-0">
+                                        <p className="text-sm">{s.name}</p>
+                                        {s.description && s.description.trim() && (
+                                          <p className="text-[11px] italic text-slate-500 mt-0.5">{s.description.trim()}</p>
+                                        )}
+                                      </div>
                                       {isChecked && (
-                                        <div className="flex items-center gap-1.5">
+                                        <div className="flex items-center gap-1.5 shrink-0">
                                           <span className="text-xs text-slate-400">₹</span>
                                           <input
                                             type="number"

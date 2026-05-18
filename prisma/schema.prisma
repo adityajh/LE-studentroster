@@ -205,6 +205,13 @@ model Offer {
   type          OfferType
   waiverAmount  Decimal   @db.Decimal(12, 2)
   deadline      DateTime?
+  /** Free-text one-line description shown to the student / admin. Optional;
+   *  when empty, surfaces fall back to an auto-generated description based
+   *  on the offer's type, deadline, and firstNLimit. */
+  description   String?
+  /** For FIRST_N offers only: the N. The offer is awarded to the first N
+   *  students (across all programs in the batch) who pay their Year 1 fee. */
+  firstNLimit   Int?
   conditions    Json?
   createdAt     DateTime  @default(now())
 
@@ -220,6 +227,8 @@ model Scholarship {
   minAmount         Decimal             @db.Decimal(12, 2)
   maxAmount         Decimal             @db.Decimal(12, 2)
   spreadAcrossYears Boolean             @default(true)
+  /** Optional free-text one-line description shown to student / admin. */
+  description       String?
   createdAt         DateTime            @default(now())
 
   feeSchedule         FeeSchedule          @relation(fields: [feeScheduleId], references: [id])

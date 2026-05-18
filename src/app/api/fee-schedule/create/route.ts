@@ -78,6 +78,8 @@ export async function POST(req: NextRequest) {
           waiverAmount: parseFloat(o.waiverAmount || "0"),
           deadline: o.deadline ? new Date(o.deadline) : null,
           conditions: { spreadAcrossYears: o.spreadAcrossYears ?? true },
+          description: o.description?.trim() || null,
+          firstNLimit: o.firstNLimit ? parseInt(o.firstNLimit, 10) : null,
         },
       })
     }
@@ -92,6 +94,7 @@ export async function POST(req: NextRequest) {
           minAmount: parseFloat(s.minAmount || "0"),
           maxAmount: parseFloat(s.maxAmount || "0"),
           spreadAcrossYears: s.spreadAcrossYears ?? true,
+          description: s.description?.trim() || null,
         },
       })
     }

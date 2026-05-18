@@ -4,6 +4,30 @@ All notable changes to the LE Student Roster system are documented here.
 
 ---
 
+## [1.18.0] — 2026-05-18
+
+### Offer / scholarship descriptions + First-N offer logic
+
+#### Description field
+- New optional `description` column on **Offer** and **Scholarship** (`String?`). One-line free text shown to student / admin.
+- Surfaced in three places (all read from the same field):
+  - **Offer letter PDF** — yellow conditional-offers box renders `description` per offer; falls back to `defaultOfferDescription(type, deadline, firstNLimit)` if empty.
+  - **Confirm Enrolment dialog** — each offer / scholarship checkbox row shows the description as small italic text under the name.
+  - **Fee Schedule page** — offers + scholarships tables show the description under the name.
+- Both forms (New + Edit Fee Schedule) gained a `Description (one-line; optional)` input. Placeholder = the auto-generated default for that type, so an admin can see the fallback before typing their own.
+
+#### First-N offer
+- New `firstNLimit Int?` column on **Offer**. Editable in both forms; the input only renders when type is `FIRST_N`.
+- Trigger: after every successful payment, [src/lib/first-n-offers.ts](src/lib/first-n-offers.ts) checks every FIRST_N offer in the student's batch — if the student has paid Y1 in full, doesn't already hold the offer, and the batch has seats remaining (count of non-withdrawn holders < N), the offer is awarded inside the same transaction. Decrements `netFee`, increments `totalWaiver`, writes a `StudentAuditLog` entry.
+- Counter is **batch-wide** — across all programs in the batch share one N.
+- New **First-N Offer Progress** card on the dashboard, one tile per active FIRST_N offer showing `X / N` and `N − X left` (or `Filled` when used up), with a progress bar.
+- Offer-letter PDF mentions the limit in the conditional box (e.g. "First 10 students to pay Year 1 fee").
+
+#### Schema migration
+- `prisma db push` ran cleanly — three new nullable columns, no data changes.
+
+---
+
 ## [1.17.1] — 2026-05-18
 
 ### Smart deadline field + cleaner conditional-offers layout + REFERRAL semantics

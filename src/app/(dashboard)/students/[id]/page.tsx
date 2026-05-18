@@ -314,6 +314,8 @@ export default async function StudentDetailPage({
                     waiverAmount: Number(o.waiverAmount),
                     deadline: o.deadline ? o.deadline.toISOString() : null,
                     conditions: o.conditions,
+                    description: o.description,
+                    firstNLimit: o.firstNLimit,
                   })) ?? []}
                   allBatchScholarships={student.batch.feeSchedule?.scholarships.map((s) => ({
                     id: s.id,
@@ -322,6 +324,7 @@ export default async function StudentDetailPage({
                     minAmount: Number(s.minAmount),
                     maxAmount: Number(s.maxAmount),
                     spreadAcrossYears: s.spreadAcrossYears,
+                    description: s.description,
                   })) ?? []}
                 />
               </>

@@ -9,7 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Lock, Pencil, ExternalLink, Unlock } from "lucide-react"
 import { LockToggleButton } from "@/components/fee-schedule/lock-toggle-button"
-import { OFFER_TYPES, OFFER_TYPE_LABELS, OFFER_TYPE_DESCRIPTIONS } from "@/lib/offer-types"
+import { OFFER_TYPES, OFFER_TYPE_LABELS, OFFER_TYPE_DESCRIPTIONS, defaultOfferDescription } from "@/lib/offer-types"
 
 export default async function FeeScheduleYearPage({
   params,
@@ -148,13 +148,27 @@ export default async function FeeScheduleYearPage({
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {batch.feeSchedule?.offers.map((offer) => (
+                {batch.feeSchedule?.offers.map((offer) => {
+                  const displayDescription = offer.description?.trim() || defaultOfferDescription({
+                    type: offer.type,
+                    deadline: offer.deadline,
+                    firstNLimit: offer.firstNLimit,
+                  })
+                  return (
                   <TableRow key={offer.id} className="border-slate-100">
-                    <TableCell className="font-semibold text-slate-800">{offer.name}</TableCell>
+                    <TableCell>
+                      <p className="font-semibold text-slate-800">{offer.name}</p>
+                      {displayDescription && (
+                        <p className="text-xs font-medium text-slate-500 italic mt-0.5">{displayDescription}</p>
+                      )}
+                    </TableCell>
                     <TableCell>
                       <span className="bg-indigo-500/10 text-indigo-700 border border-indigo-500/20 text-[10px] uppercase tracking-wider font-bold px-2 py-1 rounded">
                         {OFFER_TYPE_LABELS[offer.type as keyof typeof OFFER_TYPE_LABELS] ?? offer.type}
                       </span>
+                      {offer.type === "FIRST_N" && offer.firstNLimit && (
+                        <span className="ml-2 text-[10px] uppercase tracking-wider font-bold text-slate-500">N = {offer.firstNLimit}</span>
+                      )}
                     </TableCell>
                     <TableCell className="font-extrabold text-emerald-600">
                       {formatINR(offer.waiverAmount)}
@@ -167,7 +181,7 @@ export default async function FeeScheduleYearPage({
                         : <span className="bg-emerald-500/10 text-emerald-700 border border-emerald-500/20 text-[10px] uppercase tracking-wider font-bold px-2 py-1 rounded">Yes</span>}
                     </TableCell>
                   </TableRow>
-                ))}
+                )})}
               </TableBody>
             </Table>
           </div>
@@ -217,7 +231,12 @@ export default async function FeeScheduleYearPage({
                       const isSpread = (s as { spreadAcrossYears?: boolean }).spreadAcrossYears !== false
                       return (
                         <TableRow key={s.id} className="border-slate-100">
-                          <TableCell className="font-semibold text-slate-800">{s.name}</TableCell>
+                          <TableCell>
+                            <p className="font-semibold text-slate-800">{s.name}</p>
+                            {(s as { description?: string | null }).description && (
+                              <p className="text-xs font-medium text-slate-500 italic mt-0.5">{(s as { description?: string | null }).description}</p>
+                            )}
+                          </TableCell>
                           <TableCell className="font-extrabold text-emerald-600">
                             {s.minAmount.toString() === s.maxAmount.toString()
                               ? formatINR(s.minAmount)

@@ -27,6 +27,8 @@ interface OfferDraft {
   waiverAmount: string
   deadline: string
   spreadAcrossYears: boolean
+  description: string
+  firstNLimit: string
 }
 
 interface ScholarshipDraft {
@@ -36,9 +38,10 @@ interface ScholarshipDraft {
   minAmount: string
   maxAmount: string
   spreadAcrossYears: boolean
+  description: string
 }
 
-import { OFFER_TYPES, OFFER_TYPE_LABELS, deadlineApplicability } from "@/lib/offer-types"
+import { OFFER_TYPES, OFFER_TYPE_LABELS, deadlineApplicability, defaultOfferDescription } from "@/lib/offer-types"
 import { cn } from "@/lib/utils"
 
 export function NewFeeScheduleForm() {
@@ -67,7 +70,7 @@ export function NewFeeScheduleForm() {
   const addOffer = () =>
     setOffers((prev) => [
       ...prev,
-      { _key: `o-${Date.now()}`, name: "", type: "FULL_PAYMENT", waiverAmount: "0", deadline: "", spreadAcrossYears: true },
+      { _key: `o-${Date.now()}`, name: "", type: "FULL_PAYMENT", waiverAmount: "0", deadline: "", spreadAcrossYears: true, description: "", firstNLimit: "" },
     ])
 
   const removeOffer = (key: string) => setOffers((prev) => prev.filter((o) => o._key !== key))
@@ -85,7 +88,7 @@ export function NewFeeScheduleForm() {
   const addScholarship = (category: string) =>
     setScholarships((prev) => [
       ...prev,
-      { _key: `s-${Date.now()}-${category}`, name: "", category, minAmount: "0", maxAmount: "0", spreadAcrossYears: true },
+      { _key: `s-${Date.now()}-${category}`, name: "", category, minAmount: "0", maxAmount: "0", spreadAcrossYears: true, description: "" },
     ])
 
   const removeScholarship = (key: string) => setScholarships((prev) => prev.filter((s) => s._key !== key))
@@ -292,6 +295,28 @@ export function NewFeeScheduleForm() {
                     </div>
                   )
                 })()}
+                {offer.type === "FIRST_N" && (
+                  <div className="space-y-1">
+                    <Label className="text-xs">First N — number of seats</Label>
+                    <Input
+                      type="number"
+                      min="1"
+                      placeholder="e.g. 5"
+                      value={offer.firstNLimit}
+                      onChange={(e) => updateOffer(offer._key, "firstNLimit", e.target.value)}
+                    />
+                  </div>
+                )}
+                <div className="space-y-1 md:col-span-3">
+                  <Label className="text-xs">
+                    Description <span className="text-slate-400 font-normal">(one-line; shown in offer letter, dialog, and fee schedule)</span>
+                  </Label>
+                  <Input
+                    value={offer.description}
+                    placeholder={defaultOfferDescription({ type: offer.type, deadline: offer.deadline || null, firstNLimit: offer.firstNLimit ? Number(offer.firstNLimit) : null })}
+                    onChange={(e) => updateOffer(offer._key, "description", e.target.value)}
+                  />
+                </div>
                 <div className="md:col-span-1 flex items-center gap-2 pt-1">
                   <input
                     type="checkbox"
@@ -362,6 +387,16 @@ export function NewFeeScheduleForm() {
                           type="number"
                           value={s.maxAmount}
                           onChange={(e) => updateScholarship(s._key, "maxAmount", e.target.value)}
+                        />
+                      </div>
+                      <div className="space-y-1 md:col-span-3">
+                        <Label className="text-xs">
+                          Description <span className="text-slate-400 font-normal">(one-line; optional)</span>
+                        </Label>
+                        <Input
+                          value={s.description}
+                          placeholder="e.g. Awarded to students with national-level sports achievements"
+                          onChange={(e) => updateScholarship(s._key, "description", e.target.value)}
                         />
                       </div>
                       <div className="md:col-span-2 flex items-center gap-2 pt-1">

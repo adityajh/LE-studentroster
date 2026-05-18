@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { auth } from "@/auth"
 import { prisma } from "@/lib/prisma"
 import { syncFifoToDb } from "@/lib/fifo"
+import { applyFirstNOffersIfQualified } from "@/lib/first-n-offers"
 
 // Get payment history for a student
 export async function GET(
@@ -78,9 +79,13 @@ export async function POST(
         }
       })
 
-      // 2. Run FIFO across all installments and write statuses back
+      // 2. Run FIFO across all installments and write statuses back.
       //    This replaces the old per-installment status update.
       await syncFifoToDb(tx, studentId)
+
+      // 3. Award any FIRST_N offers the student now qualifies for
+      //    (paid Y1 in full, seats still available in the batch).
+      await applyFirstNOffersIfQualified(tx, studentId)
 
       return payment
     })
