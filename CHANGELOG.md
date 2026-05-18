@@ -6,14 +6,20 @@ All notable changes to the LE Student Roster system are documented here.
 
 ## [1.16.3] — 2026-05-18
 
-### Confirm Enrolment: One-Time plan applies only FULL_PAYMENT offers + scholarships
+### Confirm Enrolment: One-Time plan auto-applies FULL_PAYMENT offers in addition to Step-1 choices
 
-Picking **One-Time (full)** as the payment plan now applies the FULL_PAYMENT-type offer(s) plus the confirmed scholarships (and deductions). Offers of other types (Early Bird, 7-Day Acceptance, Referral, etc.) are intentionally ignored for this plan because they don't make sense paired with a single upfront payment.
+Picking **One-Time (full)** as the payment plan now keeps every offer + scholarship the admin has confirmed in Step 1, and additionally auto-applies the FULL_PAYMENT-type batch offers (e.g. "Full 3-Year Payment"). All discounts are additive.
+
+For Anudev E this gives:
+- baseFee (Y1+Y2+Y3) = ₹13,00,000
+- All applied: Early Bird ₹50K + 7-Day ₹25K + Full 3-Year ₹50K + Athlete ₹15K + Defence ₹25K = ₹1,65,000
+- Full Programme Fee row = ₹11,35,000
+- Plus ₹50K registration → **Total payable: ₹11,85,000**
 
 #### What changed
-- Dialog preview now computes Year-1 amount for ONE_TIME as `baseFee − (sum of FULL_PAYMENT offer waivers) − (sum of scholarships) − deductions`, with the breakdown shown in small monospace text under the row.
-- Submit payload sends only the FULL_PAYMENT offer IDs (not the offers checked in Step 1) when `installmentType === "ONE_TIME"`, so the backend's `totalWaiver` matches the dialog preview.
-- Italic helper line under the plan selector explains the auto-apply behaviour so the admin doesn't have to read code to understand why Step-1 choices are being ignored.
+- Dialog preview for ONE_TIME computes `Y1 = baseFee − (confirmed offers ∪ FULL_PAYMENT batch offers) − scholarships − deductions`, with the breakdown shown in small monospace text under the row.
+- Submit payload sends the union of `confirmedOfferIds` + FULL_PAYMENT-type IDs when `installmentType === "ONE_TIME"`, so the backend's `totalWaiver` matches the dialog preview.
+- Italic helper line under the plan selector explains the auto-apply behaviour.
 
 ---
 

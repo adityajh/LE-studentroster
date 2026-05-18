@@ -179,17 +179,20 @@ export function ConfirmEnrolmentDialog({
       ]
     }
     if (installmentType === "ONE_TIME") {
-      // One-Time plan: ignore the offers checked in Step 1. The only offers
-      // that apply for a single upfront payment are the FULL_PAYMENT-type
-      // ones (the "Pay in full" / "Full 3-Year" discount). Scholarships and
-      // deductions still apply as confirmed.
-      const fullPaymentOffers = offerSource.filter((o) => o.type === "FULL_PAYMENT")
-      const fullPaymentWaiver = fullPaymentOffers.reduce((s, o) => s + o.waiverAmount, 0)
+      // One-Time plan: all offers + scholarships + deductions are additive.
+      // We start with whatever was confirmed in Step 1 (Early Bird, 7-Day,
+      // etc.), and additionally auto-apply FULL_PAYMENT-type batch offers
+      // (the "Full 3-Year Payment" discount) since they only qualify for a
+      // single upfront payment. Duplicates are deduped by id.
+      const fullPaymentIds = offerSource.filter((o) => o.type === "FULL_PAYMENT").map((o) => o.id)
+      const oneTimeOfferIds = new Set<string>([...confirmedOfferIds, ...fullPaymentIds])
+      const oneTimeOffers = offerSource.filter((o) => oneTimeOfferIds.has(o.id))
+      const oneTimeOfferWaiver = oneTimeOffers.reduce((s, o) => s + o.waiverAmount, 0)
       const schoTotal = confirmedScholarships.reduce((s, sc) => s + sc.amount, 0)
-      const oneTimeNet = Math.max(0, baseFee - fullPaymentWaiver - schoTotal - confirmedDeductionTotal)
+      const oneTimeNet = Math.max(0, baseFee - oneTimeOfferWaiver - schoTotal - confirmedDeductionTotal)
 
       const oneTimeParts: string[] = [fmt(baseFee)]
-      for (const o of fullPaymentOffers) if (o.waiverAmount > 0) oneTimeParts.push(`− ${fmt(o.waiverAmount)}`)
+      for (const o of oneTimeOffers) if (o.waiverAmount > 0) oneTimeParts.push(`− ${fmt(o.waiverAmount)}`)
       for (const sc of confirmedScholarships) if (sc.amount > 0) oneTimeParts.push(`− ${fmt(sc.amount)}`)
       if (confirmedDeductionTotal > 0) oneTimeParts.push(`− ${fmt(confirmedDeductionTotal)}`)
       const oneTimeBreakdown = oneTimeParts.length > 1 ? oneTimeParts.join(" ") : null
@@ -251,11 +254,14 @@ export function ConfirmEnrolmentDialog({
     setLoading(true)
     setError("")
     try {
-      // For ONE_TIME plan, apply only the FULL_PAYMENT-type offers (so the
-      // backend's totalWaiver matches what the dialog previewed). Other
-      // offer types don't make sense paired with a single upfront payment.
+      // For ONE_TIME plan, also include the FULL_PAYMENT-type batch offers
+      // on top of whatever was confirmed in Step 1 — the dialog preview
+      // auto-applies them, and the saved data needs to match.
       const offerIdsToSubmit = installmentType === "ONE_TIME"
-        ? offerSource.filter((o) => o.type === "FULL_PAYMENT").map((o) => o.id)
+        ? Array.from(new Set([
+            ...confirmedOfferIds,
+            ...offerSource.filter((o) => o.type === "FULL_PAYMENT").map((o) => o.id),
+          ]))
         : confirmedOfferIds
 
       const res = await fetch(`/api/students/${studentId}/confirm-enrolment`, {
@@ -588,7 +594,7 @@ export function ConfirmEnrolmentDialog({
 
                       {installmentType === "ONE_TIME" && (
                         <p className="text-xs text-slate-500 italic">
-                          Only the FULL_PAYMENT-type offer(s) and confirmed scholarships apply for a one-time payment. Other offers checked in Step 1 are ignored for this plan.
+                          FULL_PAYMENT-type offer(s) (e.g. &quot;Full 3-Year Payment&quot;) are automatically applied on top of the offers and scholarships confirmed in Step 1. All discounts are additive.
                         </p>
                       )}
 
