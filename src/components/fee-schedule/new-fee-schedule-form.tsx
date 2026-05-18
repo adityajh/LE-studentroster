@@ -38,7 +38,8 @@ interface ScholarshipDraft {
   spreadAcrossYears: boolean
 }
 
-import { OFFER_TYPES, OFFER_TYPE_LABELS } from "@/lib/offer-types"
+import { OFFER_TYPES, OFFER_TYPE_LABELS, deadlineApplicability } from "@/lib/offer-types"
+import { cn } from "@/lib/utils"
 
 export function NewFeeScheduleForm() {
   const router = useRouter()
@@ -72,7 +73,14 @@ export function NewFeeScheduleForm() {
   const removeOffer = (key: string) => setOffers((prev) => prev.filter((o) => o._key !== key))
 
   const updateOffer = (key: string, field: keyof OfferDraft, value: string | boolean) =>
-    setOffers((prev) => prev.map((o) => (o._key === key ? { ...o, [field]: value } : o)))
+    setOffers((prev) => prev.map((o) => {
+      if (o._key !== key) return o
+      const next = { ...o, [field]: value }
+      // When type changes to one that doesn't take a deadline, clear it so a
+      // stale date doesn't get saved.
+      if (field === "type" && deadlineApplicability(String(value)) === "none") next.deadline = ""
+      return next
+    }))
 
   const addScholarship = (category: string) =>
     setScholarships((prev) => [
@@ -266,14 +274,24 @@ export function NewFeeScheduleForm() {
                     onChange={(e) => updateOffer(offer._key, "waiverAmount", e.target.value)}
                   />
                 </div>
-                <div className="space-y-1">
-                  <Label className="text-xs">Deadline (if applicable)</Label>
-                  <Input
-                    type="date"
-                    value={offer.deadline}
-                    onChange={(e) => updateOffer(offer._key, "deadline", e.target.value)}
-                  />
-                </div>
+                {(() => {
+                  const dl = deadlineApplicability(offer.type)
+                  const disabled = dl === "none"
+                  return (
+                    <div className="space-y-1">
+                      <Label className={cn("text-xs", disabled && "text-slate-400")}>
+                        Deadline {dl === "required" ? <span className="text-rose-500">*</span> : dl === "optional" ? "(optional)" : "(N/A)"}
+                      </Label>
+                      <Input
+                        type="date"
+                        value={disabled ? "" : offer.deadline}
+                        disabled={disabled}
+                        onChange={(e) => updateOffer(offer._key, "deadline", e.target.value)}
+                        className={cn(disabled && "bg-slate-50 text-slate-400 cursor-not-allowed")}
+                      />
+                    </div>
+                  )
+                })()}
                 <div className="md:col-span-1 flex items-center gap-2 pt-1">
                   <input
                     type="checkbox"

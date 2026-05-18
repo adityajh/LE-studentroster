@@ -81,7 +81,7 @@ export async function buildOfferLetterDataForStudent(
       } else if (o.type === "FIRST_N" && !o.deadline) {
         conditionText = "limited seats"
       } else if (o.type === "REFERRAL" && !o.deadline) {
-        conditionText = "if referred by an existing student"
+        conditionText = "if you refer another student who enrols"
       }
       return { name: o.name, amount: Number(o.waiverAmount), deadline, conditionText }
     })

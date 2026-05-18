@@ -4,6 +4,22 @@ All notable changes to the LE Student Roster system are documented here.
 
 ---
 
+## [1.17.1] — 2026-05-18
+
+### Smart deadline field + cleaner conditional-offers layout + REFERRAL semantics
+
+#### Forms
+- Offer Deadline field now auto-disables (greyed) when the selected type doesn't use a deadline (`FULL_PAYMENT`, `ROLLING_DEADLINE`, `REFERRAL`, `REGULAR`).
+- Label changes with the type: `Deadline *` (required) for `DEADLINE`, `Deadline (optional)` for `FIRST_N`, `Deadline (N/A)` otherwise.
+- Switching the type to a non-applicable one auto-clears any previously entered date so stale values aren't saved.
+- New `deadlineApplicability(type)` helper in [src/lib/offer-types.ts](src/lib/offer-types.ts) — single source of truth.
+
+#### Offer letter PDF
+- Conditional offers in the yellow box are now laid out as **two lines per offer**: name + amount on the top row (both columns clean, no wrap); deadline / condition text below in small italic. Fixes the mid-word wrap of long condition strings.
+- `REFERRAL` condition text updated from "if referred by an existing student" to **"if you refer another student who enrols"** — matches the actual business rule.
+
+---
+
 ## [1.17.0] — 2026-05-18
 
 ### Reworked OfferType enum + form fixes + legend

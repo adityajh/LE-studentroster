@@ -9,7 +9,8 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Loader2, Save, Trash2 } from "lucide-react"
-import { OFFER_TYPES, OFFER_TYPE_LABELS } from "@/lib/offer-types"
+import { OFFER_TYPES, OFFER_TYPE_LABELS, deadlineApplicability } from "@/lib/offer-types"
+import { cn } from "@/lib/utils"
 
 interface Program {
   id: string
@@ -117,7 +118,12 @@ export function FeeScheduleEditForm({ batch }: { batch: Batch }) {
 
   // ── Offer handlers ────────────────────────────────────────────────────────
   const updateOffer = (id: string, field: string, value: string | boolean) =>
-    setOffers((prev) => prev.map((o) => (o.id === id ? { ...o, [field]: value } : o)))
+    setOffers((prev) => prev.map((o) => {
+      if (o.id !== id) return o
+      const next = { ...o, [field]: value }
+      if (field === "type" && deadlineApplicability(String(value)) === "none") next.deadline = ""
+      return next
+    }))
 
   const removeOffer = (id: string) => {
     setOffers((prev) => prev.filter((o) => o.id !== id))
@@ -301,14 +307,24 @@ export function FeeScheduleEditForm({ batch }: { batch: Batch }) {
                     onChange={(e) => updateOffer(offer.id, "waiverAmount", e.target.value)}
                   />
                 </div>
-                <div className="space-y-1">
-                  <Label className="text-xs">Deadline (if applicable)</Label>
-                  <Input
-                    type="date"
-                    value={offer.deadline}
-                    onChange={(e) => updateOffer(offer.id, "deadline", e.target.value)}
-                  />
-                </div>
+                {(() => {
+                  const dl = deadlineApplicability(offer.type)
+                  const disabled = dl === "none"
+                  return (
+                    <div className="space-y-1">
+                      <Label className={cn("text-xs", disabled && "text-slate-400")}>
+                        Deadline {dl === "required" ? <span className="text-rose-500">*</span> : dl === "optional" ? "(optional)" : "(N/A)"}
+                      </Label>
+                      <Input
+                        type="date"
+                        value={disabled ? "" : offer.deadline}
+                        disabled={disabled}
+                        onChange={(e) => updateOffer(offer.id, "deadline", e.target.value)}
+                        className={cn(disabled && "bg-slate-50 text-slate-400 cursor-not-allowed")}
+                      />
+                    </div>
+                  )
+                })()}
                 <div className="md:col-span-2 flex items-center gap-2 pt-1">
                   <input
                     type="checkbox"

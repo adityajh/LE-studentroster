@@ -291,23 +291,32 @@ const styles = StyleSheet.create({
     color: "#92400e",
     marginBottom: 6,
   },
+  conditionalItem: {
+    marginBottom: 6,
+  },
   conditionalRow: {
     flexDirection: "row",
     justifyContent: "space-between",
-    marginBottom: 3,
+    alignItems: "baseline",
   },
   conditionalLabel: {
     fontSize: 10,
     color: "#78350f",
-    width: "55%",
+    width: "70%",
   },
   conditionalValue: {
     fontSize: 10,
     fontFamily: "Helvetica-Bold",
     color: "#78350f",
-    width: "45%",
+    width: "30%",
     textAlign: "right",
     letterSpacing: 0,
+  },
+  conditionalCondition: {
+    fontSize: 8,
+    fontStyle: "italic",
+    color: "#92400e",
+    marginTop: 1,
   },
   conditionalNote: {
     fontSize: 8,
@@ -599,16 +608,18 @@ The programme emphasises applied learning through real projects, mentored appren
               Conditional Offers (applied when the condition is met)
             </Text>
             {conditionalOffers.map((o, i) => (
-              <View key={i} style={styles.conditionalRow}>
-                <Text style={styles.conditionalLabel}>{o.name}</Text>
-                <Text style={styles.conditionalValue}>
-                  - {formatINR(o.amount)}
-                  {o.deadline
-                    ? `  (by ${new Date(o.deadline).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })})`
-                    : o.conditionText
-                    ? `  (${o.conditionText})`
-                    : ""}
-                </Text>
+              <View key={i} style={styles.conditionalItem}>
+                <View style={styles.conditionalRow}>
+                  <Text style={styles.conditionalLabel}>{o.name}</Text>
+                  <Text style={styles.conditionalValue}>- {formatINR(o.amount)}</Text>
+                </View>
+                {(o.deadline || o.conditionText) && (
+                  <Text style={styles.conditionalCondition}>
+                    {o.deadline
+                      ? `by ${new Date(o.deadline).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}`
+                      : o.conditionText}
+                  </Text>
+                )}
               </View>
             ))}
             <Text style={styles.conditionalNote}>
