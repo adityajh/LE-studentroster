@@ -66,6 +66,7 @@ export async function buildOfferLetterDataForStudent(
   // discount available — 7-Day, Early Bird, Full 3-Year — is surfaced to
   // the student regardless of which ones we've pre-applied.
   const CONDITIONAL_TYPES = new Set(["EARLY_BIRD", "ACCEPTANCE_7DAY", "FULL_PAYMENT", "FIRST_N_REGISTRATIONS"])
+  const now = new Date()
   const batchOffers = student.batch.feeSchedule?.offers ?? []
   const conditionalOffers = batchOffers
     .filter((o) => CONDITIONAL_TYPES.has(o.type))
@@ -82,6 +83,9 @@ export async function buildOfferLetterDataForStudent(
       }
       return { name: o.name, amount: Number(o.waiverAmount), deadline, conditionText }
     })
+    // Drop offers whose deadline has already passed — no point showing
+    // "Early Bird (by 30 May 2026)" to a student getting the offer on 1 June.
+    .filter((o) => !o.deadline || o.deadline >= now)
 
   const data: OfferLetterData = {
     studentName: student.name,
