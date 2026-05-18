@@ -14,6 +14,7 @@
 import { prisma } from "@/lib/prisma"
 import { getSettings } from "@/app/actions/settings"
 import type { OfferLetterData } from "@/lib/offer-letter-generator"
+import { CONDITIONAL_OFFER_TYPES } from "@/lib/offer-types"
 import fs from "fs"
 import path from "path"
 
@@ -65,26 +66,27 @@ export async function buildOfferLetterDataForStudent(
   // (not just what the student has confirmed) so that every conditional
   // discount available — 7-Day, Early Bird, Full 3-Year — is surfaced to
   // the student regardless of which ones we've pre-applied.
-  const CONDITIONAL_TYPES = new Set(["EARLY_BIRD", "ACCEPTANCE_7DAY", "FULL_PAYMENT", "FIRST_N_REGISTRATIONS"])
   const now = new Date()
   const batchOffers = student.batch.feeSchedule?.offers ?? []
   const conditionalOffers = batchOffers
-    .filter((o) => CONDITIONAL_TYPES.has(o.type))
+    .filter((o) => CONDITIONAL_OFFER_TYPES.has(o.type as never))
     .map((o) => {
       let deadline: Date | null | undefined = o.deadline
       let conditionText: string | undefined
-      if (o.type === "ACCEPTANCE_7DAY") {
-        // 7-Day offer's deadline is per-student: 7 days from offer date.
+      if (o.type === "ROLLING_DEADLINE") {
+        // Per-student deadline: offer date + 7 days (current rule).
         deadline = offerExpiresAt
       } else if (o.type === "FULL_PAYMENT" && !o.deadline) {
         conditionText = "pay full 3-year fee upfront"
-      } else if (o.type === "FIRST_N_REGISTRATIONS") {
+      } else if (o.type === "FIRST_N" && !o.deadline) {
         conditionText = "limited seats"
+      } else if (o.type === "REFERRAL" && !o.deadline) {
+        conditionText = "if referred by an existing student"
       }
       return { name: o.name, amount: Number(o.waiverAmount), deadline, conditionText }
     })
     // Drop offers whose deadline has already passed — no point showing
-    // "Early Bird (by 30 May 2026)" to a student getting the offer on 1 June.
+    // "Deadline 30 May 2026" to a student getting the offer on 1 June.
     .filter((o) => !o.deadline || o.deadline >= now)
 
   const data: OfferLetterData = {

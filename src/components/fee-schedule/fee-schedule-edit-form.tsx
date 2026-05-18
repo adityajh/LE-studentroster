@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Loader2, Save, Trash2 } from "lucide-react"
+import { OFFER_TYPES, OFFER_TYPE_LABELS } from "@/lib/offer-types"
 
 interface Program {
   id: string
@@ -279,6 +280,18 @@ export function FeeScheduleEditForm({ batch }: { batch: Batch }) {
                     value={offer.name}
                     onChange={(e) => updateOffer(offer.id, "name", e.target.value)}
                   />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs">Type</Label>
+                  <select
+                    value={offer.type}
+                    onChange={(e) => updateOffer(offer.id, "type", e.target.value)}
+                    className="w-full h-9 rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm"
+                  >
+                    {OFFER_TYPES.map((t) => (
+                      <option key={t} value={t}>{OFFER_TYPE_LABELS[t]}</option>
+                    ))}
+                  </select>
                 </div>
                 <div className="space-y-1">
                   <Label className="text-xs">Waiver Amount (₹)</Label>

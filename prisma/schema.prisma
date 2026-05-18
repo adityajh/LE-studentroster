@@ -94,11 +94,12 @@ enum InstallmentStatus {
 }
 
 enum OfferType {
-  FIRST_N_REGISTRATIONS
-  EARLY_BIRD
-  ACCEPTANCE_7DAY
-  FULL_PAYMENT
-  REFERRAL
+  DEADLINE          // Fixed-date offer (e.g. "Pay by 30 May")
+  ROLLING_DEADLINE  // Per-student deadline computed from offer date (e.g. 7-Day)
+  FIRST_N           // First N registrations get the discount
+  FULL_PAYMENT      // Triggered by choosing the One-Time payment plan
+  REFERRAL          // Applied when student is referred by an existing one
+  REGULAR           // Catch-all; no special behaviour
 }
 
 enum ScholarshipCategory {

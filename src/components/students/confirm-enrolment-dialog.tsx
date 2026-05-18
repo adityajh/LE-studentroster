@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation"
 import { Loader2, CheckCircle2, ChevronLeft, ChevronRight, Plus, Trash2 } from "lucide-react"
 import { formatINR } from "@/lib/fee-schedule"
 import { splitWaivers, annualInstallmentAmounts, isSpreadCondition } from "@/lib/fee-calc"
+import { AUTO_CHECK_OFFER_TYPES } from "@/lib/offer-types"
 import { cn } from "@/lib/utils"
 
 const PAYMENT_MODES = ["UPI", "NEFT", "RTGS", "CHEQUE", "CASH", "OTHER"] as const
@@ -72,13 +73,13 @@ export function ConfirmEnrolmentDialog({
   todayDate.setHours(0, 0, 0, 0)
   const isOfferValid = (o: BatchOffer) => o.deadline === null || new Date(o.deadline) >= todayDate
 
-  // Default checked = only EARLY_BIRD and ACCEPTANCE_7DAY offers (if valid / deadline not passed).
-  // All other offer types (FULL_PAYMENT, FIRST_N_REGISTRATIONS, REFERRAL) start unchecked.
-  const AUTO_CHECK_TYPES = new Set(["EARLY_BIRD", "ACCEPTANCE_7DAY"])
+  // Default checked = DEADLINE + ROLLING_DEADLINE offers (if still valid).
+  // Other types (FULL_PAYMENT, FIRST_N, REFERRAL, REGULAR) start unchecked —
+  // the admin checks them when the student qualifies.
   const defaultCheckedOfferIds = (): string[] => {
     if (allBatchOffers.length > 0) {
       return allBatchOffers
-        .filter((o) => isOfferValid(o) && (!o.type || AUTO_CHECK_TYPES.has(o.type)))
+        .filter((o) => isOfferValid(o) && (!o.type || AUTO_CHECK_OFFER_TYPES.has(o.type as never)))
         .map((o) => o.id)
     }
     return []

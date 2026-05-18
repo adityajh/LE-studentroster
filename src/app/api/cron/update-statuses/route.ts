@@ -138,19 +138,19 @@ The Let's Enterprise Admissions Team`
       }
     }
 
-    // Day 8+: revoke 7-day offer waiver and send revised offer
+    // Day 8+: revoke rolling-deadline offer waiver and send revised offer
     if (daysLeft < 0 && !student.offerRevised) {
-      // Remove ACCEPTANCE_7DAY offer from student
-      const acceptance7DayOffers = student.offers.filter(
-        (so) => so.offer.type === "ACCEPTANCE_7DAY"
+      // Remove ROLLING_DEADLINE offer from student (formerly ACCEPTANCE_7DAY)
+      const rollingDeadlineOffers = student.offers.filter(
+        (so) => so.offer.type === "ROLLING_DEADLINE"
       )
 
-      if (acceptance7DayOffers.length > 0) {
-        const revokedWaiver = acceptance7DayOffers.reduce((s, so) => s + Number(so.waiverAmount), 0)
+      if (rollingDeadlineOffers.length > 0) {
+        const revokedWaiver = rollingDeadlineOffers.reduce((s, so) => s + Number(so.waiverAmount), 0)
 
         await prisma.$transaction(async (tx) => {
           await tx.studentOffer.deleteMany({
-            where: { id: { in: acceptance7DayOffers.map((so) => so.id) } },
+            where: { id: { in: rollingDeadlineOffers.map((so) => so.id) } },
           })
           if (student.financial) {
             await tx.studentFinancial.update({
@@ -166,8 +166,8 @@ The Let's Enterprise Admissions Team`
               studentId: student.id,
               changedBy: student.id, // system action — use student id as placeholder
               field: "offers",
-              oldValue: "ACCEPTANCE_7DAY waiver applied",
-              newValue: "ACCEPTANCE_7DAY waiver revoked (7-day window expired)",
+              oldValue: "ROLLING_DEADLINE waiver applied",
+              newValue: "ROLLING_DEADLINE waiver revoked (offer window expired)",
               reason: "Automated: offer window expired without registration payment",
             },
           })

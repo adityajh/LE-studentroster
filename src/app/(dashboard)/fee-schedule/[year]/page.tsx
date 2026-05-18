@@ -9,6 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Lock, Pencil, ExternalLink, Unlock } from "lucide-react"
 import { LockToggleButton } from "@/components/fee-schedule/lock-toggle-button"
+import { OFFER_TYPES, OFFER_TYPE_LABELS, OFFER_TYPE_DESCRIPTIONS } from "@/lib/offer-types"
 
 export default async function FeeScheduleYearPage({
   params,
@@ -152,7 +153,7 @@ export default async function FeeScheduleYearPage({
                     <TableCell className="font-semibold text-slate-800">{offer.name}</TableCell>
                     <TableCell>
                       <span className="bg-indigo-500/10 text-indigo-700 border border-indigo-500/20 text-[10px] uppercase tracking-wider font-bold px-2 py-1 rounded">
-                        {offer.type.replace(/_/g, " ")}
+                        {OFFER_TYPE_LABELS[offer.type as keyof typeof OFFER_TYPE_LABELS] ?? offer.type}
                       </span>
                     </TableCell>
                     <TableCell className="font-extrabold text-emerald-600">
@@ -173,6 +174,21 @@ export default async function FeeScheduleYearPage({
           <p className="text-xs font-medium text-slate-400 mt-3">
             All offers are cumulative and distributed evenly across 3 program years.
           </p>
+
+          {/* Offer-type legend */}
+          <div className="mt-5 bg-slate-50 border border-slate-200/60 rounded-xl p-4">
+            <p className="text-[10px] uppercase tracking-widest font-bold text-slate-500 mb-3">Offer Type Legend</p>
+            <div className="space-y-2">
+              {OFFER_TYPES.map((t) => (
+                <div key={t} className="flex items-start gap-3">
+                  <span className="bg-indigo-500/10 text-indigo-700 border border-indigo-500/20 text-[10px] uppercase tracking-wider font-bold px-2 py-1 rounded shrink-0 min-w-[140px] text-center">
+                    {OFFER_TYPE_LABELS[t]}
+                  </span>
+                  <span className="text-xs text-slate-600 leading-relaxed">{OFFER_TYPE_DESCRIPTIONS[t]}</span>
+                </div>
+              ))}
+            </div>
+          </div>
         </TabsContent>
 
         {/* Scholarships */}

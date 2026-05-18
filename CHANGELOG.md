@@ -4,6 +4,45 @@ All notable changes to the LE Student Roster system are documented here.
 
 ---
 
+## [1.17.0] — 2026-05-18
+
+### Reworked OfferType enum + form fixes + legend
+
+Simplified the `OfferType` enum to **six** intent-named values and made offer behaviour everywhere flow off them:
+
+| Value | Behaviour |
+|---|---|
+| `DEADLINE` | Fixed-date offer (e.g. "Pay by 30 May"). Auto-checked at offer time; drops off the offer-letter PDF once the date passes. |
+| `ROLLING_DEADLINE` | Per-student deadline = offer date + 7 days. Auto-checked at offer time. |
+| `FIRST_N` | First N registrations. Shown in conditional box. |
+| `FULL_PAYMENT` | Auto-added in Confirm Enrolment when One-Time plan is picked. |
+| `REFERRAL` | Now also shown in the conditional box on the PDF (was missing). |
+| `REGULAR` | New catch-all — no special behaviour. |
+
+#### Migration
+- `EARLY_BIRD` → `DEADLINE`
+- `ACCEPTANCE_7DAY` → `ROLLING_DEADLINE`
+- `FIRST_N_REGISTRATIONS` → `FIRST_N`
+- `REGULAR` added
+- `REFERRAL`, `FULL_PAYMENT` unchanged
+
+Renames done in-place via `ALTER TYPE … RENAME VALUE` so existing offer rows kept their identity. See [scratch/migrate-offer-types.ts](scratch/migrate-offer-types.ts).
+
+#### Forms
+- **New Fee Schedule** form's offer-type dropdown had `FIRST_N` and `OTHER` — neither valid Postgres enum values. Both fixed.
+- **Edit Fee Schedule** form was missing the type dropdown entirely. Added.
+- Backend `update/route.ts` now persists `type` changes (previously silently dropped on update).
+- Both forms now read from a single canonical list: [src/lib/offer-types.ts](src/lib/offer-types.ts) — adding a new type requires editing one file.
+
+#### Offer letter PDF
+- Yellow "Conditional Offers" box now includes `REFERRAL` (with condition text "if referred by an existing student"). The four other conditional types stay: `DEADLINE`, `ROLLING_DEADLINE`, `FIRST_N`, `FULL_PAYMENT`. `REGULAR` is excluded by design.
+
+#### Fee Schedule page
+- Type column on the offers table now uses friendly labels ("Deadline", not "DEADLINE").
+- New **Offer Type Legend** card at the bottom of the Offers tab explains each of the six types in plain English.
+
+---
+
 ## [1.16.4] — 2026-05-18
 
 ### Offer letter PDF: yellow box now lists all conditional offers (7-Day, Early Bird, Full 3-Year)

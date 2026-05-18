@@ -69,7 +69,7 @@ export async function GET() {
         studentId: "preview",
         offerId: "o2",
         waiverAmount: 10000,
-        offer: { id: "o2", name: "7-Day Confirmation Waiver", waiverAmount: 10000, deadline: new Date("2025-01-22"), conditions: "CONDITIONAL", type: "ACCEPTANCE_7DAY" },
+        offer: { id: "o2", name: "7-Day Confirmation Waiver", waiverAmount: 10000, deadline: new Date("2025-01-22"), conditions: "CONDITIONAL", type: "ROLLING_DEADLINE" },
       },
     ],
     scholarships: [

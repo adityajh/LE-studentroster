@@ -38,14 +38,7 @@ interface ScholarshipDraft {
   spreadAcrossYears: boolean
 }
 
-const OFFER_TYPES = [
-  "EARLY_BIRD",
-  "FIRST_N",
-  "FULL_PAYMENT",
-  "ACCEPTANCE_7DAY",
-  "REFERRAL",
-  "OTHER",
-]
+import { OFFER_TYPES, OFFER_TYPE_LABELS } from "@/lib/offer-types"
 
 export function NewFeeScheduleForm() {
   const router = useRouter()
@@ -261,7 +254,7 @@ export function NewFeeScheduleForm() {
                     className="w-full h-9 rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm"
                   >
                     {OFFER_TYPES.map((t) => (
-                      <option key={t} value={t}>{t.replace(/_/g, " ")}</option>
+                      <option key={t} value={t}>{OFFER_TYPE_LABELS[t]}</option>
                     ))}
                   </select>
                 </div>

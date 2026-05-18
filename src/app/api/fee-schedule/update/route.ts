@@ -112,6 +112,7 @@ export async function POST(req: NextRequest) {
         await tx.offer.update({
           where: { id: o.id },
           data: {
+            type: o.type,
             name: o.name,
             waiverAmount: parseFloat(o.waiverAmount || "0"),
             deadline: o.deadline ? new Date(o.deadline) : null,
