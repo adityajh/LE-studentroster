@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation"
 import Link from "next/link"
 import { prisma } from "@/lib/prisma"
-import { formatINR } from "@/lib/fee-schedule"
+import { formatINRFull } from "@/lib/fee-schedule"
 import { computePaymentAllocation } from "@/lib/fifo"
 import { PrintButton } from "@/components/students/print-button"
 import { ArrowLeft } from "lucide-react"
@@ -93,7 +93,7 @@ export default async function PaymentReceiptPage({
           </div>
           <div className="text-right">
             <p className="text-[10px] uppercase tracking-widest font-bold text-slate-400 mb-1">Receipt</p>
-            <p className="text-lg font-black text-emerald-700">{formatINR(paymentAmount)}</p>
+            <p className="text-lg font-black text-emerald-700">{formatINRFull(paymentAmount)}</p>
             <p className="text-[10px] font-mono font-bold text-slate-400 mt-1 uppercase">
               #{paymentId.slice(-8).toUpperCase()}
             </p>
@@ -122,9 +122,14 @@ export default async function PaymentReceiptPage({
 
         {/* FIFO Allocation breakdown */}
         <div className="space-y-3">
-          <p className="text-[10px] uppercase tracking-widest font-bold text-slate-400">
-            Allocated To
-          </p>
+          <div>
+            <p className="text-[10px] uppercase tracking-widest font-bold text-slate-400">
+              How this payment was allocated
+            </p>
+            <p className="text-[11px] font-medium text-slate-400 italic mt-0.5">
+              FIFO splits each payment across pending installments in year order. The amount of <strong>this</strong> payment that landed on each installment is in <strong>From This Payment</strong>; the total received against the installment after all prior payments + this one is in <strong>Installment Paid</strong>.
+            </p>
+          </div>
           {allocationRows.length === 0 ? (
             <div className="bg-slate-50 border border-slate-100 rounded-xl px-4 py-3 text-sm font-medium text-slate-500 italic">
               This payment is an advance — no installments were due at the time of recording.
@@ -138,13 +143,13 @@ export default async function PaymentReceiptPage({
                       Installment
                     </th>
                     <th className="text-right text-[10px] uppercase tracking-widest font-bold text-slate-400 px-4 py-2.5">
-                      Fee
+                      Installment Fee
                     </th>
                     <th className="text-right text-[10px] uppercase tracking-widest font-bold text-slate-400 px-4 py-2.5">
-                      Applied
+                      From This Payment
                     </th>
                     <th className="text-right text-[10px] uppercase tracking-widest font-bold text-slate-400 px-4 py-2.5">
-                      Total Received
+                      Installment Paid
                     </th>
                   </tr>
                 </thead>
@@ -152,15 +157,15 @@ export default async function PaymentReceiptPage({
                   {allocationRows.map(row => (
                     <tr key={row.installmentId} className="hover:bg-slate-50/50 transition-colors">
                       <td className="px-4 py-3 font-semibold text-slate-800">{row.label}</td>
-                      <td className="px-4 py-3 text-right text-slate-500">{formatINR(row.fee)}</td>
+                      <td className="px-4 py-3 text-right text-slate-500">{formatINRFull(row.fee)}</td>
                       <td className="px-4 py-3 text-right font-bold text-emerald-700">
-                        {formatINR(row.allocated)}
+                        {formatINRFull(row.allocated)}
                       </td>
                       <td className="px-4 py-3 text-right font-semibold text-slate-700">
-                        {formatINR(row.cumAllocated)}
+                        {formatINRFull(row.cumAllocated)}
                         {row.cumAllocated >= row.fee && (
                           <span className="ml-2 text-[9px] font-black uppercase text-emerald-600 bg-emerald-50 border border-emerald-200 px-1.5 py-0.5 rounded">
-                            Paid
+                            Fully Paid
                           </span>
                         )}
                       </td>
@@ -178,7 +183,7 @@ export default async function PaymentReceiptPage({
             <p className="text-[10px] uppercase tracking-widest font-bold text-emerald-600 mb-0.5">
               Amount Received
             </p>
-            <p className="text-2xl font-black text-emerald-700">{formatINR(paymentAmount)}</p>
+            <p className="text-2xl font-black text-emerald-700">{formatINRFull(paymentAmount)}</p>
           </div>
           {payment.recordedBy && (
             <div className="text-right">
