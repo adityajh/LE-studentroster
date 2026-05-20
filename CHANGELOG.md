@@ -4,6 +4,23 @@ All notable changes to the LE Student Roster system are documented here.
 
 ---
 
+## [1.18.2] — 2026-05-20
+
+### One FIFO function, one source of truth
+
+`src/lib/fifo.ts` used to have its own FIFO algorithm — different from `src/lib/fee-ledger.ts` introduced in v1.16.0. Specifically it sorted by `dueDate` only (vs `(year, dueDate)`) and didn't synthesize a registration row when reg was tracked as a flag. That made the **receipt page's "Allocated To" table** and the **stored `installment.status` / `paidAmount`** disagree with the Schedule tab and Students-list, even though both supposedly used FIFO.
+
+Concrete example — Arnee:
+- Schedule UI (uses `fee-ledger`): Y2 PAID, Y3 UPCOMING (no spillover, because reg synth consumes ₹45K first).
+- DB-stored / receipt page (used `fifo.ts`): Y2 PAID, Y3 PARTIAL ₹45K (the four 2025 payments overshot Y1, the leftover landed on Y2 or Y3 depending on order).
+
+#### Changes
+- [src/lib/fifo.ts](src/lib/fifo.ts) refactored to delegate to `computeFeeLedger`. `computeFifo` is gone; `computePaymentAllocation` and `syncFifoToDb` are now thin wrappers. Same FIFO algorithm everywhere.
+- The receipt-page allocation table now lists the synthetic registration row when a payment goes toward registration, so the table is meaningful for the initial enrolment payment too.
+- One-time data fix: ran `syncFifoToDb` for every non-WITHDRAWN student (33 students), bringing their stored `installment.status` / `paidAmount` in line with the canonical ledger. Arnee's Y3 returned to `UPCOMING` (no spillover) as the Schedule has been showing.
+
+---
+
 ## [1.18.1] — 2026-05-20
 
 ### Fix: record-payment pre-fill bug, stale installments, receipt PDF, receipt numbering

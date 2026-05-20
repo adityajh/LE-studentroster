@@ -1,13 +1,33 @@
+/**
+ * Per-payment FIFO allocation + DB sync of installment status / paidAmount.
+ *
+ * As of v1.18.2 this module is a thin wrapper over [src/lib/fee-ledger.ts](src/lib/fee-ledger.ts).
+ * That central function is the single source of truth for "how is total
+ * paid allocated across installments" — including:
+ *   - sorting by (year, dueDate)
+ *   - synthesizing a registration row when reg is tracked as a flag
+ *   - using effective per-installment fee (program × waivers) for ANNUAL
+ *     plans, or stored installment.amount otherwise
+ *
+ * What this file still provides:
+ *   - `computePaymentAllocation(payment, all-payments, ledger-input)` —
+ *     "incremental" view: how much of this specific payment landed on
+ *     each installment, derived by diffing ledgers before/after.
+ *   - `syncFifoToDb(tx, studentId)` — write installment.status and
+ *     paidAmount to the DB so other queries see the same truth.
+ */
+
 import type { PrismaClient } from "@prisma/client"
+import {
+  computeFeeLedger,
+  type ComputeLedgerInput,
+  type LedgerInstallmentInput,
+  type LedgerRegInput,
+  type LedgerProgramInput,
+  type LedgerWaiverInput,
+} from "./fee-ledger"
 
 // ─── Types ────────────────────────────────────────────────────────────────────
-
-export type FifoInstallment = {
-  id: string
-  label: string
-  amount: number   // DB amount — authoritative fee target for FIFO
-  dueDate: Date
-}
 
 export type FifoPayment = {
   id: string
@@ -19,52 +39,32 @@ export type FifoAllocationRow = {
   installmentId: string
   label: string
   fee: number
-  allocated: number   // how much of *this specific payment* went here
+  allocated: number    // how much of *this specific payment* went here
   cumAllocated: number // total allocated to this installment across all payments up to & including this one
 }
 
-// ─── Core FIFO algorithm ──────────────────────────────────────────────────────
-
-/**
- * Compute how much of totalPaid is allocated to each installment in dueDate order.
- * Returns a Map keyed by installmentId.
- */
-export function computeFifo(
-  totalPaid: number,
-  installments: FifoInstallment[]
-): Map<string, { allocated: number; status: "PAID" | "PARTIAL" | "UNPAID" }> {
-  const sorted = [...installments].sort(
-    (a, b) => a.dueDate.getTime() - b.dueDate.getTime()
-  )
-  let remaining = totalPaid
-  const result = new Map<string, { allocated: number; status: "PAID" | "PARTIAL" | "UNPAID" }>()
-
-  for (const inst of sorted) {
-    const fee = inst.amount
-    const allocated = Math.min(remaining, fee)
-    remaining -= allocated
-    result.set(inst.id, {
-      allocated,
-      status: allocated >= fee ? "PAID" : allocated > 0 ? "PARTIAL" : "UNPAID",
-    })
-  }
-  return result
+export type LedgerContext = {
+  installments: LedgerInstallmentInput[]
+  reg?: LedgerRegInput
+  program?: LedgerProgramInput
+  waivers?: LedgerWaiverInput
 }
 
+// ─── Per-payment incremental allocation ───────────────────────────────────────
+
 /**
- * Compute what a specific payment contributed to each installment.
- * Walks FIFO for all payments up to (and including) the target payment in date order,
- * then returns the incremental allocation that payment caused.
+ * Returns how much of the target payment landed on each installment by
+ * diffing the ledger state before vs after that payment.
+ *
+ * For same-date payments, the target is treated as the *last* one processed
+ * so that other same-date payments are counted in the "before" snapshot.
+ * The total deltas always sum to the payment amount.
  */
 export function computePaymentAllocation(
   targetPaymentId: string,
   allPayments: FifoPayment[],
-  installments: FifoInstallment[]
+  context: LedgerContext,
 ): FifoAllocationRow[] {
-  const sortedInsts = [...installments].sort(
-    (a, b) => a.dueDate.getTime() - b.dueDate.getTime()
-  )
-  // Sort payments by date; for same date put target last so prior payments are subtracted first
   const sortedPayments = [...allPayments].sort((a, b) => {
     const diff = a.date.getTime() - b.date.getTime()
     if (diff !== 0) return diff
@@ -76,29 +76,29 @@ export function computePaymentAllocation(
   const targetIdx = sortedPayments.findIndex(p => p.id === targetPaymentId)
   if (targetIdx === -1) return []
 
-  // Allocation state BEFORE this payment
-  const totalBefore = sortedPayments
-    .slice(0, targetIdx)
-    .reduce((s, p) => s + p.amount, 0)
-
-  // Allocation state AFTER this payment
+  const totalBefore = sortedPayments.slice(0, targetIdx).reduce((s, p) => s + p.amount, 0)
   const totalAfter = totalBefore + sortedPayments[targetIdx].amount
 
-  const allocBefore = computeFifo(totalBefore, installments)
-  const allocAfter  = computeFifo(totalAfter, installments)
+  const ledgerBefore = computeFeeLedger({ totalPaid: totalBefore, ...context } as ComputeLedgerInput)
+  const ledgerAfter = computeFeeLedger({ totalPaid: totalAfter, ...context } as ComputeLedgerInput)
+
+  const beforeReceivedById = new Map<string, number>(
+    ledgerBefore.rows.map(r => [r.id, r.received])
+  )
 
   const rows: FifoAllocationRow[] = []
-  for (const inst of sortedInsts) {
-    const before = allocBefore.get(inst.id)?.allocated ?? 0
-    const after  = allocAfter.get(inst.id)?.allocated ?? 0
-    const delta  = after - before
+  for (const r of ledgerAfter.rows) {
+    const before = beforeReceivedById.get(r.id) ?? 0
+    const delta = r.received - before
     if (delta > 0) {
       rows.push({
-        installmentId: inst.id,
-        label:         inst.label,
-        fee:           inst.amount,
-        allocated:     delta,
-        cumAllocated:  after,
+        // The synthetic registration row's id is the sentinel REG_SYNTH_ID;
+        // callers can render the label but shouldn't try to link to it.
+        installmentId: r.id,
+        label: r.label,
+        fee: r.fee,
+        allocated: delta,
+        cumAllocated: r.received,
       })
     }
   }
@@ -110,96 +110,101 @@ export function computePaymentAllocation(
 type TxClient = Omit<PrismaClient, "$connect" | "$disconnect" | "$on" | "$transaction" | "$use" | "$extends">
 
 /**
- * Run FIFO for a student and write status + paidAmount back to every installment.
- * Must be called inside a Prisma transaction after any payment change.
+ * Compute the canonical ledger for a student and write installment.status +
+ * installment.paidAmount back to the DB so other queries (students list,
+ * dashboard tiles, reminder query filter, etc.) see the same truth.
  *
- * Time-based statuses (UPCOMING / DUE / OVERDUE) are preserved on unpaid installments.
- * Only PAID and PARTIAL are written here; the cron owns the time transitions.
+ * PAID / PARTIAL are owned by this function. Time-based statuses (UPCOMING /
+ * DUE / OVERDUE) are owned by the cron — if an installment that was PAID or
+ * PARTIAL no longer has any FIFO allocation (e.g. a payment was edited
+ * downward), we reset it to a time-based status here.
  */
 export async function syncFifoToDb(tx: TxClient, studentId: string): Promise<void> {
-  const [payments, installments] = await Promise.all([
-    tx.payment.findMany({
-      where: { studentId },
-      select: { amount: true, date: true },
-    }),
-    tx.installment.findMany({
-      where: { studentId },
-      orderBy: { dueDate: "asc" },
-    }),
-  ])
+  const student = await tx.student.findUnique({
+    where: { id: studentId },
+    include: {
+      program: true,
+      financial: true,
+      offers: { include: { offer: true } },
+      scholarships: { include: { scholarship: true } },
+      deductions: true,
+      installments: true,
+      payments: { select: { amount: true } },
+    },
+  })
+  if (!student) return
 
-  const totalPaid = payments.reduce((s, p) => s + Number(p.amount), 0)
-  const alloc = computeFifo(
+  const totalPaid = student.payments.reduce((s, p) => s + Number(p.amount), 0)
+
+  const ledger = computeFeeLedger({
     totalPaid,
-    installments.map(i => ({
+    installments: student.installments.map(i => ({
       id: i.id,
+      year: i.year,
       label: i.label,
       amount: Number(i.amount),
       dueDate: i.dueDate,
-    }))
-  )
+      status: i.status,
+    })),
+    reg: student.financial?.registrationPaid
+      ? {
+          fee: student.financial.registrationFeeOverride != null
+            ? Number(student.financial.registrationFeeOverride)
+            : Number(student.program?.registrationFee ?? 0),
+          isPaid: true,
+        }
+      : undefined,
+    program: student.program ? {
+      year1Fee: Number(student.program.year1Fee),
+      year2Fee: Number(student.program.year2Fee),
+      year3Fee: Number(student.program.year3Fee),
+      installmentType: student.financial?.installmentType ?? null,
+    } : undefined,
+    waivers: {
+      offers: student.offers.map(o => ({ conditions: (o.offer as { conditions: unknown }).conditions, waiverAmount: Number(o.waiverAmount) })),
+      scholarships: student.scholarships.map(sc => ({ amount: Number(sc.amount), spreadAcrossYears: (sc.scholarship as { spreadAcrossYears: boolean }).spreadAcrossYears })),
+      totalDeductionAmount: student.deductions.reduce((s, d) => s + Number(d.amount), 0),
+    },
+  })
 
-  // Batch updates by grouping into PAID / PARTIAL / unchanged buckets
-  const paidIds: string[]    = []
-  const partialMap = new Map<string, number>() // id → allocatedAmount
-  const unpaidIds: string[]  = []
-
-  for (const inst of installments) {
-    const { allocated, status } = alloc.get(inst.id) ?? { allocated: 0, status: "UNPAID" as const }
-    if (status === "PAID") {
-      paidIds.push(inst.id)
-    } else if (status === "PARTIAL") {
-      partialMap.set(inst.id, allocated)
-    } else {
-      // UNPAID — if it was previously PAID or PARTIAL, clear paidAmount
-      // (handles edge case where installment amount was increased via editor)
-      if (inst.status === "PAID" || inst.status === "PARTIAL") {
-        unpaidIds.push(inst.id)
-      }
-    }
-  }
+  const now = new Date()
+  const graceCutoff = new Date(now)
+  graceCutoff.setDate(graceCutoff.getDate() - 7)
 
   const ops: Promise<unknown>[] = []
 
-  if (paidIds.length > 0) {
-    ops.push(
-      tx.installment.updateMany({
-        where: { id: { in: paidIds } },
-        data: { status: "PAID" },
-      })
-    )
-    // paidAmount = full amount per installment — do individually since amounts differ
-    for (const id of paidIds) {
-      const inst = installments.find(i => i.id === id)!
-      ops.push(tx.installment.update({ where: { id }, data: { paidAmount: Number(inst.amount) } }))
+  for (const row of ledger.rows) {
+    if (row.isSynthetic) continue
+    const inst = student.installments.find(i => i.id === row.id)
+    if (!inst) continue
+
+    const isFullyPaid = row.received >= row.fee && row.fee > 0
+    const isPartial = row.received > 0 && row.received < row.fee
+
+    if (isFullyPaid) {
+      ops.push(tx.installment.update({
+        where: { id: row.id },
+        data: { status: "PAID", paidAmount: row.fee },
+      }))
+    } else if (isPartial) {
+      ops.push(tx.installment.update({
+        where: { id: row.id },
+        data: { status: "PARTIAL", paidAmount: row.received },
+      }))
+    } else {
+      // Zero received. If the row was previously PAID/PARTIAL we need to
+      // reset it back to a time-based status (mirrors the old behaviour).
+      if (inst.status === "PAID" || inst.status === "PARTIAL") {
+        const timeStatus =
+          inst.dueDate <= graceCutoff ? "OVERDUE" :
+          inst.dueDate <= now         ? "DUE"     :
+                                        "UPCOMING"
+        ops.push(tx.installment.update({
+          where: { id: row.id },
+          data: { status: timeStatus, paidAmount: null },
+        }))
+      }
     }
-  }
-
-  for (const [id, allocated] of partialMap) {
-    ops.push(
-      tx.installment.update({
-        where: { id },
-        data: { status: "PARTIAL", paidAmount: allocated },
-      })
-    )
-  }
-
-  // Restore unpaid installments: clear paidAmount, restore time-based status
-  for (const id of unpaidIds) {
-    const inst = installments.find(i => i.id === id)!
-    const now = new Date()
-    const graceCutoff = new Date(now)
-    graceCutoff.setDate(graceCutoff.getDate() - 7)
-    const timeStatus =
-      inst.dueDate <= graceCutoff ? "OVERDUE" :
-      inst.dueDate <= now         ? "DUE"     :
-                                    "UPCOMING"
-    ops.push(
-      tx.installment.update({
-        where: { id },
-        data: { status: timeStatus, paidAmount: null },
-      })
-    )
   }
 
   await Promise.all(ops)

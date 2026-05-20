@@ -23,12 +23,17 @@ export default async function PaymentReceiptPage({
 
   if (!payment || payment.studentId !== studentId) notFound()
 
-  // Fetch student + all payments + all installments
+  // Fetch student + everything the central ledger needs to do FIFO with
+  // registration synthesis and waiver-aware effective fees.
   const student = await prisma.student.findUnique({
     where: { id: studentId },
     include: {
-      program: { select: { name: true } },
+      program: true,
       batch: { select: { year: true, name: true } },
+      financial: true,
+      offers: { include: { offer: true } },
+      scholarships: { include: { scholarship: true } },
+      deductions: true,
       documents: { where: { type: "STUDENT_PHOTO" }, take: 1 },
       payments: { select: { id: true, amount: true, date: true }, orderBy: { date: "asc" } },
       installments: { orderBy: { dueDate: "asc" } },
@@ -37,16 +42,40 @@ export default async function PaymentReceiptPage({
 
   if (!student) notFound()
 
-  // Compute FIFO allocation for this payment
+  // Compute FIFO allocation for this payment via the central ledger so the
+  // result matches every other view (Schedule tab, Students list, etc).
   const allocationRows = computePaymentAllocation(
     paymentId,
     student.payments.map(p => ({ id: p.id, amount: Number(p.amount), date: p.date })),
-    student.installments.map(i => ({
-      id: i.id,
-      label: i.label,
-      amount: Number(i.amount),
-      dueDate: i.dueDate,
-    }))
+    {
+      installments: student.installments.map(i => ({
+        id: i.id,
+        year: i.year,
+        label: i.label,
+        amount: Number(i.amount),
+        dueDate: i.dueDate,
+        status: i.status,
+      })),
+      reg: student.financial?.registrationPaid
+        ? {
+            fee: student.financial.registrationFeeOverride != null
+              ? Number(student.financial.registrationFeeOverride)
+              : Number(student.program?.registrationFee ?? 0),
+            isPaid: true,
+          }
+        : undefined,
+      program: student.program ? {
+        year1Fee: Number(student.program.year1Fee),
+        year2Fee: Number(student.program.year2Fee),
+        year3Fee: Number(student.program.year3Fee),
+        installmentType: student.financial?.installmentType ?? null,
+      } : undefined,
+      waivers: {
+        offers: student.offers.map(o => ({ conditions: (o.offer as { conditions: unknown }).conditions, waiverAmount: Number(o.waiverAmount) })),
+        scholarships: student.scholarships.map(sc => ({ amount: Number(sc.amount), spreadAcrossYears: (sc.scholarship as { spreadAcrossYears: boolean }).spreadAcrossYears })),
+        totalDeductionAmount: student.deductions.reduce((s, d) => s + Number(d.amount), 0),
+      },
+    },
   )
 
   const photo = student.documents[0]
