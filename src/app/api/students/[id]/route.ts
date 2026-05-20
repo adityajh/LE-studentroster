@@ -36,6 +36,7 @@ export async function PATCH(
     localGuardianName, localGuardianPhone, localGuardianEmail,
     linkedinHandle, instagramHandle, universityChoice, universityStatus,
     baseFee, customTerms,
+    registrationFee, // optional override → updates registrationFeeOverride + year=0 installment
     status,       // StudentStatus enum (Admin only)
     // Financial plan updates (Admin only)
     offers,       // string[] — offerId list
@@ -53,6 +54,7 @@ export async function PATCH(
 
   const hasFinancialUpdate =
     baseFee !== undefined ||
+    registrationFee !== undefined ||
     customTerms !== undefined ||
     offers !== undefined ||
     scholarships !== undefined ||
@@ -101,6 +103,7 @@ export async function PATCH(
   trackChange("contact", student.contact, contact)
   trackChange("status", student.status, status)
   trackChange("baseFee", student.financial?.baseFee, baseFee)
+  trackChange("registrationFee", student.financial?.registrationFeeOverride, registrationFee)
   trackChange("customTerms", student.financial?.customTerms, customTerms)
 
   // ── Financial recalculation ───────────────────────────────────────────────
@@ -234,8 +237,20 @@ export async function PATCH(
             totalDeduction: newTotalDeduction,
             netFee: newNetFee,
             customTerms: customTerms ?? undefined,
+            registrationFeeOverride: registrationFee !== undefined ? Number(registrationFee) : undefined,
           },
         })
+
+        // Update year=0 installment if registration fee changed and not yet paid
+        if (registrationFee !== undefined) {
+          const regInst = student.installments.find(i => i.year === 0 && i.status !== "PAID")
+          if (regInst) {
+            await tx.installment.update({
+              where: { id: regInst.id },
+              data: { amount: Number(registrationFee) },
+            })
+          }
+        }
 
         // ── Installment redistribution ──────────────────────────────────────
         // Only for ANNUAL and ONE_TIME plans (not CUSTOM)

@@ -45,6 +45,7 @@ export async function GET() {
       installmentType: "ANNUAL",
       registrationPaid: true,
       registrationPaidDate: new Date("2025-01-15"),
+      registrationFeeOverride: null,
       isLocked: true,
       lockedAt: new Date("2025-01-15"),
       customTerms: null,

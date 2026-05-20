@@ -342,6 +342,11 @@ model StudentFinancial {
   netFee               Decimal         @db.Decimal(12, 2)
   registrationPaid        Boolean         @default(false)
   registrationPaidDate    DateTime?
+  /** Per-student override of the programme's registration fee. NULL means
+   *  use program.registrationFee. Set via admin UI in Create-Offer / Edit
+   *  Student → Financial Plan when a specific student has a different reg
+   *  fee from the programme default. */
+  registrationFeeOverride Decimal?        @db.Decimal(12, 2)
   installmentType      InstallmentType
   isLocked             Boolean         @default(false)
   lockedAt             DateTime?

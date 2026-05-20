@@ -57,7 +57,9 @@ export async function buildOfferLetterDataForStudent(
 
   const offerExpiresAt = student.offerExpiresAt ?? new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
 
-  const regFee = Number(student.program.registrationFee)
+  const regFee = student.financial?.registrationFeeOverride != null
+    ? Number(student.financial.registrationFeeOverride)
+    : Number(student.program.registrationFee)
 
   // Build the explicit "Conditional Offers" list shown in the yellow box on
   // the appendix page. This is sourced from the batch's full offer catalogue

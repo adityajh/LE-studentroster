@@ -210,7 +210,12 @@ export default async function StudentsPage({
                     status: i.status,
                   })),
                   reg: s.financial?.registrationPaid
-                    ? { fee: Number(s.program?.registrationFee ?? 0), isPaid: true }
+                    ? {
+                        fee: s.financial.registrationFeeOverride != null
+                          ? Number(s.financial.registrationFeeOverride)
+                          : Number(s.program?.registrationFee ?? 0),
+                        isPaid: true,
+                      }
                     : undefined,
                   program: s.program ? {
                     year1Fee: Number(s.program.year1Fee),

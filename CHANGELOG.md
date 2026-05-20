@@ -4,6 +4,27 @@ All notable changes to the LE Student Roster system are documented here.
 
 ---
 
+## [1.18.4] — 2026-05-20
+
+### Restore `registrationFeeOverride` (reverts the over-zealous removal in 1.18.3)
+
+v1.18.3 removed the per-student registration-fee override feature in response to a request that was actually only about *total fee always including registration in the displays* — not about removing the override. Restoring it:
+
+- Schema: re-added `StudentFinancial.registrationFeeOverride Decimal?` (DB push).
+- Code reads: restored the `override ?? program.registrationFee` pattern in all ~14 sites (receipt-render, fifo, reminders, offer-letter-data, pdf-generator, students.ts, students-list, student-detail, payment-receipt page, confirm-enrolment route, [id] PATCH route, create-offer route, cron route, fee-structure preview).
+- Forms: put the **Registration** input back into Create-Offer and Edit-Student → Manage Financial Plan.
+- API: `[id] PATCH` and `create-offer` accept `registrationFee` again; persist it; PATCH also updates the year=0 installment if still unpaid.
+
+#### Kept from 1.18.3 (these were the parts that matched your actual intent — "total fee should always include registration")
+- **Students list** `Net Fee` / `Pending` columns read from `computeFeeLedger.totals.fee` / `.pending` (which include the synth-registration row) rather than stored `financial.netFee` directly.
+- **Dashboard collection-rate** denominator adds `program.registrationFee` to each `financial.netFee` so the percentage is computed against the inclusive total.
+- New [src/lib/receipt-render.ts](src/lib/receipt-render.ts) helper extracted (used by both the route handler and `scratch/send-test-receipt.ts` so test receipts are byte-identical to what students receive).
+
+#### Data
+Nothing lost — the only 2 students with non-null `registrationFeeOverride` (Aditya, Archit) had `override == program.registrationFee` exactly, so 1.18.3 dropped them as no-ops. They're back to `NULL` after this restore; the form will write again on any future per-student override.
+
+---
+
 ## [1.18.3] — 2026-05-20
 
 ### Drop per-student registration-fee override; total fee always includes registration

@@ -56,7 +56,7 @@ export async function processDailyReminders(): Promise<{
       email: true,
       parent1Email: true,
       payments: { select: { amount: true } },
-      financial: { select: { registrationPaid: true, installmentType: true } },
+      financial: { select: { registrationPaid: true, registrationFeeOverride: true, installmentType: true } },
       program: { select: { registrationFee: true, year1Fee: true, year2Fee: true, year3Fee: true } },
       offers: { include: { offer: true } },
       scholarships: { include: { scholarship: true } },
@@ -88,7 +88,12 @@ export async function processDailyReminders(): Promise<{
         status: i.status,
       })),
       reg: student.financial?.registrationPaid
-        ? { fee: Number(student.program?.registrationFee ?? 0), isPaid: true }
+        ? {
+            fee: student.financial.registrationFeeOverride != null
+              ? Number(student.financial.registrationFeeOverride)
+              : Number(student.program?.registrationFee ?? 0),
+            isPaid: true,
+          }
         : undefined,
       program: student.program ? {
         year1Fee: Number(student.program.year1Fee),
