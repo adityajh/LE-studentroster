@@ -103,9 +103,7 @@ export async function POST(
   const totalWaiver = totalOfferWaiver + totalScholarshipWaiver
   const netFee = Math.max(0, baseFee - totalWaiver - totalDeduction)
 
-  const regFee = student.financial.registrationFeeOverride != null
-    ? Number(student.financial.registrationFeeOverride)
-    : Number(program.registrationFee)
+  const regFee = Number(program.registrationFee)
 
   const year1 = Number(program.year1Fee)
   const year2 = Number(program.year2Fee)

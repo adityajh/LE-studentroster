@@ -54,8 +54,8 @@ export function CreateOfferForm({ batches }: { batches: Batch[] }) {
   const [contact, setContact] = useState("")
   const [city, setCity] = useState("")
 
-  // Per-year fee overrides (admin only)
-  const [feeOverrideReg, setFeeOverrideReg] = useState("")
+  // Per-year fee overrides (admin only). Registration is always the
+  // programme default — no per-student override is supported.
   const [feeOverrideY1, setFeeOverrideY1] = useState("")
   const [feeOverrideY2, setFeeOverrideY2] = useState("")
   const [feeOverrideY3, setFeeOverrideY3] = useState("")
@@ -90,9 +90,9 @@ export function CreateOfferForm({ batches }: { batches: Batch[] }) {
     const schWaiver = (scholarshipA?.amount ?? 0) + (scholarshipB?.amount ?? 0)
     const totalWaiver = totalOfferWaiver + schWaiver
     const netFee = Math.round(baseFee - totalWaiver)
-    const hasOverride = feeOverrideReg !== "" || feeOverrideY1 !== "" || feeOverrideY2 !== "" || feeOverrideY3 !== ""
+    const hasOverride = feeOverrideY1 !== "" || feeOverrideY2 !== "" || feeOverrideY3 !== ""
     return { baseFee, y1, y2, y3, hasOverride, totalWaiver, netFee }
-  }, [selectedProgram, selectedOfferIds, scholarshipA, scholarshipB, offers, feeOverrideReg, feeOverrideY1, feeOverrideY2, feeOverrideY3])
+  }, [selectedProgram, selectedOfferIds, scholarshipA, scholarshipB, offers, feeOverrideY1, feeOverrideY2, feeOverrideY3])
 
   const toggleOffer = (id: string) =>
     setSelectedOfferIds((prev) => prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id])
@@ -120,7 +120,6 @@ export function CreateOfferForm({ batches }: { batches: Batch[] }) {
           feeY1: feeOverrideY1 !== "" ? parseFloat(feeOverrideY1) : undefined,
           feeY2: feeOverrideY2 !== "" ? parseFloat(feeOverrideY2) : undefined,
           feeY3: feeOverrideY3 !== "" ? parseFloat(feeOverrideY3) : undefined,
-          registrationFee: feeOverrideReg !== "" ? parseFloat(feeOverrideReg) : undefined,
         }),
       })
       if (!res.ok) { const d = await res.json(); throw new Error(d.error ?? "Failed") }
@@ -234,9 +233,8 @@ export function CreateOfferForm({ batches }: { batches: Batch[] }) {
                   <span className="bg-indigo-600 text-[8px] text-white px-1.5 py-0.5 rounded-full font-black uppercase tracking-tighter">Admin Only</span>
                 </div>
                 <p className="text-xs text-indigo-400">Leave blank to use programme defaults.</p>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
                   {[
-                    { label: "Registration (₹)", placeholder: selectedProgram.registrationFee.toString(), value: feeOverrideReg, set: setFeeOverrideReg },
                     { label: "Year 1 (₹)", placeholder: selectedProgram.year1Fee.toString(), value: feeOverrideY1, set: setFeeOverrideY1 },
                     { label: "Year 2 (₹)", placeholder: selectedProgram.year2Fee.toString(), value: feeOverrideY2, set: setFeeOverrideY2 },
                     { label: "Year 3 (₹)", placeholder: selectedProgram.year3Fee.toString(), value: feeOverrideY3, set: setFeeOverrideY3 },
@@ -350,7 +348,7 @@ export function CreateOfferForm({ batches }: { batches: Batch[] }) {
                   {fees.totalWaiver > 0 && <div className="flex justify-between text-sm text-emerald-700"><span>Total Eligible Benefits</span><span>- {formatINR(fees.totalWaiver)}</span></div>}
                   <div className="flex justify-between text-sm font-bold border-t border-slate-200 pt-2"><span>Net Fee</span><span>{formatINR(fees.netFee)}</span></div>
                   <p className="text-xs text-slate-400 pt-1">
-                    + {formatINR(feeOverrideReg !== "" ? parseFloat(feeOverrideReg) : parseFloat(selectedProgram.registrationFee.toString()))} registration (confirmed at enrolment)
+                    + {formatINR(parseFloat(selectedProgram.registrationFee.toString()))} registration (confirmed at enrolment)
                   </p>
                   <p className="text-xs text-amber-600 bg-amber-50 border border-amber-200 rounded-lg px-2 py-1.5 mt-2">
                     Payment plan is chosen at enrolment — after the student confirms their seat.

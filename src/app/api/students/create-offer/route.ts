@@ -22,7 +22,6 @@ export async function POST(req: NextRequest) {
     feeY1,          // optional per-year overrides
     feeY2,
     feeY3,
-    registrationFee, // optional registration fee override
   } = body
 
   if (!name || !email || !contact || !batchId || !programId) {
@@ -77,7 +76,6 @@ export async function POST(req: NextRequest) {
         netFee,
         installmentType: "ANNUAL", // placeholder — confirmed at enrolment
         customTerms: customTerms ?? null,
-        registrationFeeOverride: registrationFee != null ? Number(registrationFee) : null,
         isLocked: false,        // locked when enrolment is confirmed
       },
     })

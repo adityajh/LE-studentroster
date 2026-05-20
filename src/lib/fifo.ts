@@ -147,12 +147,7 @@ export async function syncFifoToDb(tx: TxClient, studentId: string): Promise<voi
       status: i.status,
     })),
     reg: student.financial?.registrationPaid
-      ? {
-          fee: student.financial.registrationFeeOverride != null
-            ? Number(student.financial.registrationFeeOverride)
-            : Number(student.program?.registrationFee ?? 0),
-          isPaid: true,
-        }
+      ? { fee: Number(student.program?.registrationFee ?? 0), isPaid: true }
       : undefined,
     program: student.program ? {
       year1Fee: Number(student.program.year1Fee),

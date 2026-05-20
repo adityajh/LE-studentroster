@@ -342,7 +342,6 @@ model StudentFinancial {
   netFee               Decimal         @db.Decimal(12, 2)
   registrationPaid        Boolean         @default(false)
   registrationPaidDate    DateTime?
-  registrationFeeOverride Decimal?        @db.Decimal(12, 2)
   installmentType      InstallmentType
   isLocked             Boolean         @default(false)
   lockedAt             DateTime?

@@ -192,9 +192,7 @@ The Let's Enterprise Admissions Team`
       })
 
       if (updatedStudent?.financial) {
-        const regFee = updatedStudent.financial.registrationFeeOverride != null
-          ? Number(updatedStudent.financial.registrationFeeOverride)
-          : Number(student.program.registrationFee)
+        const regFee = Number(student.program.registrationFee)
         const offerLetterData: OfferLetterData = {
           studentName: student.name,
           programName: student.program.name,

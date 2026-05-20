@@ -61,10 +61,12 @@ async function getDashboardData() {
       },
     }),
 
-    // All financials for collection rate
+    // All financials for collection rate. netFee here is the stored value
+    // which historically excludes registration. We add reg back below so
+    // the collection-rate denominator always includes registration fees.
     prisma.studentFinancial.findMany({
       where: { student: { status: "ACTIVE" } },
-      select: { netFee: true },
+      select: { netFee: true, student: { select: { program: { select: { registrationFee: true } } } } },
     }),
 
     // Recent payments — last 8
@@ -86,7 +88,10 @@ async function getDashboardData() {
     0
   )
 
-  const totalNetFee = allFinancials.reduce((s, f) => s + f.netFee.toNumber(), 0)
+  const totalNetFee = allFinancials.reduce(
+    (s, f) => s + f.netFee.toNumber() + Number(f.student.program.registrationFee),
+    0,
+  )
 
   // Total collected ever — use Payment table (source of truth).
   // The installment.paidAmount field is only populated for PARTIAL payments,

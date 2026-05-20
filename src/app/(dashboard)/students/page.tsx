@@ -197,8 +197,6 @@ export default async function StudentsPage({
             <tbody>
               {students.map((s) => {
                 const totalReceived = (s.payments || []).reduce((sum, p) => sum + Number(p.amount), 0)
-                const netFeeNum = s.financial ? Number(s.financial.netFee) : 0
-                const totalPending = Math.max(0, netFeeNum - totalReceived)
                 const overdueCount = s.installments.filter((i) => i.status === "OVERDUE").length
 
                 const ledger = computeFeeLedger({
@@ -212,12 +210,7 @@ export default async function StudentsPage({
                     status: i.status,
                   })),
                   reg: s.financial?.registrationPaid
-                    ? {
-                        fee: s.financial.registrationFeeOverride != null
-                          ? Number(s.financial.registrationFeeOverride)
-                          : Number(s.program?.registrationFee ?? 0),
-                        isPaid: true,
-                      }
+                    ? { fee: Number(s.program?.registrationFee ?? 0), isPaid: true }
                     : undefined,
                   program: s.program ? {
                     year1Fee: Number(s.program.year1Fee),
@@ -266,7 +259,7 @@ export default async function StudentsPage({
                     </td>
                     <td className="px-3 py-3">
                       <span className="text-sm font-bold text-slate-800 whitespace-nowrap">
-                        {s.financial ? formatINR(s.financial.netFee) : "—"}
+                        {s.financial ? formatINR(ledger.totals.fee) : "—"}
                       </span>
                     </td>
                     <td className="px-3 py-3">
@@ -275,8 +268,8 @@ export default async function StudentsPage({
                       </span>
                     </td>
                     <td className="px-3 py-3">
-                      <span className={`text-sm font-semibold whitespace-nowrap ${totalPending > 0 ? "text-rose-600" : "text-slate-400"}`}>
-                        {s.financial ? formatINR(totalPending) : "—"}
+                      <span className={`text-sm font-semibold whitespace-nowrap ${ledger.totals.pending > 0 ? "text-rose-600" : "text-slate-400"}`}>
+                        {s.financial ? formatINR(ledger.totals.pending) : "—"}
                       </span>
                     </td>
                     <td className="px-3 py-3">

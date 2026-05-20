@@ -234,10 +234,7 @@ export function ProposalDocument({ student, terms, programExpectations, bankDeta
   const permanentOffers = student.offers.filter((so) => !so.offer.deadline)
   const conditionalOffers = student.offers.filter((so) => !!so.offer.deadline)
 
-  // Registration fee: use override if set, else program default
-  const regFee = fin.registrationFeeOverride != null
-    ? Number(fin.registrationFeeOverride)
-    : Number(student.program.registrationFee)
+  const regFee = Number(student.program.registrationFee)
 
   const y1Fee = Number(student.program.year1Fee)
   const y2Fee = Number(student.program.year2Fee)

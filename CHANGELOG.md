@@ -4,6 +4,22 @@ All notable changes to the LE Student Roster system are documented here.
 
 ---
 
+## [1.18.3] — 2026-05-20
+
+### Drop per-student registration-fee override; total fee always includes registration
+
+#### What changed
+- **Removed the `registrationFeeOverride` concept entirely.** Registration is always `student.program.registrationFee`. No per-student override.
+- Schema: dropped `StudentFinancial.registrationFeeOverride` column.
+- All read sites that used `override ?? program.registrationFee` simplified to `program.registrationFee`. Affected: receipt-render, fifo, reminders, offer-letter-data, pdf-generator, students-list/student-detail/receipt pages, and the API routes for confirm-enrolment, create-offer, [id] PATCH, and cron update-statuses.
+- Forms: the **Registration** input was removed from the create-offer form ("Per-year overrides" section now only has Y1/Y2/Y3) and from the edit-student form (same). Inline note clarifies registration uses the programme default.
+- **Total fee everywhere includes registration:**
+  - Students-list `Net Fee` / `Pending` columns now read from `computeFeeLedger.totals` (which already includes the synthesized registration row) instead of `student.financial.netFee` directly.
+  - Dashboard collection-rate denominator now adds `program.registrationFee` to each student's stored `financial.netFee` so the rate isn't artificially inflated.
+- Data: the only 2 existing override rows (Aditya, Archit — both with `override == program.registrationFee`) were dropped together with the column. No effective change.
+
+---
+
 ## [1.18.2] — 2026-05-20
 
 ### One FIFO function, one source of truth
