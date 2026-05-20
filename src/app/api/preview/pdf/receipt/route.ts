@@ -25,9 +25,11 @@ export async function GET() {
         referenceNo: "UPI2025011512345",
         payerName: "Ramesh Sharma",
         installment: { label: "Registration Fee" },
+        receiptNo: "RCP-LE-25-001-SAMPLE",
       },
-      netFee: 235000,
-      totalPaid: 50000,
+      totalFee: 1235000,
+      totalReceived: 50000,
+      outstanding: 1185000,
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     }) as any
   )

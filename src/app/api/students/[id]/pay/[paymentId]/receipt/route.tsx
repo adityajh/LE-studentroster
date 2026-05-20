@@ -4,6 +4,52 @@ import { prisma } from "@/lib/prisma"
 import { ReceiptDocument } from "@/lib/receipt-pdf"
 import { sendReceiptEmail } from "@/lib/mail"
 import { renderToStream, renderToBuffer } from "@react-pdf/renderer"
+import { computeFeeLedger } from "@/lib/fee-ledger"
+
+async function buildLedgerForStudent(studentId: string) {
+  const s = await prisma.student.findUnique({
+    where: { id: studentId },
+    include: {
+      program: true,
+      batch: true,
+      financial: true,
+      offers: { include: { offer: true } },
+      scholarships: { include: { scholarship: true } },
+      deductions: true,
+      installments: { orderBy: { year: "asc" } },
+      payments: { select: { amount: true } },
+    },
+  })
+  if (!s) return null
+  const totalPaid = s.payments.reduce((sum, p) => sum + Number(p.amount), 0)
+  const ledger = computeFeeLedger({
+    totalPaid,
+    installments: s.installments.map(i => ({
+      id: i.id, year: i.year, label: i.label,
+      amount: Number(i.amount), dueDate: i.dueDate, status: i.status,
+    })),
+    reg: s.financial?.registrationPaid
+      ? {
+          fee: s.financial.registrationFeeOverride != null
+            ? Number(s.financial.registrationFeeOverride)
+            : Number(s.program?.registrationFee ?? 0),
+          isPaid: true,
+        }
+      : undefined,
+    program: s.program ? {
+      year1Fee: Number(s.program.year1Fee),
+      year2Fee: Number(s.program.year2Fee),
+      year3Fee: Number(s.program.year3Fee),
+      installmentType: s.financial?.installmentType ?? null,
+    } : undefined,
+    waivers: {
+      offers: s.offers.map(o => ({ conditions: (o.offer as { conditions: unknown }).conditions, waiverAmount: Number(o.waiverAmount) })),
+      scholarships: s.scholarships.map(sc => ({ amount: Number(sc.amount), spreadAcrossYears: (sc.scholarship as { spreadAcrossYears: boolean }).spreadAcrossYears })),
+      totalDeductionAmount: s.deductions.reduce((sum, d) => sum + Number(d.amount), 0),
+    },
+  })
+  return { student: s, ledger }
+}
 
 export async function GET(
   req: NextRequest,
@@ -16,42 +62,25 @@ export async function GET(
 
   const { id: studentId, paymentId } = await params
 
-  const student = await prisma.student.findUnique({
-    where: { id: studentId },
-    include: {
-      program: true,
-      batch: true,
-      financial: true,
-    }
-  })
-
+  const ctx = await buildLedgerForStudent(studentId)
   const payment = await prisma.payment.findUnique({
     where: { id: paymentId },
-    include: {
-      installment: { select: { label: true } }
-    }
+    include: { installment: { select: { label: true } } },
   })
 
-  if (!student || !payment || payment.studentId !== studentId) {
+  if (!ctx || !payment || payment.studentId !== studentId) {
     return NextResponse.json({ error: "Record not found" }, { status: 404 })
   }
 
-  // Calculate total paid across all payments for this student
-  const allPayments = await prisma.payment.findMany({
-    where: { studentId }
-  })
-  const totalPaid = allPayments.reduce((sum, p) => sum + Number(p.amount), 0)
-  const netFee = Number(student.financial?.netFee ?? 0)
+  const filename = `Receipt_${payment.receiptNo ?? `${ctx.student.rollNo ?? ctx.student.id.slice(-6)}_${payment.id.slice(-6).toUpperCase()}`}`
 
-  const filename = `Receipt_${student.rollNo ?? student.id.slice(-6)}_${payment.id.slice(-6).toUpperCase()}`
-
-  // Return PDF stream
   const stream = await renderToStream(
-    <ReceiptDocument 
-      student={student} 
-      payment={{ ...payment, amount: Number(payment.amount) }} 
-      netFee={netFee}
-      totalPaid={totalPaid}
+    <ReceiptDocument
+      student={ctx.student}
+      payment={{ ...payment, amount: Number(payment.amount) }}
+      totalFee={ctx.ledger.totals.fee}
+      totalReceived={ctx.ledger.totals.received}
+      outstanding={ctx.ledger.totals.pending}
     />
   )
 
@@ -74,75 +103,53 @@ export async function POST(
 
   const { id: studentId, paymentId } = await params
 
-  const student = await prisma.student.findUnique({
-    where: { id: studentId },
-    include: {
-      program: true,
-      batch: true,
-      financial: true,
-    }
-  })
-
+  const ctx = await buildLedgerForStudent(studentId)
   const payment = await prisma.payment.findUnique({
     where: { id: paymentId },
-    include: {
-      installment: { select: { label: true } }
-    }
+    include: { installment: { select: { label: true } } },
   })
 
-  if (!student || !payment || payment.studentId !== studentId) {
+  if (!ctx || !payment || payment.studentId !== studentId) {
     return NextResponse.json({ error: "Record not found" }, { status: 404 })
   }
 
-  // Calculate stats for the PDF
-  const allPayments = await prisma.payment.findMany({
-    where: { studentId }
-  })
-  const totalPaid = allPayments.reduce((sum, p) => sum + Number(p.amount), 0)
-  const netFee = Number(student.financial?.netFee ?? 0)
-
-  const receiptNo = `RCP-${student.rollNo ?? student.id.slice(-6)}-${payment.id.slice(-6).toUpperCase()}`
-
   try {
-    // Generate PDF buffer
     const buffer = await renderToBuffer(
-      <ReceiptDocument 
-        student={student} 
-        payment={{ ...payment, amount: Number(payment.amount) }} 
-        netFee={netFee}
-        totalPaid={totalPaid}
+      <ReceiptDocument
+        student={ctx.student}
+        payment={{ ...payment, amount: Number(payment.amount) }}
+        totalFee={ctx.ledger.totals.fee}
+        totalReceived={ctx.ledger.totals.received}
+        outstanding={ctx.ledger.totals.pending}
       />
     )
 
-    // Collect all recipient emails
-    const to = [student.email].filter(Boolean) as string[]
+    const to = [ctx.student.email].filter(Boolean) as string[]
     const cc = [
-      student.parent1Email,
-      student.parent2Email,
-      student.localGuardianEmail
+      ctx.student.parent1Email,
+      ctx.student.parent2Email,
+      ctx.student.localGuardianEmail,
     ].filter(Boolean) as string[]
 
     if (to.length === 0) {
       return NextResponse.json({ error: "No student email found" }, { status: 400 })
     }
 
-    // Send email
     await sendReceiptEmail({
       to,
       cc,
-      studentName: student.name,
+      studentName: ctx.student.name,
       amount: Number(payment.amount),
       paymentDate: payment.date,
       paymentMode: payment.paymentMode || 'Payment',
       installmentLabel: payment.installment?.label || 'Advance Payment',
-      receiptNo,
+      receiptNo: payment.receiptNo ?? `RCP-${ctx.student.rollNo ?? ctx.student.id.slice(-6)}-${payment.id.slice(-6).toUpperCase()}`,
       pdfBuffer: buffer,
     })
 
-    // Update payment record with receiptSentAt
     await prisma.payment.update({
       where: { id: paymentId },
-      data: { receiptSentAt: new Date() }
+      data: { receiptSentAt: new Date() },
     })
 
     return NextResponse.json({ success: true })

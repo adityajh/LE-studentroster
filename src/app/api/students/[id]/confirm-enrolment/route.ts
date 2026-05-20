@@ -11,6 +11,7 @@ import crypto from "crypto"
 import fs from "fs"
 import path from "path"
 import { saveFeeLetterVersion } from "@/lib/fee-letter"
+import { generateReceiptNo } from "@/lib/receipt-no"
 
 export async function POST(
   req: NextRequest,
@@ -206,6 +207,7 @@ export async function POST(
         referenceNo: referenceNo ?? null,
         notes: notes ?? null,
         recordedById: dbUser?.id ?? null,
+        receiptNo: generateReceiptNo({ rollNo, studentId: id }),
       },
     })
 

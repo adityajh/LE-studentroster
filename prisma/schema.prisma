@@ -461,6 +461,9 @@ model Payment {
   notes          String?      @db.Text
   recordedById   String?
   receiptSentAt  DateTime?
+  /** Stable, human-readable receipt identifier. Generated at payment-create
+   *  time so it never changes once issued. Format: RCP-{rollNo}-{6 base36}. */
+  receiptNo      String?      @unique
   createdAt      DateTime     @default(now())
 
   student     Student      @relation(fields: [studentId], references: [id], onDelete: Cascade)

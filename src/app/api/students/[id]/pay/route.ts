@@ -3,6 +3,7 @@ import { auth } from "@/auth"
 import { prisma } from "@/lib/prisma"
 import { syncFifoToDb } from "@/lib/fifo"
 import { applyFirstNOffersIfQualified } from "@/lib/first-n-offers"
+import { generateReceiptNo } from "@/lib/receipt-no"
 
 // Get payment history for a student
 export async function GET(
@@ -62,6 +63,14 @@ export async function POST(
     where: { email: session.user.email }
   })
 
+  // Look up the student's roll number once so we can mint a stable receipt
+  // number (RCP-{rollNo}-{6}) at create time, stored on the Payment row.
+  const studentRoll = await prisma.student.findUnique({
+    where: { id: studentId },
+    select: { rollNo: true },
+  })
+  const receiptNo = generateReceiptNo({ rollNo: studentRoll?.rollNo ?? null, studentId })
+
   try {
     const result = await prisma.$transaction(async (tx) => {
       // 1. Create the payment journal entry
@@ -76,6 +85,7 @@ export async function POST(
           payerName: payerName || null,
           notes: notes || null,
           recordedById: dbUser?.id || null,
+          receiptNo,
         }
       })
 

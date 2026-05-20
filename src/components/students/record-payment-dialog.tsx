@@ -28,10 +28,12 @@ export function RecordPaymentDialog({ studentId, studentName, installment }: Pro
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
 
-  const maxAmount = installment ? parseFloat(installment.amount.toString()) : 0
-  const [paidAmount, setPaidAmount] = useState(maxAmount)
-  const balance = Math.max(0, maxAmount - paidAmount)
-  const isPartial = installment && paidAmount > 0 && paidAmount < maxAmount
+  // Amount starts empty — the admin must type the exact amount received.
+  // Previously this was pre-filled with installment.amount, which silently
+  // pulled a stale value when the stored amount differed from the effective
+  // fee shown in the Schedule, causing wrong payment amounts to be recorded.
+  const [paidAmount, setPaidAmount] = useState<number | "">("")
+  const numericAmount = typeof paidAmount === "number" ? paidAmount : 0
   const [paidDate, setPaidDate] = useState(new Date().toISOString().split("T")[0])
   const [paymentMode, setPaymentMode] = useState("UPI")
   const [referenceNo, setReferenceNo] = useState("")
@@ -44,12 +46,17 @@ export function RecordPaymentDialog({ studentId, studentName, installment }: Pro
     setLoading(true)
     setError("")
     try {
+      if (numericAmount <= 0) {
+        setError("Enter the amount paid")
+        setLoading(false)
+        return
+      }
       const res = await fetch(`/api/students/${studentId}/pay`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           installmentId: installment?.id,
-          paidAmount,
+          paidAmount: numericAmount,
           paidDate,
           paymentMode,
           referenceNo,
@@ -106,25 +113,16 @@ export function RecordPaymentDialog({ studentId, studentName, installment }: Pro
               <input
                 type="number"
                 value={paidAmount}
-                onChange={(e) => setPaidAmount(Math.round(parseFloat(e.target.value) || 0))}
-                max={installment ? maxAmount : undefined}
+                onChange={(e) => {
+                  const v = e.target.value
+                  setPaidAmount(v === "" ? "" : Math.round(parseFloat(v) || 0))
+                }}
                 min={1}
                 required
+                placeholder="Enter amount received"
                 className="w-full h-11 rounded-xl border-2 border-slate-200 bg-white pl-8 pr-4 text-sm font-bold text-slate-800 focus:border-indigo-500 focus:outline-none transition-all"
               />
             </div>
-            {installment && (
-              <div className="flex items-center gap-3">
-                <p className="text-xs font-medium text-slate-400">
-                  Due: {formatINR(maxAmount)}
-                </p>
-                {isPartial && (
-                  <p className="text-xs font-semibold text-orange-600">
-                    Balance: {formatINR(balance)} — will mark as Partial
-                  </p>
-                )}
-              </div>
-            )}
           </div>
 
           <div className="space-y-1.5">

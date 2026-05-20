@@ -1,13 +1,14 @@
-import { Document, Page, Text, View, StyleSheet, Font } from '@react-pdf/renderer'
-import { formatINR } from './fee-schedule'
+import { Document, Page, Text, View, StyleSheet } from '@react-pdf/renderer'
 
-// Register fonts
-Font.register({
-  family: 'Helvetica',
-  fonts: [
-    { src: 'https://fonts.gstatic.com/s/helveticaneue/v70/1Ptsg8zYS_SKigQIvdW0g40.ttf' }
-  ]
-})
+// Helvetica is a react-pdf built-in font — no Font.register needed. The
+// previous Font.register'd HelveticaNeue from Google Fonts was the cause of
+// the broken ₹-as-superscript-"1" rendering and letter-spacing artefacts.
+// Helvetica has no ₹ glyph either, so we use "Rs." as a prefix everywhere,
+// matching how pdf-generator.tsx and offer-letter-generator.tsx handle it.
+function formatPDFAmount(amount: number | { toNumber: () => number }): string {
+  const num = typeof amount === "object" ? amount.toNumber() : Number(amount)
+  return `Rs. ${Math.round(num).toLocaleString("en-IN")}`
+}
 
 const styles = StyleSheet.create({
   page: {
@@ -27,21 +28,21 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: 20,
-    fontWeight: 'bold',
+    fontFamily: 'Helvetica-Bold',
     color: '#3663AD',
     textTransform: 'uppercase',
   },
   receiptNo: {
     fontSize: 9,
-    fontFamily: 'Helvetica',
     color: '#64748b',
+    marginTop: 4,
   },
   section: {
     marginBottom: 25,
   },
   sectionTitle: {
     fontSize: 12,
-    fontWeight: 'bold',
+    fontFamily: 'Helvetica-Bold',
     color: '#160E44',
     marginBottom: 10,
     borderBottom: '1px solid #e2e8f0',
@@ -59,7 +60,7 @@ const styles = StyleSheet.create({
     width: '40%',
   },
   value: {
-    fontWeight: 'bold',
+    fontFamily: 'Helvetica-Bold',
     width: '60%',
     textAlign: 'right',
   },
@@ -74,13 +75,14 @@ const styles = StyleSheet.create({
   },
   amountLabel: {
     fontSize: 12,
-    fontWeight: 'bold',
+    fontFamily: 'Helvetica-Bold',
     color: '#64748b',
   },
   amountValue: {
-    fontSize: 24,
-    fontWeight: 'bold',
+    fontSize: 22,
+    fontFamily: 'Helvetica-Bold',
     color: '#25BCBD',
+    letterSpacing: 0,
   },
   footer: {
     position: 'absolute',
@@ -116,32 +118,42 @@ interface ReceiptDocumentProps {
     referenceNo: string | null
     payerName: string | null
     installment?: { label: string } | null
+    receiptNo?: string | null
   }
-  netFee: number
-  totalPaid: number
+  /** From `computeFeeLedger(...).totals.fee` — includes registration. */
+  totalFee: number
+  /** From `computeFeeLedger(...).totals.received` — also includes the
+   *  registration row when registration is a flag rather than a year=0
+   *  installment. */
+  totalReceived: number
+  /** From `computeFeeLedger(...).outstanding`. */
+  outstanding: number
 }
 
-export function ReceiptDocument({ student, payment, netFee, totalPaid }: ReceiptDocumentProps) {
-  const receiptNo = `RCP-${student.rollNo ?? "PENDING"}-${payment.id.slice(-6).toUpperCase()}`
-  const balance = Math.max(0, netFee - totalPaid)
+export function ReceiptDocument({ student, payment, totalFee, totalReceived, outstanding }: ReceiptDocumentProps) {
+  // Prefer the persisted receipt number; fall back to a derived value only
+  // for backwards-compat with payments that were created before the column
+  // existed (those have been backfilled, but belt-and-braces).
+  const receiptNo = payment.receiptNo
+    ?? `RCP-${student.rollNo ?? "PENDING"}-${payment.id.slice(-6).toUpperCase()}`
 
   return (
     <Document>
       <Page size="A4" style={styles.page}>
-        
+
         {/* Header */}
         <View style={styles.header}>
           <View>
-            <Text style={styles.title}>PAYMENT RECEIPT</Text>
+            <Text style={styles.title}>Payment Receipt</Text>
             <Text style={styles.receiptNo}>{receiptNo}</Text>
           </View>
-          <Text style={{ fontSize: 10, color: '#3663AD', fontWeight: 'bold' }}>LET'S ENTERPRISE</Text>
+          <Text style={{ fontSize: 10, color: '#3663AD', fontFamily: 'Helvetica-Bold' }}>LET'S ENTERPRISE</Text>
         </View>
 
         {/* Amount Box */}
         <View style={styles.amountContainer}>
           <Text style={styles.amountLabel}>Amount Received</Text>
-          <Text style={styles.amountValue}>{formatINR(payment.amount)}</Text>
+          <Text style={styles.amountValue}>{formatPDFAmount(payment.amount)}</Text>
         </View>
 
         {/* Student Section */}
@@ -192,20 +204,21 @@ export function ReceiptDocument({ student, payment, netFee, totalPaid }: Receipt
           </View>
         </View>
 
-        {/* Summary Section */}
+        {/* Summary Section — totals come from computeFeeLedger so they
+            include the registration fee and match the student detail UI. */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Account Summary</Text>
           <View style={styles.row}>
-            <Text style={styles.label}>Total Program Fee (Net):</Text>
-            <Text style={styles.value}>{formatINR(netFee)}</Text>
+            <Text style={styles.label}>Total Programme Fee (Net):</Text>
+            <Text style={styles.value}>{formatPDFAmount(totalFee)}</Text>
           </View>
           <View style={styles.row}>
             <Text style={styles.label}>Total Amount Received To Date:</Text>
-            <Text style={styles.value}>{formatINR(totalPaid)}</Text>
+            <Text style={styles.value}>{formatPDFAmount(totalReceived)}</Text>
           </View>
           <View style={{ ...styles.row, marginTop: 5, borderTop: '1px solid #e2e8f0', paddingTop: 5 }}>
-            <Text style={{ ...styles.label, fontWeight: 'bold' }}>Outstanding Balance:</Text>
-            <Text style={{ ...styles.value, color: balance > 0 ? '#334155' : '#25BCBD' }}>{formatINR(balance)}</Text>
+            <Text style={{ ...styles.label, fontFamily: 'Helvetica-Bold' }}>Outstanding Balance:</Text>
+            <Text style={{ ...styles.value, color: outstanding > 0 ? '#334155' : '#25BCBD' }}>{formatPDFAmount(outstanding)}</Text>
           </View>
         </View>
 
