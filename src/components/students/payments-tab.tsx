@@ -4,6 +4,7 @@ import Link from "next/link"
 import { formatINRFull } from "@/lib/fee-schedule"
 import { cn } from "@/lib/utils"
 import { RecordPaymentDialog } from "./record-payment-dialog"
+import { DeletePaymentButton } from "./delete-payment-button"
 import { Wallet, Info, FileText, User as UserIcon, Receipt } from "lucide-react"
 
 interface Payment {
@@ -24,9 +25,10 @@ interface Props {
   payments: any[] // We'll cast to Payment
   netFee: number
   canRecord: boolean
+  isAdmin: boolean
 }
 
-export function PaymentsTab({ studentId, studentName, payments, netFee, canRecord }: Props) {
+export function PaymentsTab({ studentId, studentName, payments, netFee, canRecord, isAdmin }: Props) {
   const typedPayments = payments as unknown as Payment[]
   const totalReceived = typedPayments.reduce((sum, p) => sum + Number(p.amount), 0)
   const outstanding = Math.max(0, netFee - totalReceived)
@@ -130,6 +132,13 @@ export function PaymentsTab({ studentId, studentName, payments, netFee, canRecor
                   <Receipt className="h-3 w-3" />
                   Receipt
                 </Link>
+                {isAdmin && (
+                  <DeletePaymentButton
+                    studentId={studentId}
+                    paymentId={p.id}
+                    amountLabel={formatINRFull(Number(p.amount))}
+                  />
+                )}
               </div>
             </div>
           ))

@@ -4,6 +4,21 @@ All notable changes to the LE Student Roster system are documented here.
 
 ---
 
+## [1.19.0] — 2026-06-01
+
+### Delete a recorded payment (Admin only)
+
+Admins can now remove a payment journal entry from a student's **Payments** tab.
+
+- New `DELETE /api/students/{id}/pay/{paymentId}` ([route.ts](src/app/api/students/[id]/pay/[paymentId]/route.ts)) — gated to `ADMIN` (401/403), verifies the payment belongs to the student, then in one transaction deletes the `Payment` row, re-runs `syncFifoToDb` so installment statuses/`paidAmount` recompute against the remaining payments, and writes a `StudentAuditLog` entry ("Payment deleted", with amount/date/mode/receipt no. + optional reason).
+- New [delete-payment-button.tsx](src/components/students/delete-payment-button.tsx) — confirmation dialog with an optional reason field, rendered per payment row in [payments-tab.tsx](src/components/students/payments-tab.tsx) **only when the viewer is an admin**. Staff never see the control and the API rejects them server-side.
+- Deleting a payment also removes its receipt (receipt data lives on the `Payment` row).
+
+#### Not changed (deliberately)
+- **First-N offers are not auto-revoked.** Recording a payment can award a `FIRST_N` offer; deleting it does not claw the waiver back. If the student no longer qualifies, an admin removes the offer via Edit → Manage Financial Plan, consistent with how offers are managed elsewhere.
+
+---
+
 ## [1.18.4] — 2026-05-20
 
 ### Restore `registrationFeeOverride` (reverts the over-zealous removal in 1.18.3)

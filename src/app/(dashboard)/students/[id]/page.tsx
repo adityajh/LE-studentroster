@@ -646,9 +646,10 @@ export default async function StudentDetailPage({
               <PaymentsTab 
                 studentId={student.id} 
                 studentName={student.firstName || student.name}
-                payments={student.payments} 
+                payments={student.payments}
                 netFee={summaryNetFee}
                 canRecord={canRecord}
+                isAdmin={isAdmin}
               />
             )}
 
