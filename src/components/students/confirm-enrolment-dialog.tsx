@@ -284,7 +284,12 @@ export function ConfirmEnrolmentDialog({
           payerName: payerName || null,
         }),
       })
-      if (!res.ok) { const d = await res.json(); throw new Error(d.error ?? "Failed") }
+      // Tolerate empty / non-JSON error bodies (e.g. a bodiless 500) instead of
+      // surfacing a confusing "Unexpected end of JSON input" parse error.
+      if (!res.ok) {
+        const d = await res.json().catch(() => null)
+        throw new Error(d?.error ?? `Enrolment failed (HTTP ${res.status})`)
+      }
       const data = await res.json()
       setDone({ rollNo: data.rollNo })
       router.refresh()

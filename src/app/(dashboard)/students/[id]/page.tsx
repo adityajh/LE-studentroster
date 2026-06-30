@@ -19,6 +19,7 @@ import { auth } from "@/auth"
 import { prisma } from "@/lib/prisma"
 import { Phone, Mail, Calendar, MapPin, Users, Droplets, Pencil, Bell, FileText, History, Wallet, Clock, GraduationCap, Link2, CheckCircle2 } from "lucide-react"
 import { SendOnboardingLinkButton } from "@/components/students/send-onboarding-link-button"
+import { WithdrawStudentButton } from "@/components/students/withdraw-student-button"
 
 export default async function StudentDetailPage({
   params,
@@ -364,6 +365,15 @@ export default async function StudentDetailPage({
                 <Pencil className="h-3.5 w-3.5" />
                 Edit
               </Link>
+            )}
+            {/* Retract/Withdraw — preserves the record (vs. hard delete). Admin
+                only, and only for live statuses (not already WITHDRAWN/ALUMNI). */}
+            {isAdmin && ["OFFERED", "ONBOARDING", "ACTIVE"].includes(student.status) && (
+              <WithdrawStudentButton
+                studentId={student.id}
+                studentName={student.name}
+                status={student.status}
+              />
             )}
           </div>
         </div>

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { auth } from "@/auth"
 import { prisma } from "@/lib/prisma"
-import { generateRollNo } from "@/lib/students"
+import { generateRollNo, withRollNoRetry } from "@/lib/students"
 import { splitWaivers } from "@/lib/fee-calc"
 import { saveFeeLetterVersion } from "@/lib/fee-letter"
 import { renderToBuffer } from "@react-pdf/renderer"
@@ -96,9 +96,6 @@ export async function POST(req: NextRequest) {
     }))
   )
 
-  // Generate roll number
-  const rollNo = await generateRollNo(program.batch.year)
-
   // Build installments
   const batchYear = program.batch.year
   const today = new Date()
@@ -183,8 +180,13 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  // Create everything in a transaction
-  const student = await prisma.$transaction(async (tx) => {
+  // Create everything in a transaction. Roll number is generated INSIDE the tx
+  // (atomic read-then-assign) and the whole tx is retried on a P2002 rollNo
+  // collision from a concurrent enrolment.
+  let student: { id: string; rollNo: string | null }
+  try {
+    student = await withRollNoRetry(() => prisma.$transaction(async (tx) => {
+    const rollNo = await generateRollNo(tx, program.batch.year)
     const s = await tx.student.create({
       data: {
         rollNo,
@@ -268,7 +270,14 @@ export async function POST(req: NextRequest) {
     })
 
     return s
-  })
+    }))
+  } catch (err) {
+    console.error("[enroll]", err)
+    return NextResponse.json(
+      { error: err instanceof Error ? err.message : "Failed to enrol student" },
+      { status: 500 },
+    )
+  }
 
   // Generate and save fee letter for directly enrolled students
   try {

@@ -263,8 +263,8 @@ export function EnrollForm({ batches, defaultTerms }: { batches: Batch[], defaul
           customTerms,
         }),
       })
-      const data = await res.json()
-      if (!res.ok) throw new Error(data.error ?? "Enrollment failed")
+      const data = await res.json().catch(() => null)
+      if (!res.ok) throw new Error(data?.error ?? `Enrollment failed (HTTP ${res.status})`)
       router.push(`/students/${data.id}`)
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong")

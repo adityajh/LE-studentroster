@@ -352,6 +352,27 @@ export async function DELETE(
 
   const { id } = await params
 
+  // Guard: hard-delete is reserved for junk records (no roll number, no payments).
+  // A numbered or paid student must be WITHDRAWN instead — deleting them destroys
+  // the audit trail AND frees their roll number, which breaks roll-number
+  // continuity (a freed number leaves a permanent gap; see generateRollNo).
+  const target = await prisma.student.findUnique({
+    where: { id },
+    select: { rollNo: true, _count: { select: { payments: true } } },
+  })
+  if (!target) {
+    return NextResponse.json({ error: "Student not found" }, { status: 404 })
+  }
+  if (target.rollNo || target._count.payments > 0) {
+    return NextResponse.json(
+      {
+        error:
+          "This student has a roll number or recorded payments and cannot be deleted. Use Withdraw instead to keep the record and audit history.",
+      },
+      { status: 400 },
+    )
+  }
+
   try {
     await prisma.student.delete({ where: { id } })
     return NextResponse.json({ success: true })

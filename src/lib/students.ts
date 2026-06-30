@@ -1,13 +1,54 @@
 import { prisma } from "./prisma"
-import { $Enums } from "@prisma/client"
+import { $Enums, Prisma } from "@prisma/client"
 
-export async function generateRollNo(batchYear: number): Promise<string> {
-  // Count only enrolled students (those with a rollNo assigned)
-  const count = await prisma.student.count({
+/**
+ * Next roll number for a batch year = (highest existing suffix) + 1 — NOT a
+ * count. Count-based numbering collides whenever a numbered student is deleted
+ * (the count lags the real max), which is exactly the bug that blocked an
+ * enrolment. Roll numbers are permanent and never reused: gaps left by
+ * withdrawn/deleted students stay retired.
+ *
+ * MUST run inside the enrolment transaction (pass the `tx` client) so the
+ * read-then-assign is atomic for a single request; pair the surrounding
+ * transaction with {@link withRollNoRetry} to resolve the rare race between two
+ * concurrent enrolments in the same batch.
+ */
+export async function generateRollNo(
+  client: Prisma.TransactionClient | typeof prisma,
+  batchYear: number,
+): Promise<string> {
+  const rows = await client.student.findMany({
     where: { batch: { year: batchYear }, rollNo: { not: null } },
+    select: { rollNo: true },
   })
-  const seq = String(count + 1).padStart(3, "0")
+  let maxSeq = 0
+  for (const { rollNo } of rows) {
+    const m = /^LE\d{4}(\d+)$/.exec(rollNo ?? "")
+    if (m) maxSeq = Math.max(maxSeq, Number(m[1]))
+  }
+  const seq = String(maxSeq + 1).padStart(3, "0")
   return `LE${batchYear}${seq}`
+}
+
+/**
+ * Run an enrolment transaction, retrying when it fails on a roll-number unique
+ * collision (Prisma P2002 on `rollNo`). That can only happen when two
+ * enrolments in the same batch race; each retry regenerates the number from the
+ * freshly-read max, so it converges. Non-collision errors propagate immediately.
+ */
+export async function withRollNoRetry<T>(fn: () => Promise<T>, attempts = 3): Promise<T> {
+  for (let attempt = 1; ; attempt++) {
+    try {
+      return await fn()
+    } catch (err) {
+      const isRollNoCollision =
+        err instanceof Prisma.PrismaClientKnownRequestError &&
+        err.code === "P2002" &&
+        String((err.meta as { target?: unknown } | undefined)?.target ?? "").includes("rollNo")
+      if (isRollNoCollision && attempt < attempts) continue
+      throw err
+    }
+  }
 }
 
 export async function getStudents(opts?: {

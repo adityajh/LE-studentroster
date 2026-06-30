@@ -814,6 +814,8 @@ export function EditStudentForm({
               <p className="text-sm font-bold text-rose-900">Danger Zone</p>
               <p className="text-xs font-medium text-rose-600 opacity-80 mt-1">
                 Irreversibly delete this student record and all associated payments, documents, and audit logs.
+                Only possible for records with no roll number and no payments — for enrolled students, use
+                <strong> Withdraw</strong> instead (keeps the record &amp; history).
               </p>
             </div>
             <DeleteStudentButton studentId={student.id} studentName={student.name} />

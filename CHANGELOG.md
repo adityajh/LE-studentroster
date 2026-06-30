@@ -4,6 +4,29 @@ All notable changes to the LE Student Roster system are documented here.
 
 ---
 
+## [1.20.0] — 2026-06-30
+
+### Fix: roll-number collision blocked enrolments + Withdraw-instead-of-delete
+
+#### The bug
+Confirming an enrolment failed with a client-side *"Unexpected end of JSON input"* — a masked server 500. Root cause: `generateRollNo` derived the next number from a **count** (`LE{year}{count+1}`). After a numbered student was hard-deleted (leaving a gap, e.g. `LE2026005`), the count lagged the real max suffix, so it regenerated an **already-taken** number (`LE2026008`). `rollNo` is `@unique`, so the transaction threw P2002, the route had no try/catch, and the response came back bodiless. It failed deterministically for the next student in line (Mohammed Limdiwala).
+
+#### Roll-number generation — now collision-proof ([src/lib/students.ts](src/lib/students.ts))
+- `generateRollNo(client, batchYear)` now uses **highest existing suffix + 1**, not a count — deletions/gaps can never cause a collision. Roll numbers are permanent and never reused; gaps stay retired (`LE2026005` is gone for good; the next number is `LE2026009`).
+- It now takes a Prisma client and is called **inside** the enrolment transaction (atomic read-then-assign), eliminating the prior read-outside-tx race.
+- New `withRollNoRetry()` wraps both enrolment transactions and retries on a P2002 `rollNo` collision (the only way two concurrent same-batch enrolments could still clash).
+- Both call sites fixed: `confirm-enrolment` and direct `enroll` routes.
+
+#### Diagnosable failures
+- Both enrolment routes ([confirm-enrolment](src/app/api/students/[id]/confirm-enrolment/route.ts), [enroll](src/app/api/students/enroll/route.ts)) now wrap the transaction in try/catch returning `NextResponse.json({ error }, { status: 500 })` instead of a bodiless 500.
+- Client error parsing in [confirm-enrolment-dialog.tsx](src/components/students/confirm-enrolment-dialog.tsx) and [enroll-form.tsx](src/components/students/enroll-form.tsx) now tolerates empty/non-JSON bodies (shows the HTTP status instead of a JSON-parse error).
+
+#### Withdraw instead of delete (data governance)
+- New **Retract Offer / Withdraw** action ([withdraw-student-button.tsx](src/components/students/withdraw-student-button.tsx)) in the student detail header (admin-only, live statuses): sets status → `WITHDRAWN` via the existing audited PATCH, **preserving the record, roll number, and history**. Reversible.
+- **Hard-delete is now gated** ([students/[id] DELETE](src/app/api/students/[id]/route.ts)): refused when the student has a roll number or any payments (returns 400 pointing to Withdraw). This is what structurally prevents future `005`-style gaps and audit-trail loss. Edit-form Danger Zone copy updated to match.
+
+---
+
 ## [1.19.0] — 2026-06-01
 
 ### Delete a recorded payment (Admin only)

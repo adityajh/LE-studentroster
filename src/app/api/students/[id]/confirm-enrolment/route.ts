@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { auth } from "@/auth"
 import { prisma } from "@/lib/prisma"
-import { generateRollNo } from "@/lib/students"
+import { generateRollNo, withRollNoRetry } from "@/lib/students"
 import { splitWaivers } from "@/lib/fee-calc"
 import { sendEnrolmentConfirmationEmail } from "@/lib/mail"
 import { getSetting } from "@/app/actions/settings"
@@ -145,10 +145,14 @@ export async function POST(
     installments.push({ year: 1, label: "Full Programme Fee (3 Years)", dueDate: fullDue, amount: Math.max(0, baseFee - totalWaiver - totalDeduction), status: "UPCOMING" })
   }
 
-  const rollNo = await generateRollNo(batchYear)
+  // ── Transaction (with roll-number collision retry) ─────────────────────────
+  // Roll number is generated INSIDE the tx (atomic read-then-assign) and the
+  // whole tx is retried on a P2002 rollNo collision from a concurrent enrolment.
+  let result: { payment: { id: string }; rollNo: string }
+  try {
+    result = await withRollNoRetry(() => prisma.$transaction(async (tx) => {
+    const rollNo = await generateRollNo(tx, batchYear)
 
-  // ── Transaction ───────────────────────────────────────────────────────────
-  const result = await prisma.$transaction(async (tx) => {
     // 1. Assign roll number, set ONBOARDING
     await tx.student.update({
       where: { id },
@@ -245,8 +249,17 @@ export async function POST(
       },
     })
 
-    return { payment }
-  })
+    return { payment, rollNo }
+    }))
+  } catch (err) {
+    console.error("[confirm-enrolment]", err)
+    return NextResponse.json(
+      { error: err instanceof Error ? err.message : "Failed to confirm enrolment" },
+      { status: 500 },
+    )
+  }
+
+  const rollNo = result.rollNo
 
   // ── Post-enrolment: fee letter + welcome email with onboarding link ──────────
   // Fire-and-forget: don't fail enrollment if email fails
