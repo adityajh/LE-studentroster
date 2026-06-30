@@ -123,7 +123,9 @@ Student (rollNo?, name, firstName?, lastName?, email, contact, batchId, programI
   └── StudentAuditLog[] (field, oldValue, newValue, reason, changedBy)
 ```
 
-`Student.rollNo` is **nullable** — assigned only when a student is confirmed enrolled (status transitions from `OFFERED` → `ONBOARDING`). Roll number format: `LE{year}{seq}` e.g. `LE2026001`.
+`Student.rollNo` is **nullable** and `@unique` — assigned only when a student is confirmed enrolled (status transitions from `OFFERED` → `ONBOARDING`). Roll number format: `LE{year}{seq}` e.g. `LE2026001`.
+
+**Roll-number generation** (`generateRollNo` in `src/lib/students.ts`): the next number is **highest existing suffix + 1** for that batch year — *not* a count of enrolled students. Count-based numbering collided whenever a numbered student was removed (the count lagged the real max, regenerating an already-issued number against the `@unique` constraint). Roll numbers are **permanent and never reused**: a withdrawn/deleted student leaves a retired gap that is never backfilled. Generation runs **inside** the enrolment transaction (atomic read-then-assign) and the transaction is wrapped in `withRollNoRetry` (retries on a P2002 `rollNo` collision from two concurrent same-batch enrolments).
 
 `StudentFinancial.registrationFeeOverride` — admin can override the registration fee per-student (null = use `Program.registrationFee`). Stored separately so it can be pre-populated in the edit form and applied to the year=0 installment.
 
@@ -242,6 +244,9 @@ Active Student — fee tracking, reminders, payments
 
 Direct enrolment path (`/students/new`) still exists for retroactive entries — creates `ACTIVE` student with roll number and installments immediately.
 
+### Retract / Withdraw (vs. hard delete)
+Removing a candidate or student is a **status transition, not a deletion**. The **Retract Offer / Withdraw** action (admin-only, in the student detail header) sets `status → WITHDRAWN` via the audited `PATCH /api/students/[id]`, preserving the record, roll number, and audit history (reversible by setting the status back). **Hard delete** (`DELETE /api/students/[id]`) is reserved for junk records and is **refused when the student has a roll number or any payments** — deleting a numbered student would both destroy the audit trail and free their roll number, breaking roll-number continuity. This guard is what keeps roll numbers permanent (see roll-number generation above).
+
 ### Self-Onboarding Token Security
 - Raw 32-byte token lives only in the URL — never stored in DB
 - DB stores `SHA-256(rawToken)` as `tokenHash` in `OnboardingToken`
@@ -258,10 +263,12 @@ Direct enrolment path (`/students/new`) still exists for retroactive entries —
 |---|---|---|
 | POST | `/api/students/create-offer` | Create OFFERED student |
 | POST | `/api/students/[id]/send-offer` | Send offer email + PDF |
-| POST | `/api/students/[id]/confirm-enrolment` | Record ₹50K payment, assign roll no, activate |
+| POST | `/api/students/[id]/confirm-enrolment` | Record ₹50K payment, assign roll no (max-suffix+1, in-tx + retry), activate |
 | POST | `/api/students/enroll` | Direct enrolment (legacy path) |
-| PATCH/DELETE | `/api/students/[id]` | Update or delete student |
+| PATCH | `/api/students/[id]` | Update student; status→`WITHDRAWN` is the Retract/Withdraw path |
+| DELETE | `/api/students/[id]` | Hard delete — admin only; refused if student has a roll number or payments |
 | POST | `/api/students/[id]/pay` | Record payment (runs FIFO write-back) |
+| DELETE | `/api/students/[id]/pay/[paymentId]` | Delete a recorded payment (admin only; re-runs FIFO) |
 | PATCH | `/api/students/[id]/installments` | Admin: edit installment schedule |
 | GET | `/api/students/[id]/pay/[paymentId]/receipt` | Generate receipt PDF |
 | GET | `/api/students/[id]/proposal` | Serve stored fee letter PDF (or generate fresh if none stored) |
