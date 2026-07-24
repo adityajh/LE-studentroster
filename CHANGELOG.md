@@ -4,6 +4,33 @@ All notable changes to the LE Student Roster system are documented here.
 
 ---
 
+## [1.21.0] — 2026-07-24
+
+### Dashboard Financial Chip Filtering & Due Calculation Fix
+
+#### 1. Financial Chip Navigation & Student Roster Filtering
+- **Interactive Stat Cards**: Clicking any financial stat card on the dashboard (**Collected FY**, **Due FY current**, **Due FY next**, **Overdue Amount**) navigates directly to the Master Roster (`/students`) filtered for that specific metric and date range:
+  - `Collected (FY 26-27)` $\rightarrow$ `/students?collectedFy=2026`
+  - `Due (FY 26-27)` $\rightarrow$ `/students?dueFy=2026`
+  - `Due (FY 27-28)` $\rightarrow$ `/students?dueFy=2027`
+  - `Overdue Amount` $\rightarrow$ `/students?tab=overdue`
+- **Dynamic Table Column**: When filtering by an FY range on `/students`, a dedicated warm-amber highlighted column (**"FY 26-27 Due"** or **"FY 26-27 Coll."**) is rendered in the student roster table, calculating and displaying the exact FY amount per student line item.
+- **Active Filter Banner**: Displays a prominent filter status badge at the top of the roster table with a one-click "Clear Filter" action.
+- **Withdrawn Student Exclusion**: FY filter queries automatically exclude `WITHDRAWN` status students to ensure 100% alignment with dashboard financial totals down to the rupee.
+
+#### 2. Due FY Remaining Balance Calculation Fix ([page.tsx](src/app/(dashboard)/dashboard/page.tsx))
+- Fixed an issue where `Due (FY 26-27)` and `Due (FY 27-28)` cards aggregated gross scheduled installment amounts without subtracting paid portions. Cards now sum actual remaining unpaid balances (`amount - paidAmount`) for non-paid installments.
+
+#### 3. Legacy External Payment Fix CLI Tool ([prisma/mark-legacy-paid.ts](prisma/mark-legacy-paid.ts))
+- Created and enhanced `prisma/mark-legacy-paid.ts` CLI tool.
+- Supports running batch updates for entire cohorts (Cohort 2023) or individual student roll numbers (`npx tsx prisma/mark-legacy-paid.ts LE2024001 LE2024005`).
+- Automatically updates past/current unpaid installments to `PAID` with `paymentMethod: EXTERNAL_ACCOUNT` and creates payment records tagged `LEGACY-EXT-ACC`.
+
+#### 4. Automatic FY Relabeling
+- Confirmed dynamic Financial Year computation logic (`currentMonth >= 3 ? year : year - 1`). All dashboard cards and filter links automatically shift to the next Financial Year cycle (e.g. `FY 2027-28`) on **1st April 2027** without requiring code updates.
+
+---
+
 ## [1.20.0] — 2026-06-30
 
 ### Fix: roll-number collision blocked enrolments + Withdraw-instead-of-delete
