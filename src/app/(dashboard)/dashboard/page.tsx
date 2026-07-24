@@ -38,9 +38,9 @@ async function getDashboardData() {
     totalStudents,
     pendingOffersCount,
     overdueInstallments,
-    dueThisFyAgg,
+    dueThisFyInstallments,
     collectedThisFyAgg,
-    dueNextFyAgg,
+    dueNextFyInstallments,
     allFinancials,
     recentPayments,
     // Funnel counts
@@ -55,13 +55,12 @@ async function getDashboardData() {
     prisma.student.count({ where: { status: "ACTIVE" } }),
     prisma.student.count({ where: { status: "OFFERED" } }),
 
-    // Overdue: full details for list. Excludes WITHDRAWN and batch < 2024.
+    // Overdue: full details for list. Excludes WITHDRAWN.
     prisma.installment.findMany({
       where: {
         status: "OVERDUE",
         student: {
           status: { not: "WITHDRAWN" },
-          batch: { year: { gte: 2024 } },
         },
       },
       include: { student: { select: { id: true, name: true, rollNo: true } } },
@@ -69,16 +68,15 @@ async function getDashboardData() {
       take: 10,
     }),
 
-    // Due this FY — installments due between April 1 and March 31
-    prisma.installment.aggregate({
+    // Due this FY — unpaid/partially paid installments due in this financial year
+    prisma.installment.findMany({
       where: {
         dueDate: { gte: fyStart, lte: fyEnd },
+        status: { not: "PAID" },
         student: {
           status: { not: "WITHDRAWN" },
-          batch: { year: { gte: 2024 } },
         },
       },
-      _sum: { amount: true },
     }),
 
     // Collected this FY — payments recorded in this financial year
@@ -90,16 +88,15 @@ async function getDashboardData() {
       _sum: { amount: true },
     }),
 
-    // Due next FY — installments due in the next financial year
-    prisma.installment.aggregate({
+    // Due next FY — unpaid/partially paid installments due in next financial year
+    prisma.installment.findMany({
       where: {
         dueDate: { gte: nextFyStart, lte: nextFyEnd },
+        status: { not: "PAID" },
         student: {
           status: { not: "WITHDRAWN" },
-          batch: { year: { gte: 2024 } },
         },
       },
-      _sum: { amount: true },
     }),
 
     // All financials for overall collection rate
@@ -146,9 +143,15 @@ async function getDashboardData() {
   ])
 
   const overdueAmount = overdueInstallments.reduce((s, i) => s + i.amount.toNumber(), 0)
-  const dueThisFyAmount = dueThisFyAgg._sum.amount?.toNumber() ?? 0
+  const dueThisFyAmount = dueThisFyInstallments.reduce((s, i) => {
+    const remaining = i.amount.toNumber() - (i.paidAmount?.toNumber() ?? 0)
+    return s + Math.max(0, remaining)
+  }, 0)
   const collectedThisFyAmount = collectedThisFyAgg._sum.amount?.toNumber() ?? 0
-  const dueNextFyAmount = dueNextFyAgg._sum.amount?.toNumber() ?? 0
+  const dueNextFyAmount = dueNextFyInstallments.reduce((s, i) => {
+    const remaining = i.amount.toNumber() - (i.paidAmount?.toNumber() ?? 0)
+    return s + Math.max(0, remaining)
+  }, 0)
 
   const totalNetFee = allFinancials.reduce(
     (s, f) => s + f.netFee.toNumber() + Number(f.student.program.registrationFee),
