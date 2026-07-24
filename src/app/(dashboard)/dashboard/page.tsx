@@ -205,6 +205,7 @@ async function getDashboardData() {
     overdueCount: overdueInstallments.length,
     fyLabel,
     nextFyLabel,
+    fyStartYear,
     dueThisFyAmount,
     collectedThisFyAmount,
     dueNextFyAmount,
@@ -252,7 +253,7 @@ export default async function DashboardPage() {
       icon: IndianRupee,
       accent: "emerald" as const,
       isAmount: true,
-      href: null,
+      href: `/students?collectedFy=${d.fyStartYear}`,
     },
     {
       eyebrow: `Due (${d.fyLabel})`,
@@ -261,7 +262,7 @@ export default async function DashboardPage() {
       icon: Clock,
       accent: "amber" as const,
       isAmount: true,
-      href: "/students",
+      href: `/students?dueFy=${d.fyStartYear}`,
     },
     {
       eyebrow: `Due (${d.nextFyLabel})`,
@@ -270,7 +271,7 @@ export default async function DashboardPage() {
       icon: Calendar,
       accent: "indigo" as const,
       isAmount: true,
-      href: "/students",
+      href: `/students?dueFy=${d.fyStartYear + 1}`,
     },
     {
       eyebrow: "Overdue Amount",

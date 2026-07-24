@@ -13,12 +13,14 @@ import { Eyebrow, SoftCard, AdminCard } from "@/components/ui/brand"
 export default async function StudentsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ search?: string; status?: string; batch?: string; tab?: string }>
+  searchParams: Promise<{ search?: string; status?: string; batch?: string; tab?: string; dueFy?: string; collectedFy?: string }>
 }) {
-  const { search, status, batch, tab } = await searchParams
+  const { search, status, batch, tab, dueFy, collectedFy } = await searchParams
   const isOverdueTab     = tab === "overdue"
   const isOfferedTab     = tab === "offered"
   const isOnboardingTab  = tab === "onboarding"
+  const dueFyYear        = dueFy ? parseInt(dueFy) : undefined
+  const collectedFyYear  = collectedFy ? parseInt(collectedFy) : undefined
 
   const session = await auth()
   const dbUser = await prisma.user.findUnique({
@@ -46,6 +48,8 @@ export default async function StudentsPage({
       : status,
     batchYear: batch ? parseInt(batch) : undefined,
     overdueOnly: isOverdueTab,
+    dueFyYear,
+    collectedFyYear,
   })
 
   function abbrevProgram(name: string): string {
@@ -119,46 +123,61 @@ export default async function StudentsPage({
 
       {/* Filters — only on All tab */}
       {!isOverdueTab && !isOfferedTab && !isOnboardingTab && (
-        <form method="GET" className="flex gap-3 flex-wrap">
-          <input
-            name="search"
-            defaultValue={search}
-            placeholder="Search name, email, roll no…"
-            className="h-10 rounded-xl border-2 border-slate-200 bg-white px-4 text-sm font-medium text-slate-700 placeholder:text-slate-400 focus:border-indigo-500 focus:outline-none transition-all w-72"
-          />
-          <select
-            name="status"
-            defaultValue={status ?? ""}
-            className="h-10 rounded-xl border-2 border-slate-200 bg-white px-3 text-sm font-medium text-slate-700 focus:border-indigo-500 focus:outline-none transition-all"
-          >
-            <option value="">All Statuses</option>
-            <option value="ACTIVE">Active</option>
-            <option value="ONBOARDING">Onboarding</option>
-            <option value="ALUMNI">Alumni</option>
-            <option value="WITHDRAWN">Withdrawn</option>
-          </select>
-          <select
-            name="batch"
-            defaultValue={batch ?? ""}
-            className="h-10 rounded-xl border-2 border-slate-200 bg-white px-3 text-sm font-medium text-slate-700 focus:border-indigo-500 focus:outline-none transition-all"
-          >
-            <option value="">All Batches</option>
-            {batches.map((b) => (
-              <option key={b.year} value={b.year}>{b.name}</option>
-            ))}
-          </select>
-          <button
-            type="submit"
-            className="h-10 px-4 bg-slate-900 hover:bg-slate-700 text-white text-sm font-bold rounded-xl transition-all"
-          >
-            Filter
-          </button>
-          {(search || status || batch) && (
-            <Link href="/students" className="h-10 px-4 flex items-center text-sm font-medium text-slate-500 hover:text-slate-800 transition-colors">
-              Clear
-            </Link>
+        <div className="space-y-3">
+          {(dueFy || collectedFy) && (
+            <div className="flex items-center justify-between bg-amber-50/90 border border-amber-200 text-amber-900 px-4 py-2.5 rounded-xl text-sm font-semibold shadow-xs">
+              <div className="flex items-center gap-2">
+                <span className="inline-block w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
+                <span>
+                  Showing students based on: <strong className="font-bold">{dueFyYear ? `Dues in FY ${dueFyYear}-${(dueFyYear + 1).toString().slice(-2)}` : `Payments Collected in FY ${collectedFyYear!}-${(collectedFyYear! + 1).toString().slice(-2)}`}</strong>
+                </span>
+              </div>
+              <Link href="/students" className="text-xs text-amber-700 hover:text-amber-950 underline font-bold bg-amber-100 hover:bg-amber-200 px-2.5 py-1 rounded-lg transition-colors">
+                Clear Filter
+              </Link>
+            </div>
           )}
-        </form>
+          <form method="GET" className="flex gap-3 flex-wrap">
+            <input
+              name="search"
+              defaultValue={search}
+              placeholder="Search name, email, roll no…"
+              className="h-10 rounded-xl border-2 border-slate-200 bg-white px-4 text-sm font-medium text-slate-700 placeholder:text-slate-400 focus:border-indigo-500 focus:outline-none transition-all w-72"
+            />
+            <select
+              name="status"
+              defaultValue={status ?? ""}
+              className="h-10 rounded-xl border-2 border-slate-200 bg-white px-3 text-sm font-medium text-slate-700 focus:border-indigo-500 focus:outline-none transition-all"
+            >
+              <option value="">All Statuses</option>
+              <option value="ACTIVE">Active</option>
+              <option value="ONBOARDING">Onboarding</option>
+              <option value="ALUMNI">Alumni</option>
+              <option value="WITHDRAWN">Withdrawn</option>
+            </select>
+            <select
+              name="batch"
+              defaultValue={batch ?? ""}
+              className="h-10 rounded-xl border-2 border-slate-200 bg-white px-3 text-sm font-medium text-slate-700 focus:border-indigo-500 focus:outline-none transition-all"
+            >
+              <option value="">All Batches</option>
+              {batches.map((b) => (
+                <option key={b.year} value={b.year}>{b.name}</option>
+              ))}
+            </select>
+            <button
+              type="submit"
+              className="h-10 px-4 bg-slate-900 hover:bg-slate-700 text-white text-sm font-bold rounded-xl transition-all"
+            >
+              Filter
+            </button>
+            {(search || status || batch || dueFy || collectedFy) && (
+              <Link href="/students" className="h-10 px-4 flex items-center text-sm font-medium text-slate-500 hover:text-slate-800 transition-colors">
+                Clear
+              </Link>
+            )}
+          </form>
+        </div>
       )}
 
       {/* Table */}
@@ -171,7 +190,7 @@ export default async function StudentsPage({
           <p className="text-xs font-medium text-slate-400 mt-1">
             {isOverdueTab
               ? "All installments are on track"
-              : search || status
+              : search || status || dueFy || collectedFy
               ? "Try adjusting your filters"
               : "Enroll the first student to get started"}
           </p>
@@ -188,6 +207,13 @@ export default async function StudentsPage({
                 <th className="text-left px-3 py-3 text-[10px] uppercase tracking-widest font-bold text-slate-400">Net Fee</th>
                 <th className="text-left px-3 py-3 text-[10px] uppercase tracking-widest font-bold text-slate-400">Received</th>
                 <th className="text-left px-3 py-3 text-[10px] uppercase tracking-widest font-bold text-slate-400">Pending</th>
+                {(dueFyYear || collectedFyYear) && (
+                  <th className="text-left px-3 py-3 text-[10px] uppercase tracking-widest font-bold text-amber-700 bg-amber-50">
+                    {dueFyYear
+                      ? `FY ${dueFyYear.toString().slice(-2)}-${(dueFyYear + 1).toString().slice(-2)} Due`
+                      : `FY ${collectedFyYear!.toString().slice(-2)}-${(collectedFyYear! + 1).toString().slice(-2)} Coll.`}
+                  </th>
+                )}
                 <th className="text-left px-3 py-3 text-[10px] uppercase tracking-widest font-bold text-slate-400">Next Due Amt</th>
                 <th className="text-left px-3 py-3 text-[10px] uppercase tracking-widest font-bold text-slate-400">Next Due Date</th>
                 <th className="text-left px-3 py-3 text-[10px] uppercase tracking-widest font-bold text-slate-400">Status</th>
@@ -198,6 +224,21 @@ export default async function StudentsPage({
               {students.map((s) => {
                 const totalReceived = (s.payments || []).reduce((sum, p) => sum + Number(p.amount), 0)
                 const overdueCount = s.installments.filter((i) => i.status === "OVERDUE").length
+
+                let fySpecificAmount = 0
+                if (dueFyYear) {
+                  const fyStart = new Date(dueFyYear, 3, 1, 0, 0, 0)
+                  const fyEnd = new Date(dueFyYear + 1, 2, 31, 23, 59, 59)
+                  fySpecificAmount = s.installments
+                    .filter((i) => i.status !== "PAID" && new Date(i.dueDate) >= fyStart && new Date(i.dueDate) <= fyEnd)
+                    .reduce((sum, i) => sum + (Number(i.amount) - (Number(i.paidAmount) || 0)), 0)
+                } else if (collectedFyYear) {
+                  const fyStart = new Date(collectedFyYear, 3, 1, 0, 0, 0)
+                  const fyEnd = new Date(collectedFyYear + 1, 2, 31, 23, 59, 59)
+                  fySpecificAmount = (s.payments || [])
+                    .filter((p) => p.date && new Date(p.date) >= fyStart && new Date(p.date) <= fyEnd)
+                    .reduce((sum, p) => sum + Number(p.amount), 0)
+                }
 
                 const ledger = computeFeeLedger({
                   totalPaid: totalReceived,
@@ -277,6 +318,13 @@ export default async function StudentsPage({
                         {s.financial ? formatINR(ledger.totals.pending) : "—"}
                       </span>
                     </td>
+                    {(dueFyYear || collectedFyYear) && (
+                      <td className="px-3 py-3 bg-amber-50/50">
+                        <span className="text-sm font-bold text-amber-900 whitespace-nowrap">
+                          {formatINR(fySpecificAmount)}
+                        </span>
+                      </td>
+                    )}
                     <td className="px-3 py-3">
                       {nextDueAmt !== null ? (
                         <span className={`text-sm font-bold whitespace-nowrap ${isNextDueOverdue ? "text-rose-600" : "text-slate-800"}`}>

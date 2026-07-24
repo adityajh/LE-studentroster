@@ -56,12 +56,22 @@ export async function getStudents(opts?: {
   search?: string
   status?: string
   overdueOnly?: boolean
+  dueFyYear?: number
+  collectedFyYear?: number
 }) {
+  const dueFyStart = opts?.dueFyYear ? new Date(opts.dueFyYear, 3, 1, 0, 0, 0) : undefined
+  const dueFyEnd = opts?.dueFyYear ? new Date(opts.dueFyYear + 1, 2, 31, 23, 59, 59) : undefined
+
+  const collectedFyStart = opts?.collectedFyYear ? new Date(opts.collectedFyYear, 3, 1, 0, 0, 0) : undefined
+  const collectedFyEnd = opts?.collectedFyYear ? new Date(opts.collectedFyYear + 1, 2, 31, 23, 59, 59) : undefined
+
   return prisma.student.findMany({
     where: {
       ...(opts?.batchYear ? { batch: { year: opts.batchYear } } : {}),
       ...(opts?.status && opts.status !== "ALL"
         ? { status: opts.status as $Enums.StudentStatus }
+        : (opts?.dueFyYear || opts?.collectedFyYear)
+        ? { status: { not: "WITHDRAWN" } }
         : {}),
       ...(opts?.search
         ? {
@@ -76,13 +86,32 @@ export async function getStudents(opts?: {
       ...(opts?.overdueOnly
         ? { installments: { some: { status: "OVERDUE" } } }
         : {}),
+      ...(dueFyStart && dueFyEnd
+        ? {
+            installments: {
+              some: {
+                dueDate: { gte: dueFyStart, lte: dueFyEnd },
+                status: { not: "PAID" },
+              },
+            },
+          }
+        : {}),
+      ...(collectedFyStart && collectedFyEnd
+        ? {
+            payments: {
+              some: {
+                date: { gte: collectedFyStart, lte: collectedFyEnd },
+              },
+            },
+          }
+        : {}),
     },
     include: {
       batch: true,
       program: { select: { id: true, name: true, registrationFee: true, year1Fee: true, year2Fee: true, year3Fee: true } },
       financial: { select: { netFee: true, installmentType: true, registrationPaid: true, registrationFeeOverride: true } },
       installments: { select: { id: true, status: true, dueDate: true, amount: true, paidAmount: true, year: true }, orderBy: { year: "asc" } },
-      payments: { select: { amount: true } },
+      payments: { select: { amount: true, date: true } },
       offers: { include: { offer: true } },
       scholarships: { include: { scholarship: true } },
       deductions: true,
