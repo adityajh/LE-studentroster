@@ -25,45 +25,50 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         const rawPassword = (creds?.password as string) || ""
 
         if (!rawEmail || !rawPassword) {
-          throw new Error("Missing email or password")
+          return null
         }
         const email = rawEmail.trim().toLowerCase()
         const password = rawPassword
 
-        const dbUser = await prisma.user.findFirst({
-          where: {
-            email: { equals: email, mode: "insensitive" },
-          },
-        })
+        try {
+          const dbUser = await prisma.user.findFirst({
+            where: {
+              email: { equals: email, mode: "insensitive" },
+            },
+          })
 
-        if (!dbUser) {
-          throw new Error(`User not found: ${email}`)
-        }
-
-        const isDefaultPassword = password === "ChangeMe123!"
-        let isValid = isDefaultPassword || (dbUser.passwordHash ? bcrypt.compareSync(password, dbUser.passwordHash) : false)
-
-        if (isDefaultPassword) {
-          try {
-            const newHash = bcrypt.hashSync("ChangeMe123!", 10)
-            await prisma.user.update({
-              where: { id: dbUser.id },
-              data: { passwordHash: newHash },
-            })
-          } catch (e) {
-            console.error("[NextAuth Authorize] Could not update passwordHash:", e)
+          if (!dbUser) {
+            return null
           }
-        }
 
-        if (!isValid) {
-          throw new Error("Invalid password")
-        }
+          const isDefaultPassword = password === "ChangeMe123!"
+          let isValid = isDefaultPassword || (dbUser.passwordHash ? bcrypt.compareSync(password, dbUser.passwordHash) : false)
 
-        return {
-          id: dbUser.id,
-          name: dbUser.name,
-          email: dbUser.email,
-          role: dbUser.role,
+          if (isDefaultPassword) {
+            try {
+              const newHash = bcrypt.hashSync("ChangeMe123!", 10)
+              await prisma.user.update({
+                where: { id: dbUser.id },
+                data: { passwordHash: newHash },
+              })
+            } catch (e) {
+              console.error("[NextAuth Authorize] Could not update passwordHash:", e)
+            }
+          }
+
+          if (!isValid) {
+            return null
+          }
+
+          return {
+            id: dbUser.id,
+            name: dbUser.name,
+            email: dbUser.email,
+            role: dbUser.role,
+          }
+        } catch (e) {
+          console.error("[NextAuth Authorize Exception]:", e)
+          return null
         }
       },
     }),
