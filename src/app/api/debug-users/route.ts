@@ -9,12 +9,18 @@ export async function GET() {
         email: true,
         name: true,
         role: true,
-        hasPassword: true, // virtual/computed
+        passwordHash: true,
       },
     })
     return NextResponse.json({
       dbUsersCount: users.length,
-      users: users.map(u => ({ email: u.email, name: u.name, role: u.role })),
+      users: users.map(u => ({
+        email: u.email,
+        name: u.name,
+        role: u.role,
+        hasPasswordHash: !!u.passwordHash,
+        passwordHashPrefix: u.passwordHash ? u.passwordHash.substring(0, 7) : null,
+      })),
       databaseUrlHost: process.env.DATABASE_URL ? new URL(process.env.DATABASE_URL.replace("postgresql://", "http://")).host : "NOT_SET",
       unpooledHost: process.env.DATABASE_URL_UNPOOLED ? new URL(process.env.DATABASE_URL_UNPOOLED.replace("postgresql://", "http://")).host : "NOT_SET",
     })
