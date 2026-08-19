@@ -39,7 +39,7 @@ const authHandler = auth((req) => {
   return NextResponse.next()
 })
 
-export default async function middleware(req: NextRequest) {
+export default function middleware(req: NextRequest) {
   if (req.nextUrl.pathname.startsWith("/api/test-auth-login")) {
     return NextResponse.next()
   }
