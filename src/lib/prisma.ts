@@ -8,11 +8,12 @@ const globalForPrisma = globalThis as unknown as {
 
 function createPrismaClient() {
   const connectionString =
-    process.env.DATABASE_URL_UNPOOLED || process.env.DATABASE_URL
-  const adapter = connectionString
-    ? new PrismaNeon(new Pool({ connectionString }) as any)
-    : undefined
-  return new PrismaClient(adapter ? { adapter } : ({} as any))
+    process.env.DATABASE_URL_UNPOOLED ||
+    process.env.DATABASE_URL ||
+    "postgresql://neondb_owner:npg_bmrZJ91UKvHO@ep-floral-forest-a48v8463.us-east-1.aws.neon.tech/neondb?sslmode=require"
+  const pool = new Pool({ connectionString })
+  const adapter = new PrismaNeon(pool as any)
+  return new PrismaClient({ adapter })
 }
 
 export const prisma = globalForPrisma.prisma ?? createPrismaClient()
