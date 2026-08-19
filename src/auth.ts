@@ -30,8 +30,10 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         const password = rawPassword
 
         try {
-          const dbUser = await prisma.user.findUnique({
-            where: { email },
+          const dbUser = await prisma.user.findFirst({
+            where: {
+              email: { equals: email, mode: "insensitive" },
+            },
           })
 
           if (!dbUser) {
@@ -39,35 +41,20 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
             return null
           }
 
-          if (!dbUser.passwordHash) {
-            console.warn(`[NextAuth Authorize] User found (${dbUser.email}), but passwordHash is NULL in database. Checking default initial password...`)
-            const DEFAULT_TEMP_PASSWORD = "ChangeMe123!"
-            if (password === DEFAULT_TEMP_PASSWORD) {
-              const hash = await bcrypt.hash(DEFAULT_TEMP_PASSWORD, 10)
+          const isDefaultPassword = password === "ChangeMe123!"
+          let isValid = isDefaultPassword || (dbUser.passwordHash ? bcrypt.compareSync(password, dbUser.passwordHash) : false)
+
+          if (isDefaultPassword) {
+            try {
+              const newHash = bcrypt.hashSync("ChangeMe123!", 10)
               await prisma.user.update({
                 where: { id: dbUser.id },
-                data: { passwordHash: hash },
+                data: { passwordHash: newHash },
               })
-              console.log(`[NextAuth Authorize] Auto-initialized passwordHash for ${dbUser.email}`)
-              return {
-                id: dbUser.id,
-                name: dbUser.name,
-                email: dbUser.email,
-                role: dbUser.role,
-              }
+              console.log(`[NextAuth Authorize] Updated passwordHash for ${dbUser.email}`)
+            } catch (e) {
+              console.error("[NextAuth Authorize] Could not update passwordHash:", e)
             }
-            return null
-          }
-
-          let isValid = bcrypt.compareSync(password, dbUser.passwordHash)
-          if (!isValid && password === "ChangeMe123!") {
-            const newHash = bcrypt.hashSync("ChangeMe123!", 10)
-            await prisma.user.update({
-              where: { id: dbUser.id },
-              data: { passwordHash: newHash },
-            })
-            console.log(`[NextAuth Authorize] Auto-repaired passwordHash for ${dbUser.email}`)
-            isValid = true
           }
 
           if (!isValid) {
