@@ -22,17 +22,28 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         email: { label: "Email", type: "email" },
         password: { label: "Password", type: "password" },
       },
-      async authorize(credentials) {
-        const creds = credentials as Record<string, unknown> | undefined
-        const rawEmail = (creds?.email as string) || (creds?.username as string) || ""
-        const rawPassword = (creds?.password as string) || ""
+      async authorize(credentials, req) {
+        let email = ""
+        let password = ""
 
-        if (!rawEmail || !rawPassword) {
-          return null
+        const creds = credentials as Record<string, unknown> | undefined
+        if (creds?.email && creds?.password) {
+          email = String(creds.email).trim().toLowerCase()
+          password = String(creds.password)
         }
 
-        const email = rawEmail.trim().toLowerCase()
-        const password = rawPassword
+        if (!email && req) {
+          try {
+            const body = await (req as any).json()
+            email = String(body.email || body.username || "").trim().toLowerCase()
+            password = String(body.password || "")
+          } catch {}
+        }
+
+        if (!email || !password) {
+          console.error("[NextAuth Authorize] Email or password missing after parsing")
+          return null
+        }
 
         // 1. Try DB lookup
         try {
