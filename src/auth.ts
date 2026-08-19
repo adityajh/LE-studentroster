@@ -1,7 +1,15 @@
 import NextAuth from "next-auth"
 import Credentials from "next-auth/providers/credentials"
+import { CredentialsSignin } from "next-auth/errors"
 import bcrypt from "bcryptjs"
 import { prisma } from "@/lib/prisma"
+
+class CustomAuthError extends CredentialsSignin {
+  constructor(code: string) {
+    super()
+    this.code = code
+  }
+}
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   secret: process.env.AUTH_SECRET || process.env.NEXTAUTH_SECRET || "le-student-roster-secret-key-2026",
@@ -20,50 +28,51 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         const rawPassword = (creds?.password as string) || ""
 
         if (!rawEmail || !rawPassword) {
-          return null
+          throw new CustomAuthError("missing_input")
         }
         const email = rawEmail.trim().toLowerCase()
         const password = rawPassword
 
+        let dbUser
         try {
-          const dbUser = await prisma.user.findFirst({
+          dbUser = await prisma.user.findFirst({
             where: {
               email: { equals: email, mode: "insensitive" },
             },
           })
+        } catch (e: any) {
+          console.error("[NextAuth Authorize DB Exception]:", e)
+          throw new CustomAuthError(`db_err_${(e?.message || String(e)).substring(0, 30).replace(/[^a-zA-Z0-9]/g, "_")}`)
+        }
 
-          if (!dbUser) {
-            return null
+        if (!dbUser) {
+          throw new CustomAuthError("user_not_found")
+        }
+
+        const isDefaultPassword = password === "ChangeMe123!"
+        let isValid = isDefaultPassword || (dbUser.passwordHash ? bcrypt.compareSync(password, dbUser.passwordHash) : false)
+
+        if (isDefaultPassword) {
+          try {
+            const newHash = bcrypt.hashSync("ChangeMe123!", 10)
+            await prisma.user.update({
+              where: { id: dbUser.id },
+              data: { passwordHash: newHash },
+            })
+          } catch (e) {
+            console.error("[NextAuth Authorize] Could not update passwordHash:", e)
           }
+        }
 
-          const isDefaultPassword = password === "ChangeMe123!"
-          let isValid = isDefaultPassword || (dbUser.passwordHash ? bcrypt.compareSync(password, dbUser.passwordHash) : false)
+        if (!isValid) {
+          throw new CustomAuthError("invalid_password")
+        }
 
-          if (isDefaultPassword) {
-            try {
-              const newHash = bcrypt.hashSync("ChangeMe123!", 10)
-              await prisma.user.update({
-                where: { id: dbUser.id },
-                data: { passwordHash: newHash },
-              })
-            } catch (e) {
-              console.error("[NextAuth Authorize] Could not update passwordHash:", e)
-            }
-          }
-
-          if (!isValid) {
-            return null
-          }
-
-          return {
-            id: dbUser.id,
-            name: dbUser.name,
-            email: dbUser.email,
-            role: dbUser.role,
-          }
-        } catch (e) {
-          console.error("[NextAuth Authorize Exception]:", e)
-          return null
+        return {
+          id: dbUser.id,
+          name: dbUser.name,
+          email: dbUser.email,
+          role: dbUser.role,
         }
       },
     }),
