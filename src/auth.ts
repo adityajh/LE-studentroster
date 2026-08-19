@@ -32,7 +32,22 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           }
 
           if (!dbUser.passwordHash) {
-            console.error(`[NextAuth Authorize] User found (${dbUser.email}), but passwordHash is NULL in database!`)
+            console.warn(`[NextAuth Authorize] User found (${dbUser.email}), but passwordHash is NULL in database. Checking default initial password...`)
+            const DEFAULT_TEMP_PASSWORD = "ChangeMe123!"
+            if (password === DEFAULT_TEMP_PASSWORD) {
+              const hash = await bcrypt.hash(DEFAULT_TEMP_PASSWORD, 10)
+              await prisma.user.update({
+                where: { id: dbUser.id },
+                data: { passwordHash: hash },
+              })
+              console.log(`[NextAuth Authorize] Auto-initialized passwordHash for ${dbUser.email}`)
+              return {
+                id: dbUser.id,
+                name: dbUser.name,
+                email: dbUser.email,
+                role: dbUser.role,
+              }
+            }
             return null
           }
 
