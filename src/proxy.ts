@@ -40,9 +40,6 @@ const authHandler = auth((req) => {
 })
 
 export default async function middleware(req: NextRequest) {
-  if (req.nextUrl.pathname.startsWith("/api/debug-users")) {
-    return NextResponse.next()
-  }
   return (authHandler as any)(req)
 }
 
