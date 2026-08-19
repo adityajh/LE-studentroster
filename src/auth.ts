@@ -15,11 +15,19 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         password: { label: "Password", type: "password" },
       },
       async authorize(credentials) {
-        if (!credentials?.email || !credentials?.password) {
+        console.log("[NextAuth Authorize DEBUG] Credentials keys:", credentials ? Object.keys(credentials) : "NULL")
+        console.log("[NextAuth Authorize DEBUG] Raw email input:", credentials?.email)
+        
+        const creds = credentials as Record<string, unknown> | undefined
+        const rawEmail = (creds?.email as string) || (creds?.username as string) || ""
+        const rawPassword = (creds?.password as string) || ""
+
+        if (!rawEmail || !rawPassword) {
+          console.error("[NextAuth Authorize DEBUG] Missing email or password in credentials object")
           return null
         }
-        const email = (credentials.email as string).trim().toLowerCase()
-        const password = credentials.password as string
+        const email = rawEmail.trim().toLowerCase()
+        const password = rawPassword
 
         try {
           const dbUser = await prisma.user.findUnique({

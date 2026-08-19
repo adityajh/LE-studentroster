@@ -1,10 +1,10 @@
 "use client"
 
 import { useState, Suspense } from "react"
-import { signIn } from "next-auth/react"
 import { useRouter, useSearchParams } from "next/navigation"
 import Image from "next/image"
 import { Loader2, Eye, EyeOff, Lock } from "lucide-react"
+import { loginAction } from "@/app/actions/auth"
 
 function LoginForm() {
   const router = useRouter()
@@ -24,21 +24,21 @@ function LoginForm() {
     setError("")
 
     try {
-      const result = await signIn("credentials", {
-        email,
-        password,
-        redirect: false,
-      })
+      const formData = new FormData()
+      formData.set("email", email)
+      formData.set("password", password)
+      formData.set("callbackUrl", callbackUrl)
 
-      if (result?.error || !result?.ok) {
-        setError("Invalid email or password. Please try again.")
-      } else {
-        router.push(callbackUrl)
-        router.refresh()
+      const result = await loginAction(null, formData)
+      if (result?.error) {
+        setError(result.error)
+        setLoading(false)
       }
-    } catch {
-      setError("An unexpected error occurred. Please try again.")
-    } finally {
+    } catch (err: any) {
+      if (err?.digest?.startsWith("NEXT_REDIRECT") || err?.message?.includes("NEXT_REDIRECT")) {
+        return
+      }
+      setError("Invalid email or password. Please try again.")
       setLoading(false)
     }
   }
