@@ -12,11 +12,10 @@ export default auth((req) => {
   // Token validation (SHA-256 hash + 14-day expiry) happens in the route handler.
   const isOnboardPage = nextUrl.pathname.startsWith("/onboard")
   const isOnboardApi = nextUrl.pathname.startsWith("/api/onboard")
-  const isTestAuthDb = nextUrl.pathname.startsWith("/api/test-auth-db")
   const isApiRoute = nextUrl.pathname.startsWith("/api")
 
   // NextAuth routes (signin, callback, etc.) — always allow through
-  if (isNextAuthRoute || isTestAuthDb) return NextResponse.next()
+  if (isNextAuthRoute) return NextResponse.next()
 
   // Public external API routes use API key auth — skip session check
   if (isPublicApiRoute) return NextResponse.next()
