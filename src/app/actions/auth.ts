@@ -19,9 +19,10 @@ export async function loginAction(prevState: any, formData: FormData) {
       redirectTo: callbackUrl,
     })
     return { error: null }
-  } catch (error) {
+  } catch (error: any) {
     if (error instanceof AuthError) {
-      return { error: "Invalid email or password. Please try again." }
+      const msg = (error as any).cause?.err?.message
+      return { error: msg || "Invalid email or password. Please try again." }
     }
     // Re-throw Next.js redirect exceptions so navigation proceeds
     throw error
