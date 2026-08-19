@@ -26,12 +26,19 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
             where: { email },
           })
 
-          if (!dbUser || !dbUser.passwordHash) {
+          if (!dbUser) {
+            console.error(`[NextAuth Authorize] User NOT found in database for email: "${email}"`)
+            return null
+          }
+
+          if (!dbUser.passwordHash) {
+            console.error(`[NextAuth Authorize] User found (${dbUser.email}), but passwordHash is NULL in database!`)
             return null
           }
 
           const isValid = await bcrypt.compare(password, dbUser.passwordHash)
           if (!isValid) {
+            console.error(`[NextAuth Authorize] Password mismatch for email: "${email}"`)
             return null
           }
 
@@ -42,7 +49,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
             role: dbUser.role,
           }
         } catch (error) {
-          console.error("NextAuth authorize error:", error)
+          console.error("[NextAuth Authorize] Exception caught:", error)
           return null
         }
       },
