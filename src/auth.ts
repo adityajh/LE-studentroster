@@ -21,24 +21,29 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         const email = (credentials.email as string).trim().toLowerCase()
         const password = credentials.password as string
 
-        const dbUser = await prisma.user.findUnique({
-          where: { email },
-        })
+        try {
+          const dbUser = await prisma.user.findUnique({
+            where: { email },
+          })
 
-        if (!dbUser || !dbUser.passwordHash) {
+          if (!dbUser || !dbUser.passwordHash) {
+            return null
+          }
+
+          const isValid = await bcrypt.compare(password, dbUser.passwordHash)
+          if (!isValid) {
+            return null
+          }
+
+          return {
+            id: dbUser.id,
+            name: dbUser.name,
+            email: dbUser.email,
+            role: dbUser.role,
+          }
+        } catch (error) {
+          console.error("NextAuth authorize error:", error)
           return null
-        }
-
-        const isValid = await bcrypt.compare(password, dbUser.passwordHash)
-        if (!isValid) {
-          return null
-        }
-
-        return {
-          id: dbUser.id,
-          name: dbUser.name,
-          email: dbUser.email,
-          role: dbUser.role,
         }
       },
     }),
