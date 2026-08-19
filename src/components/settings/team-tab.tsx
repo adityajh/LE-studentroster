@@ -1,9 +1,9 @@
 "use client"
 
 import { useState, useTransition } from "react"
-import { addTeamMember, updateUserRole, removeTeamMember, updateUserName, updateUserCcOnEmails } from "@/app/actions/team"
+import { addTeamMember, updateUserRole, removeTeamMember, updateUserName, updateUserCcOnEmails, updateUserPassword } from "@/app/actions/team"
 import { useRouter } from "next/navigation"
-import { ShieldCheck, User, Loader2, ChevronDown, Plus, Trash2, X, Pencil, Check } from "lucide-react"
+import { ShieldCheck, User, Loader2, ChevronDown, Plus, Trash2, X, Pencil, Check, KeyRound } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { ROLES, ROLE_VALUES, type AppRole } from "@/lib/roles"
 
@@ -22,12 +22,18 @@ export function TeamTab({ members, currentUserId }: { members: TeamMember[], cur
   const [loadingId, setLoadingId] = useState<string | null>(null)
   const [showAddForm, setShowAddForm] = useState(false)
   const [addEmail, setAddEmail] = useState("")
+  const [addPassword, setAddPassword] = useState("")
   const [addRole, setAddRole] = useState<AppRole>("STAFF")
   const [addError, setAddError] = useState("")
   const [addLoading, setAddLoading] = useState(false)
   const [removeConfirmId, setRemoveConfirmId] = useState<string | null>(null)
   const [editingNameId, setEditingNameId] = useState<string | null>(null)
   const [nameDraft, setNameDraft] = useState("")
+  const [resetPassUserId, setResetPassUserId] = useState<string | null>(null)
+  const [newPasswordDraft, setNewPasswordDraft] = useState("")
+  const [resetPassLoading, setResetPassLoading] = useState(false)
+  const [resetPassError, setResetPassError] = useState("")
+
 
   function startEditName(m: TeamMember) {
     setEditingNameId(m.id)
@@ -78,10 +84,15 @@ export function TeamTab({ members, currentUserId }: { members: TeamMember[], cur
   async function handleAdd(e: React.SyntheticEvent<HTMLFormElement>) {
     e.preventDefault()
     setAddError("")
+    if (!addPassword || addPassword.length < 6) {
+      setAddError("Password must be at least 6 characters")
+      return
+    }
     setAddLoading(true)
     try {
-      await addTeamMember(addEmail, addRole)
+      await addTeamMember(addEmail, addRole, addPassword)
       setAddEmail("")
+      setAddPassword("")
       setAddRole("STAFF")
       setShowAddForm(false)
       router.refresh()
@@ -89,6 +100,25 @@ export function TeamTab({ members, currentUserId }: { members: TeamMember[], cur
       setAddError(err instanceof Error ? err.message : "Failed to add member")
     } finally {
       setAddLoading(false)
+    }
+  }
+
+  async function handleResetPassword(userId: string) {
+    if (!newPasswordDraft || newPasswordDraft.length < 6) {
+      setResetPassError("Password must be at least 6 characters")
+      return
+    }
+    setResetPassError("")
+    setResetPassLoading(true)
+    try {
+      await updateUserPassword(userId, newPasswordDraft)
+      setResetPassUserId(null)
+      setNewPasswordDraft("")
+      router.refresh()
+    } catch (err) {
+      setResetPassError(err instanceof Error ? err.message : "Failed to reset password")
+    } finally {
+      setResetPassLoading(false)
     }
   }
 
@@ -113,7 +143,7 @@ export function TeamTab({ members, currentUserId }: { members: TeamMember[], cur
         <div>
           <h2 className="text-base font-bold text-slate-800">Team Members</h2>
           <p className="text-sm text-slate-500 mt-0.5">
-            Add members by email. They can log in once added — promote to Admin to grant full access.
+            Add members by email and password. Promote to Admin to grant full access.
           </p>
         </div>
         <button
@@ -149,14 +179,22 @@ export function TeamTab({ members, currentUserId }: { members: TeamMember[], cur
       {showAddForm && (
         <form onSubmit={handleAdd} className="border border-dashed border-[#3663AD]/40 bg-[#3663AD]/5 rounded-2xl p-5 space-y-4">
           <p className="text-sm font-semibold text-slate-700">Add a team member</p>
-          <div className="flex gap-3 flex-wrap">
+          <div className="flex gap-3 flex-wrap items-center">
             <input
               type="email"
               required
               placeholder="teammate@example.com"
               value={addEmail}
               onChange={(e) => setAddEmail(e.target.value)}
-              className="flex-1 min-w-48 border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#3663AD]/40 bg-white"
+              className="flex-1 min-w-44 border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#3663AD]/40 bg-white"
+            />
+            <input
+              type="password"
+              required
+              placeholder="Initial password (min 6 chars)"
+              value={addPassword}
+              onChange={(e) => setAddPassword(e.target.value)}
+              className="flex-1 min-w-44 border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#3663AD]/40 bg-white"
             />
             <div className="relative">
               <select
@@ -180,9 +218,6 @@ export function TeamTab({ members, currentUserId }: { members: TeamMember[], cur
             </button>
           </div>
           {addError && <p className="text-sm text-rose-600 bg-rose-50 border border-rose-200 rounded-lg px-3 py-2">{addError}</p>}
-          <p className="text-xs text-slate-400">
-            If they&apos;ve already logged in their role will be updated. If not, they can log in with this email and will get the assigned role.
-          </p>
         </form>
       )}
 
@@ -287,9 +322,7 @@ export function TeamTab({ members, currentUserId }: { members: TeamMember[], cur
                     {new Date(m.createdAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
                   </td>
                   <td className="px-6 py-4 text-right">
-                    {isMe ? (
-                      <span className="text-xs text-slate-400 italic">You</span>
-                    ) : isLoading ? (
+                    {isLoading ? (
                       <Loader2 className="h-4 w-4 animate-spin text-slate-400 ml-auto" />
                     ) : confirmingRemove ? (
                       <div className="flex items-center justify-end gap-2">
@@ -311,27 +344,43 @@ export function TeamTab({ members, currentUserId }: { members: TeamMember[], cur
                       </div>
                     ) : (
                       <div className="flex items-center justify-end gap-2">
-                        <div className="relative">
-                          <select
-                            value={m.role}
-                            onChange={(e) => changeRole(m.id, e.target.value as AppRole)}
-                            disabled={pending}
-                            className="appearance-none bg-slate-50 border border-slate-200 text-slate-700 text-xs font-bold px-3 py-1.5 rounded-lg pr-7 cursor-pointer hover:border-indigo-300 transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                          >
-                            {ROLE_VALUES.map((r) => (
-                              <option key={r} value={r}>{ROLES[r].label}</option>
-                            ))}
-                          </select>
-                          <ChevronDown className="w-3 h-3 absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
-                        </div>
                         <button
                           type="button"
-                          onClick={() => setRemoveConfirmId(m.id)}
-                          className="p-1.5 rounded-lg text-slate-300 hover:text-rose-500 hover:bg-rose-50 transition-all"
-                          title="Remove member"
+                          onClick={() => {
+                            setResetPassUserId(m.id)
+                            setNewPasswordDraft("")
+                            setResetPassError("")
+                          }}
+                          className="p-1.5 rounded-lg text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 transition-all"
+                          title="Reset Password"
                         >
-                          <Trash2 className="w-3.5 h-3.5" />
+                          <KeyRound className="w-3.5 h-3.5" />
                         </button>
+                        {!isMe && (
+                          <>
+                            <div className="relative">
+                              <select
+                                value={m.role}
+                                onChange={(e) => changeRole(m.id, e.target.value as AppRole)}
+                                disabled={pending}
+                                className="appearance-none bg-slate-50 border border-slate-200 text-slate-700 text-xs font-bold px-3 py-1.5 rounded-lg pr-7 cursor-pointer hover:border-indigo-300 transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                              >
+                                {ROLE_VALUES.map((r) => (
+                                  <option key={r} value={r}>{ROLES[r].label}</option>
+                                ))}
+                              </select>
+                              <ChevronDown className="w-3 h-3 absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => setRemoveConfirmId(m.id)}
+                              className="p-1.5 rounded-lg text-slate-300 hover:text-rose-500 hover:bg-rose-50 transition-all"
+                              title="Remove member"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </>
+                        )}
                       </div>
                     )}
                   </td>
@@ -346,6 +395,67 @@ export function TeamTab({ members, currentUserId }: { members: TeamMember[], cur
           </tbody>
         </table>
       </div>
+
+      {/* Reset Password Modal */}
+      {resetPassUserId && (
+        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-xs flex items-center justify-center p-4 z-50">
+          <div className="bg-white border border-slate-200 rounded-2xl p-6 max-w-sm w-full space-y-4 shadow-xl">
+            <div>
+              <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
+                <KeyRound className="w-4 h-4 text-indigo-600" />
+                Reset Password
+              </h3>
+              <p className="text-xs text-slate-500 mt-1">
+                Enter a new password for{" "}
+                <span className="font-semibold text-slate-700">
+                  {members.find((m) => m.id === resetPassUserId)?.email}
+                </span>
+                .
+              </p>
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-[10px] uppercase tracking-widest font-bold text-slate-400">
+                New Password
+              </label>
+              <input
+                type="password"
+                autoFocus
+                placeholder="New password (min 6 chars)"
+                value={newPasswordDraft}
+                onChange={(e) => setNewPasswordDraft(e.target.value)}
+                className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              />
+            </div>
+
+            {resetPassError && (
+              <p className="text-xs text-rose-600 bg-rose-50 border border-rose-200 rounded-lg px-3 py-2">
+                {resetPassError}
+              </p>
+            )}
+
+            <div className="flex justify-end gap-2 pt-2">
+              <button
+                type="button"
+                onClick={() => setResetPassUserId(null)}
+                disabled={resetPassLoading}
+                className="px-3.5 py-2 rounded-xl border border-slate-200 text-slate-600 text-xs font-bold hover:bg-slate-50 transition-all"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => handleResetPassword(resetPassUserId)}
+                disabled={resetPassLoading || !newPasswordDraft}
+                className="px-3.5 py-2 rounded-xl bg-indigo-600 text-white text-xs font-bold hover:bg-indigo-700 disabled:opacity-50 transition-all flex items-center gap-1.5"
+              >
+                {resetPassLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : "Save Password"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
+

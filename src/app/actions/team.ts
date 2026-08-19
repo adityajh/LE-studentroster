@@ -51,23 +51,60 @@ export async function updateUserCcOnEmails(userId: string, ccOnEmails: boolean) 
   return { success: true }
 }
 
-export async function addTeamMember(email: string, role: AppRole) {
+import bcrypt from "bcryptjs"
+
+export async function addTeamMember(email: string, role: AppRole, password?: string) {
   await requireAdmin()
   if (!email?.trim()) throw new Error("Email is required")
   if (!ROLE_VALUES.includes(role)) throw new Error("Invalid role")
 
   const normalised = email.trim().toLowerCase()
+  let passwordHash: string | undefined = undefined
+  if (password && password.trim().length > 0) {
+    if (password.length < 6) throw new Error("Password must be at least 6 characters")
+    passwordHash = await bcrypt.hash(password, 10)
+  }
 
-  // Upsert: if user already exists just update their role, otherwise create
-  await prisma.user.upsert({
-    where: { email: normalised },
-    update: { role },
-    create: { email: normalised, role },
-  })
+  const existing = await prisma.user.findUnique({ where: { email: normalised } })
+  if (existing) {
+    await prisma.user.update({
+      where: { email: normalised },
+      data: {
+        role,
+        ...(passwordHash ? { passwordHash } : {}),
+      },
+    })
+  } else {
+    if (!passwordHash) {
+      throw new Error("Password is required for new team members")
+    }
+    await prisma.user.create({
+      data: {
+        email: normalised,
+        role,
+        passwordHash,
+      },
+    })
+  }
 
   revalidatePath("/settings")
   return { success: true }
 }
+
+export async function updateUserPassword(userId: string, newPassword: string) {
+  await requireAdmin()
+  if (!newPassword || newPassword.length < 6) {
+    throw new Error("Password must be at least 6 characters")
+  }
+  const passwordHash = await bcrypt.hash(newPassword, 10)
+  await prisma.user.update({
+    where: { id: userId },
+    data: { passwordHash },
+  })
+  revalidatePath("/settings")
+  return { success: true }
+}
+
 
 export async function removeTeamMember(userId: string) {
   const me = await requireAdmin()

@@ -1,57 +1,68 @@
 import NextAuth from "next-auth"
 import { PrismaAdapter } from "@auth/prisma-adapter"
-import Nodemailer from "next-auth/providers/nodemailer"
+import Credentials from "next-auth/providers/credentials"
+import bcrypt from "bcryptjs"
 import { prisma } from "@/lib/prisma"
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   adapter: PrismaAdapter(prisma),
+  session: { strategy: "jwt" },
   providers: [
-    Nodemailer({
-      server: {
-        host: "smtp.gmail.com",
-        port: 465,
-        secure: true,
-        auth: {
-          user: process.env.GMAIL_USER,
-          pass: process.env.GMAIL_APP_PASSWORD,
-        },
+    Credentials({
+      name: "Credentials",
+      credentials: {
+        email: { label: "Email", type: "email" },
+        password: { label: "Password", type: "password" },
       },
-      from: process.env.GMAIL_USER ?? "noreply@letsent.com",
+      async authorize(credentials) {
+        if (!credentials?.email || !credentials?.password) {
+          return null
+        }
+        const email = (credentials.email as string).trim().toLowerCase()
+        const password = credentials.password as string
+
+        const dbUser = await prisma.user.findUnique({
+          where: { email },
+        })
+
+        if (!dbUser || !dbUser.passwordHash) {
+          return null
+        }
+
+        const isValid = await bcrypt.compare(password, dbUser.passwordHash)
+        if (!isValid) {
+          return null
+        }
+
+        return {
+          id: dbUser.id,
+          name: dbUser.name,
+          email: dbUser.email,
+          role: dbUser.role,
+        }
+      },
     }),
   ],
   pages: {
     signIn: "/login",
-    verifyRequest: "/login/verify",
     error: "/login",
   },
   callbacks: {
-    // Reject any sign-in whose email isn't already in the User table.
-    // Without this, the PrismaAdapter auto-creates a new User row (with default
-    // role STAFF) for any email that submits the magic-link form — i.e. anyone
-    // who knows the production URL could self-register as STAFF.
-    //
-    // Only emails added via Settings → Team are allowed to log in. Students
-    // and other token-authenticated flows do not log in at all.
-    async signIn({ user }) {
-      if (!user.email) return false
-      const existing = await prisma.user.findUnique({
-        where: { email: user.email },
-        select: { id: true },
-      })
-      return existing !== null
+    async jwt({ token, user }) {
+      if (user) {
+        token.id = user.id
+        token.role = (user as { role?: string }).role ?? "STAFF"
+      }
+      return token
     },
-    async session({ session, user }) {
-      if (session.user) {
-        session.user.id = user.id
-        // Attach role from our User table
-        const dbUser = await prisma.user.findUnique({
-          where: { id: user.id },
-          select: { role: true },
-        })
+    async session({ session, token }) {
+      if (session.user && token) {
+        session.user.id = token.id as string
         ;(session.user as typeof session.user & { role: string }).role =
-          dbUser?.role ?? "STAFF"
+          (token.role as string) ?? "STAFF"
       }
       return session
     },
   },
 })
+
