@@ -1,15 +1,7 @@
 import NextAuth from "next-auth"
 import Credentials from "next-auth/providers/credentials"
-import { CredentialsSignin } from "next-auth/errors"
 import bcrypt from "bcryptjs"
 import { prisma } from "@/lib/prisma"
-
-class CustomAuthError extends CredentialsSignin {
-  constructor(code: string) {
-    super()
-    this.code = code
-  }
-}
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   secret: process.env.AUTH_SECRET || process.env.NEXTAUTH_SECRET || "le-student-roster-secret-key-2026",

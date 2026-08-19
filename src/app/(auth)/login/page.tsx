@@ -56,12 +56,14 @@ function LoginForm() {
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-4">
+        <input type="hidden" name="redirectTo" value={callbackUrl} />
         <div className="space-y-1.5">
           <label className="text-[10px] uppercase tracking-widest font-bold text-slate-400">
             Email address
           </label>
           <input
             type="email"
+            name="email"
             placeholder="you@letsent.com"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
@@ -79,6 +81,7 @@ function LoginForm() {
           <div className="relative">
             <input
               type={showPassword ? "text" : "password"}
+              name="password"
               placeholder="••••••••"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
