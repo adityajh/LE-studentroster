@@ -8,13 +8,11 @@ const globalForPrisma = globalThis as unknown as {
 
 function createPrismaClient() {
   const connectionString =
-    process.env.DATABASE_URL_UNPOOLED || process.env.DATABASE_URL || ""
-  const pool = new Pool({ connectionString })
-  const adapter = new PrismaNeon(pool)
-  return new PrismaClient({
-    adapter,
-    log: process.env.NODE_ENV === "development" ? ["error", "warn"] : ["error"],
-  })
+    process.env.DATABASE_URL_UNPOOLED || process.env.DATABASE_URL
+  const adapter = connectionString
+    ? new PrismaNeon(new Pool({ connectionString }) as any)
+    : undefined
+  return new PrismaClient(adapter ? { adapter } : ({} as any))
 }
 
 export const prisma = globalForPrisma.prisma ?? createPrismaClient()
