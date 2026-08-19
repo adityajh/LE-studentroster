@@ -7,6 +7,9 @@ const globalForPrisma = globalThis as unknown as {
 
 function cleanConnectionString(url: string): string {
   return url
+    .trim()
+    .replace(/^[\s\uFEFF\xA0"']+/, "")
+    .replace(/[\s\uFEFF\xA0"']+$/, "")
     .replace("-pooler.", ".")
     .replace("&pgbouncer=true", "")
     .replace("?pgbouncer=true", "")
